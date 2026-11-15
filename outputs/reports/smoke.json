@@ -1,0 +1,258 @@
+{
+ "all": {
+  "app_zs": {
+   "n": 2,
+   "R1": 0.0,
+   "R5": 100.0,
+   "R10": 100.0,
+   "mAP": 41.7,
+   "by_len": {
+    "len<999": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len 999-1000": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len>=1000": {
+     "n": 2,
+     "R1": 0.0,
+     "R5": 100.0,
+     "R10": 100.0,
+     "mAP": 41.7
+    }
+   }
+  },
+  "app_ft": {
+   "n": 2,
+   "R1": 100.0,
+   "R5": 100.0,
+   "R10": 100.0,
+   "mAP": 91.7,
+   "by_len": {
+    "len<999": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len 999-1000": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len>=1000": {
+     "n": 2,
+     "R1": 100.0,
+     "R5": 100.0,
+     "R10": 100.0,
+     "mAP": 91.7
+    }
+   }
+  },
+  "deepgaitv2_gait3d": {
+   "n": 2,
+   "R1": 100.0,
+   "R5": 100.0,
+   "R10": 100.0,
+   "mAP": 100.0,
+   "by_len": {
+    "len<999": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len 999-1000": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len>=1000": {
+     "n": 2,
+     "R1": 100.0,
+     "R5": 100.0,
+     "R10": 100.0,
+     "mAP": 100.0
+    }
+   }
+  },
+  "app_ft+deepgaitv2_gait3d": {
+   "n": 0,
+   "R1": null,
+   "R5": null,
+   "R10": null,
+   "mAP": null,
+   "by_len": {
+    "len<999": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len 999-1000": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len>=1000": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    }
+   }
+  },
+  "_fusion_weights_appearance(fold0,fold1)": {
+   "app_ft+deepgaitv2_gait3d": [
+    0.0,
+    null
+   ]
+  }
+ },
+ "cc": {
+  "app_zs": {
+   "n": 0,
+   "R1": null,
+   "R5": null,
+   "R10": null,
+   "mAP": null,
+   "by_len": {
+    "len<999": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len 999-1000": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len>=1000": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    }
+   }
+  },
+  "app_ft": {
+   "n": 0,
+   "R1": null,
+   "R5": null,
+   "R10": null,
+   "mAP": null,
+   "by_len": {
+    "len<999": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len 999-1000": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len>=1000": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    }
+   }
+  },
+  "deepgaitv2_gait3d": {
+   "n": 0,
+   "R1": null,
+   "R5": null,
+   "R10": null,
+   "mAP": null,
+   "by_len": {
+    "len<999": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len 999-1000": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len>=1000": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    }
+   }
+  },
+  "app_ft+deepgaitv2_gait3d": {
+   "n": 0,
+   "R1": null,
+   "R5": null,
+   "R10": null,
+   "mAP": null,
+   "by_len": {
+    "len<999": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len 999-1000": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    },
+    "len>=1000": {
+     "n": 0,
+     "R1": null,
+     "R5": null,
+     "R10": null,
+     "mAP": null
+    }
+   }
+  },
+  "_fusion_weights_appearance(fold0,fold1)": {
+   "app_ft+deepgaitv2_gait3d": [
+    null,
+    null
+   ]
+  }
+ }
+}
