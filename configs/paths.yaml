@@ -1,0 +1,7 @@
+raw: data/raw
+processed: data/processed
+indexes: data/indexes
+models: models
+outputs: outputs
+sqlite: data/indexes/sqlite/meta.db
+qdrant_path: data/indexes/qdrant

@@ -1,0 +1,7 @@
+ingest: {chunk_sec: 10, max_chunk_sec: 30, motion_threshold: 0.002}
+sr: {enabled: false, final_clip_only: true}
+incident: {window_sec: 8, step_sec: 4}
+gait: {enabled: false, min_frames: 30, min_height_px: 64}
+collections: [vehicle, person, person_gait, incident]
+retrieval: {top_k: 50, rerank_k: 20, gait_weight: 0.3}
+ui: {port: 7860}

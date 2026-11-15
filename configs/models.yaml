@@ -1,0 +1,12 @@
+detector: yolov8m.pt
+tracker: bytetrack
+sr: {name: realesrgan, weights: models/pretrained/RealESRGAN_x4plus.pth, scale: 4}
+text_video: {name: xclip, path: models/pretrained/xclip}
+vlm: {name: qwen2.5-vl, path: models/pretrained/qwen2.5-vl}
+parser_llm: Qwen/Qwen2.5-3B-Instruct
+gait: {repo: models/pretrained/OpenGait, model: GaitBase}
+finetuned:
+  text2vehicle: models/finetuned/text2vehicle
+  text2person: models/finetuned/text2person
+  incident: models/finetuned/incident
+  gait: models/finetuned/gait
