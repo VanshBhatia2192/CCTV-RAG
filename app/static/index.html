@@ -76,6 +76,24 @@
     <p class="meta">Results are ranked by visual and gait similarity. They are candidates, not verified identities; gait is only used for people who are walking.</p></div>
 </dialog>
 
+<dialog id="vreid">
+  <div class="dhead">
+    <strong>Same vehicle tracked on other cameras</strong>
+    <div class="opts">
+      <label><input type="checkbox" id="v_st" checked> Spatio-temporal road topology</label>
+      <label><input type="checkbox" id="v_color" checked> Strict color consistency</label>
+    </div>
+    <button class="sm ghost" onclick="vreid.close()">Close</button>
+  </div>
+  <div class="dbody">
+    <div id="vrstatus" class="meta"></div>
+    <div id="vrnote"></div>
+    <div id="vrq" class="qrow"></div>
+    <div id="vrgrid" class="grid"></div>
+    <p class="meta">Multi-camera vehicle tracking matches vehicle identity across cameras using fine-tuned visual features, color attribute gating, and spatio-temporal road physics.</p>
+  </div>
+</dialog>
+
 <script>
 const $ = s => document.querySelector(s);
 const el = (tag, props = {}, ...kids) => { const e = document.createElement(tag); Object.assign(e, props); e.append(...kids.filter(k => k != null)); return e; };
@@ -124,8 +142,10 @@ function card(c, opts = {}) {
   const row = el("div", {className: "row"});
   if (c.kind !== "incident") row.append(el("button", {className: "sm ghost", textContent: "Play clip", onclick: () => play(c)}));
   if (c.kind === "person") row.append(el("button", {className: "sm", textContent: "Find on other cameras", onclick: () => openReid(c)}));
+  if (c.kind === "vehicle") row.append(el("button", {className: "sm", textContent: "Track this vehicle across cameras", onclick: () => openVehicleReid(c)}));
   const extra = [];
   if (opts.reid) extra.push(el("div", {className: "meta", textContent: `score ${c.score}  ·  appearance ${c.appearance_z ?? "–"}  ·  gait ${c.gait_z ?? "–"}`}));
+  else if (opts.vehicle_reid) extra.push(el("div", {className: "meta", textContent: `match score ${c.score}  ·  visual ${c.appearance_sim ?? "–"}${c.st_valid ? "  ·  topology verified" : ""}`}));
   else if (c.score != null) extra.push(el("div", {className: "meta", textContent: `score ${c.score}`}));
   return el("div", {className: "card"}, media, el("div", {className: "body"},
     el("div", {className: "meta", textContent: `${c.camera}  ·  ${fmt(c.start_s)}–${fmt(c.end_s)}  ·  #${c.id}`}),
@@ -150,6 +170,7 @@ async function run() {
 function askCard(c) {
   const row = el("div", {className: "row"});
   if (c.kind === "person" && c.id != null && c.thumb) row.append(el("button", {className: "sm", textContent: "Find on other cameras", onclick: () => openReid(c)}));
+  if (c.kind === "vehicle" && c.id != null) row.append(el("button", {className: "sm", textContent: "Track this vehicle across cameras", onclick: () => openVehicleReid(c)}));
   return el("div", {className: "card"},
     el("video", Object.assign({src: c.clip + "#t=0.1", controls: true, preload: "metadata", muted: true}, c.thumb ? {poster: c.thumb} : {})),
     el("div", {className: "body"},
@@ -166,6 +187,45 @@ async function runAsk(q) {
   $("#status").textContent = `${d.n} clips in ${d.latency_s}s · read as: ${p.type || d.kind}${p.camera ? " · camera " + p.camera : ""} · "${p.text || q}"`;
   $("#grid").className = "grid wide";
   $("#grid").replaceChildren(...d.results.map(askCard));
+}
+
+let currentVehicleReid = null;
+const vreid = $("#vreid");
+
+async function openVehicleReid(c) {
+  currentVehicleReid = c;
+  vreid.showModal();
+  await loadVehicleReid();
+}
+$("#v_st").onchange = loadVehicleReid;
+$("#v_color").onchange = loadVehicleReid;
+
+async function loadVehicleReid() {
+  const c = currentVehicleReid; if (!c) return;
+  const use_st = $("#v_st").checked;
+  const use_color = $("#v_color").checked;
+  $("#vrstatus").textContent = "Tracking vehicle across cameras…";
+  $("#vrgrid").replaceChildren();
+  $("#vrnote").replaceChildren();
+  try {
+    const r = await fetch(`/api/reid/vehicle/${c.id}?use_st=${use_st}&use_color=${use_color}&k=12`);
+    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    const d = await r.json();
+    const qThumb = c.thumb || (d.query && d.query.thumb);
+    $("#vrq").replaceChildren(
+      qThumb ? el("img", {src: qThumb, style: "height:120px; border-radius:8px; background:#0d0f12;"}) : el("div", {className: "chip", textContent: "🚗 Vehicle"}),
+      el("div", {},
+        el("div", {style: "font-weight:600", textContent: `Query vehicle #${c.id}`}),
+        el("div", {className: "meta", textContent: `${c.camera}  ·  ${fmt(c.start_s)}–${fmt(c.end_s)}${c.attrs && c.attrs.color ? "  ·  " + c.attrs.color : ""}`})
+      )
+    );
+    $("#vrstatus").textContent = d.results && d.results.length
+      ? `Found ${d.results.length} camera match(es) for this vehicle`
+      : "No matching vehicle found on other cameras within spatio-temporal constraints.";
+    $("#vrgrid").replaceChildren(...(d.results || []).map(x => card(x, {vehicle_reid: true})));
+  } catch (e) {
+    $("#vrstatus").textContent = "Tracking failed: " + e.message;
+  }
 }
 
 async function openReid(c) { currentReid = c; reid.showModal(); await loadReid(); }
