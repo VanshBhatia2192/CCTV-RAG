@@ -54,10 +54,14 @@ def _visual(kind, text, k, where, ids=None):
     return [(h.id, h.score, h.payload) for h in vector_db.search(kind, vec.tolist(), k, where, ids)]
 
 def _visual_ft(text, k, where, ids=None):
+    from pathlib import Path
+    ckpt = Path("models/finetuned/text2person/clip_t2p.pt")
+    if not ckpt.exists():
+        return _visual("person", text, k, where, ids)
     from src.person import t2p
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     if "m" not in _ft:
-        _ft["m"], _ft["tok"] = t2p.load("models/finetuned/text2person/clip_t2p.pt", dev); _ft["m"].eval()
+        _ft["m"], _ft["tok"] = t2p.load(str(ckpt), dev); _ft["m"].eval()
     with torch.no_grad():
         f = t2p.txt_feat(_ft["m"], _ft["tok"], [text], dev)
         v = torch.nn.functional.normalize(f.float(), dim=-1)[0].cpu().numpy()
