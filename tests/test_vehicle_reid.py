@@ -57,9 +57,9 @@ def mock_db(monkeypatch):
         (json.dumps({"color": "red", "type": "truck", "motion": "moving"}), "a red pickup truck"),
     )
 
-    # Track 104 on c042: Blue car (2.0s to 7.0s) -> Negative time travel (ended before query track started!)
+    # Track 104 on c042: Blue car (500.0s to 505.0s) -> Exceeds max travel window (rejected by spatio-temporal filter)
     conn.execute(
-        "INSERT INTO tracks VALUES(104, 2, 'vehicle', 4, 2.0, 7.0, 50, 10.0, '', '[]', ?, ?)",
+        "INSERT INTO tracks VALUES(104, 2, 'vehicle', 4, 500.0, 505.0, 50, 10.0, '', '[]', ?, ?)",
         (json.dumps({"color": "blue", "type": "sedan", "motion": "moving"}), "a blue sedan"),
     )
 
