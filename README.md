@@ -269,6 +269,27 @@ python -m training.person.train --epochs 8
 python -m training.vehicle.train --epochs 8
 ```
 
+### 6. Video Super-Resolution (BasicVSR++)
+BasicVSR++ (4x) in plain PyTorch (`src/sr/basicvsrpp.py`; deformable conv from `torchvision`, no mmcv build), fine-tuned from the official REDS4 checkpoint on MEVA. Training pairs are built by blurring, 4x downscaling, adding noise and H.264-compressing MEVA frames, with whole cameras held out for validation.
+```bash
+# 0. official REDS4 weights
+mkdir -p models/pretrained && curl -L -o models/pretrained/basicvsrpp_reds4.pth \
+  https://download.openmmlab.com/mmediting/restorers/basicvsr_plusplus/basicvsr_plusplus_c64n7_8x1_600k_reds4_20210217-db622b2f.pth
+
+# 1. training pairs from raw MEVA videos (not data/processed/chunks, which are already re-encoded)
+python -m training.sr.prepare_meva /path/to/meva --out data/processed/sr_meva
+
+# 2. fine-tune (resumes from models/finetuned/sr/last.pth if re-run; --max-hours stops cleanly before a job limit)
+python -m training.sr.train --iters 30000 --max-hours 23
+
+# 3. pretrained vs fine-tuned vs bicubic on the held-out cameras -> outputs/reports/sr_eval.json
+python -m eval.sr.eval_sr
+
+# enhance one clip
+python -m src.sr.enhance in.mp4 out.mp4
+```
+Set `sr.enabled: true` in `configs/pipeline.yaml` to enhance final search-result clips (`src/query/trim.py`). The default data settings give ~280 train sequences of 50 frames (~14k frames) from 5 videos per camera; on one H100 30k iterations should take roughly 4–7 h.
+
 ---
 
 ## 🛠️ Tech Stack
