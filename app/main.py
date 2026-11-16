@@ -185,8 +185,58 @@ def clip(chunk_id: int, request: Request):
     return _range_response(Path(c["path"]), request)
 
 
+@app.get("/api/reid/vehicle/{tid}")
+def reid_vehicle_api(tid: int, k: int = 12, use_st: bool = True, use_color: bool = True):
+    """Multi-camera vehicle tracking endpoint using visual Re-ID, strict color gating, and spatio-temporal physics."""
+    from src.vehicle import reid as vreid
+    k = min(max(k, 1), 40)
+    try:
+        res = vreid.rank(tid, k=k, use_st_filter=use_st, use_color_gate=use_color)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Vehicle tracking failed: {e}")
+
+    db = _db()
+    try:
+        cards = []
+        for r in res.get("results", []):
+            t = _track(db, r["track_row"])
+            if t:
+                c = _card_track(t, r["score"])
+                c.update(
+                    appearance_sim=r.get("appearance_sim"),
+                    st_valid=r.get("st_valid"),
+                    color_match=r.get("color_match"),
+                )
+                cards.append(c)
+            else:
+                cards.append(r)
+        q = _track(db, tid)
+        query = _card_track(q) if q else res.get("query")
+    finally:
+        db.close()
+    return dict(
+        query=query,
+        kind="vehicle",
+        use_st=use_st,
+        use_color=use_color,
+        results=cards,
+    )
+
+
 @app.get("/api/reid/{tid}")
-def reid_api(tid: int, mode: str = "any", k: int = 12, full_body: bool = True):
+def reid_api(tid: int, mode: str = "any", k: int = 12, full_body: bool = True, use_st: bool = True, use_color: bool = True):
+    db = _db()
+    try:
+        t = _track(db, tid)
+    finally:
+        db.close()
+
+    # Automatically route vehicles to the multi-camera vehicle tracking engine
+    if t and t.get("kind") == "vehicle":
+        return reid_vehicle_api(tid, k=k, use_st=use_st, use_color=use_color)
+
     from src.gait import reid
     if mode not in reid.MODES:
         raise HTTPException(400, f"mode must be one of {list(reid.MODES)}")

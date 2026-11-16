@@ -1,0 +1,172 @@
+# Multi-Camera Spatial-Temporal Topology Configuration
+# Defines camera connections, travel-time windows [min_seconds, max_seconds], and distance.
+
+cameras:
+  # CityFlow S05 Cameras
+  c041:
+    name: "Camera 41 (Intersection North-West)"
+    fps: 10.0
+    connected_to:
+      c042:
+        min_time: 2.0
+        max_time: 35.0
+        distance_meters: 60.0
+      c043:
+        min_time: 3.0
+        max_time: 40.0
+        distance_meters: 80.0
+      c044:
+        min_time: 5.0
+        max_time: 50.0
+        distance_meters: 150.0
+  c042:
+    name: "Camera 42 (Intersection North-East)"
+    fps: 10.0
+    connected_to:
+      c041:
+        min_time: 2.0
+        max_time: 35.0
+        distance_meters: 60.0
+      c043:
+        min_time: 2.0
+        max_time: 35.0
+        distance_meters: 60.0
+      c045:
+        min_time: 5.0
+        max_time: 50.0
+        distance_meters: 150.0
+  c043:
+    name: "Camera 43 (Intersection South-West)"
+    fps: 10.0
+    connected_to:
+      c041:
+        min_time: 3.0
+        max_time: 40.0
+        distance_meters: 80.0
+      c042:
+        min_time: 2.0
+        max_time: 35.0
+        distance_meters: 60.0
+      c044:
+        min_time: 3.0
+        max_time: 40.0
+        distance_meters: 70.0
+      c046:
+        min_time: 6.0
+        max_time: 55.0
+        distance_meters: 170.0
+  c044:
+    name: "Camera 44 (Intersection South-East)"
+    fps: 10.0
+    connected_to:
+      c041:
+        min_time: 5.0
+        max_time: 50.0
+        distance_meters: 150.0
+      c043:
+        min_time: 3.0
+        max_time: 40.0
+        distance_meters: 70.0
+      c045:
+        min_time: 2.0
+        max_time: 35.0
+        distance_meters: 60.0
+      c046:
+        min_time: 2.0
+        max_time: 35.0
+        distance_meters: 60.0
+  c045:
+    name: "Camera 45 (Avenue Approach East)"
+    fps: 10.0
+    connected_to:
+      c042:
+        min_time: 5.0
+        max_time: 50.0
+        distance_meters: 150.0
+      c044:
+        min_time: 2.0
+        max_time: 35.0
+        distance_meters: 60.0
+      c046:
+        min_time: 3.0
+        max_time: 40.0
+        distance_meters: 80.0
+  c046:
+    name: "Camera 46 (Avenue Approach West)"
+    fps: 10.0
+    connected_to:
+      c043:
+        min_time: 6.0
+        max_time: 55.0
+        distance_meters: 170.0
+      c044:
+        min_time: 2.0
+        max_time: 35.0
+        distance_meters: 60.0
+      c045:
+        min_time: 3.0
+        max_time: 40.0
+        distance_meters: 80.0
+
+  # Sample / Synthetic camera topologies
+  c001:
+    name: "Camera 1 (North Intersection)"
+    fps: 10.0
+    connected_to:
+      c002:
+        min_time: 4.0
+        max_time: 45.0
+        distance_meters: 120.0
+      c003:
+        min_time: 8.0
+        max_time: 60.0
+        distance_meters: 220.0
+  c002:
+    name: "Camera 2 (Central Boulevard)"
+    fps: 10.0
+    connected_to:
+      c001:
+        min_time: 4.0
+        max_time: 45.0
+        distance_meters: 120.0
+      c003:
+        min_time: 3.0
+        max_time: 35.0
+        distance_meters: 90.0
+      c004:
+        min_time: 6.0
+        max_time: 50.0
+        distance_meters: 160.0
+  c003:
+    name: "Camera 3 (South Intersection)"
+    fps: 10.0
+    connected_to:
+      c001:
+        min_time: 8.0
+        max_time: 60.0
+        distance_meters: 220.0
+      c002:
+        min_time: 3.0
+        max_time: 35.0
+        distance_meters: 90.0
+      c004:
+        min_time: 5.0
+        max_time: 40.0
+        distance_meters: 140.0
+  c004:
+    name: "Camera 4 (East Avenue)"
+    fps: 10.0
+    connected_to:
+      c002:
+        min_time: 6.0
+        max_time: 50.0
+        distance_meters: 160.0
+      c003:
+        min_time: 5.0
+        max_time: 40.0
+        distance_meters: 140.0
+
+# Global fallback limits if a camera pair is not explicitly listed
+default_travel_window:
+  min_time: 1.0
+  max_time: 120.0
