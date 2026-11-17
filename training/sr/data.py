@@ -2,6 +2,7 @@
 import contextlib, json, random
 from pathlib import Path
 import cv2, numpy as np, torch, torch.nn.functional as F
+from src.sr.basicvsrpp import tta_forward
 
 
 def autocast(device, dtype):
@@ -93,14 +94,15 @@ def ssim(a, b, crop=0):
 
 
 @torch.no_grad()
-def evaluate(model, root, device, max_frames=30, amp=None):
-    """PSNR/SSIM of model output and of plain bicubic upscaling, over all held-out sequences."""
+def evaluate(model, root, device, max_frames=30, amp=None, tta=1):
+    """PSNR/SSIM of model output and of plain bicubic upscaling, over all held-out sequences.
+    tta > 1 averages that many flipped/transposed passes (self-ensemble)."""
     model.eval()
     rows = []
     for sid, cam, lq, gt in val_sequences(root, max_frames):
         lq, gt = lq.to(device), gt.to(device)
         with autocast(device, amp):
-            out = model(lq).float()
+            out = tta_forward(model, lq, tta) if tta > 1 else model(lq).float()
         bic = F.interpolate(lq[0], scale_factor=4, mode="bicubic", align_corners=False)[None]
         rows.append(dict(id=sid, camera=cam, psnr=psnr(out, gt, 4), ssim=ssim(out, gt, 4),
                          psnr_bicubic=psnr(bic, gt, 4), ssim_bicubic=ssim(bic, gt, 4)))

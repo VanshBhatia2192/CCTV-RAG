@@ -134,6 +134,18 @@ Evaluated on 300 natural language pseudo-queries over the full scaled 13,686-tra
 - **Direct Multi-Modal Search**: **$96.3\text{ ms}$** median latency.
 - **LLM Query Decomposed Search**: **$306.5\text{ ms}$** median latency.
 
+### 6. Video Super-Resolution (BasicVSR++ 4x, fine-tuned on MEVA)
+Evaluated on 14 clips from two held-out cameras (`bus.G509`, `school.G424`) never seen in training. Inputs are 4x downscaled MEVA frames with blur, noise and H.264 compression (CRF 23-35); targets are the frames at 960 px.
+
+| Method | PSNR (dB) | SSIM |
+| :--- | :---: | :---: |
+| Bicubic upscaling | 21.60 | 0.534 |
+| Pretrained BasicVSR++ (REDS4) | 20.27 | 0.502 |
+| **Fine-tuned on MEVA (`basicvsrpp_meva.pth`)** | **22.40** | **0.586** |
+| **Gain vs pretrained** | **+2.14** | **+0.084** |
+
+Run v1: 30k iterations, batch 8 x 15 frames x 64 px, lr 2e-5 (cosine), 220 training clips (11k frames) from 25 cameras, ~7 h on one shared H100; best checkpoint at 15k. Reports in `outputs/reports/sr_eval_v1.json` / `sr_train_v1.json`, figures in `outputs/figures/sr_v1/`.
+
 ---
 
 ## 📁 Repository Structure

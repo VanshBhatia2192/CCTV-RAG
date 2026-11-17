@@ -1,0 +1,73 @@
+#!/bin/bash
+# Fine-tune BasicVSR++ on 1 GPU of a shared node, using whatever GPU memory is free.
+#   bash scripts/hpc/submit.sh scripts/hpc/sr_train.pbs                 run v1 (REDS4 -> MEVA, 30k iters)
+#   bash scripts/hpc/submit.sh scripts/hpc/sr_train.pbs -v RUN=v2       run v2 (v1 -> more MEVA, longer clips, EMA)
+#   extra train args: -v RUN=v2,ARGS="--iters 15000"
+#
+# On this cluster a job sees all 8 GPUs and none is reserved for it. So the job repeatedly:
+#   1. picks the GPU with the most free memory (waiting while none has >= SR_MIN_FREE_GB),
+#   2. pins to it (CUDA_VISIBLE_DEVICES) with a batch size that fits that memory,
+#   3. trains, resuming from models/finetuned/sr/last.pth (saved every 500 iters).
+# If the GPU runs out of memory because someone else grew their job, training saves and exits with code 3 and
+# the loop goes back to step 1 with a smaller batch. Re-submitting the job after a time limit resumes too.
+#PBS -N sr_train
+#PBS -q gpu
+#PBS -l select=1:ncpus=6:ngpus=1:mem=16gb
+#PBS -l walltime=24:00:00
+#PBS -j oe
+#PBS -k oed
+cd "$PBS_O_WORKDIR"
+mkdir -p outputs/logs
+RUN=${RUN:-v1}
+if [ "$RUN" = v2 ]; then
+  DATA=data/processed/sr_meva_v2; OUT=models/finetuned/sr_v2; REPORT=outputs/reports/sr_train_v2.json; ITERS=20000
+  LOG=outputs/logs/sr_train_v2.log; NEED=(20 28 40 70)     # GB free for batch 1/2/4/8 (20 frames x 80 px clips)
+  RUN_ARGS="--init models/finetuned/sr_v1/basicvsrpp_meva_v1.pth --frames 20 --patch 80 --lr 1e-5 --fix-flow-iters 0 --val-every 2500"
+  EVAL_ARGS="--models pretrained=models/pretrained/basicvsrpp_reds4.pth v1=models/finetuned/sr_v1/basicvsrpp_meva_v1.pth v2=$OUT/basicvsrpp_meva.pth --tta 8 --report outputs/reports/sr_eval_v2.json"
+else
+  DATA=data/processed/sr_meva; OUT=models/finetuned/sr; REPORT=outputs/reports/sr_train.json; ITERS=30000
+  LOG=outputs/logs/sr_train.log; NEED=(12 18 26 45); RUN_ARGS=""; EVAL_ARGS=""
+fi
+exec >> "$LOG" 2>&1      # write the log ourselves; PBS output copy-back does not work here
+echo "== job $PBS_JOBID ($RUN) on $(hostname) at $(date)"
+ENV="${SR_ENV:-$HOME/envs/sr}"
+export PATH="$ENV/bin:$PATH"; export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+MIN_FREE=${SR_MIN_FREE_GB:-${NEED[0]}}; WAIT_H=${SR_WAIT_HOURS:-10}; WALL_H=24
+START=$(date +%s); MAXBS=8; TRIES=0
+trap 'kill -TERM $PID 2>/dev/null; wait $PID' TERM   # pass a job kill on to training so it checkpoints
+
+bs_for() {  # free GB -> batch size (rough guess; an out-of-memory just halves it and retries)
+  local f=$1 b=1
+  [ "$f" -ge "${NEED[1]}" ] && b=2; [ "$f" -ge "${NEED[2]}" ] && b=4; [ "$f" -ge "${NEED[3]}" ] && b=8
+  [ "$b" -gt "$MAXBS" ] && b=$MAXBS
+  echo "$b"
+}
+
+while :; do
+  ELAPSED_H=$(python -c "print(($(date +%s) - $START) / 3600)")
+  LEFT=$(python -c "print(round($WALL_H - 0.4 - $ELAPSED_H, 2))")
+  if python -c "import sys; sys.exit(0 if $LEFT < 0.3 else 1)"; then echo "out of job time; submit again to resume"; break; fi
+  # most free memory first, then least busy
+  read -r GPU FREE UTIL < <(nvidia-smi --query-gpu=index,memory.free,utilization.gpu --format=csv,noheader,nounits |
+    tr -d ' ' | awk -F, '{print $1, int($2/1024), $3}' | sort -k2,2nr -k3,3n | head -1)
+  if [ "${FREE:-0}" -lt "$MIN_FREE" ]; then
+    echo "$(date +%H:%M) waiting: best GPU has only ${FREE:-0} GB free (need >= ${MIN_FREE} GB)"
+    if python -c "import sys; sys.exit(0 if $ELAPSED_H > $WAIT_H else 1)"; then echo "gave up waiting after ${WAIT_H} h"; break; fi
+    sleep 300; continue
+  fi
+  BS=$(bs_for "$FREE")
+  echo "$(date +%H:%M) GPU $GPU: ${FREE} GB free, ${UTIL}% busy -> batch $BS, up to ${LEFT} h"
+  CUDA_VISIBLE_DEVICES=$GPU python -m training.sr.train --data "$DATA" --out "$OUT" --report "$REPORT" --iters "$ITERS" \
+    --bs "$BS" --workers 4 --max-hours "$LEFT" $RUN_ARGS ${ARGS:-} &
+  PID=$!; wait $PID; RC=$?
+  if [ "$RC" -eq 3 ]; then                      # out of GPU memory: smaller batch next time, try again
+    TRIES=$((TRIES + 1)); MAXBS=$(( BS > 1 ? BS / 2 : 1 ))
+    [ "$TRIES" -ge 30 ] && { echo "too many out-of-memory restarts; stopping"; break; }
+    echo "$(date +%H:%M) out of memory (restart $TRIES), next batch <= $MAXBS"; sleep 120; continue
+  fi
+  [ "$RC" -ne 0 ] && { echo "training failed with exit code $RC"; exit "$RC"; }
+  python -c "import sys, torch; ck = torch.load('$OUT/last.pth', map_location='cpu', weights_only=False); sys.exit(0 if ck['iter'] >= $ITERS else 1)" || break
+  echo "$(date +%H:%M) training finished"
+  CUDA_VISIBLE_DEVICES=$GPU python -m eval.sr.eval_sr --data "$DATA" $EVAL_ARGS || echo "eval failed (GPU busy?) - run eval.sr.eval_sr later"
+  break
+done
