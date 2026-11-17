@@ -7,8 +7,11 @@
 #PBS -l select=1:ncpus=16:ngpus=1:mem=96gb
 #PBS -l walltime=24:00:00
 #PBS -j oe
-#PBS -o outputs/logs/sr_train.log
+#PBS -k oed
 cd "$PBS_O_WORKDIR"
+mkdir -p outputs/logs
+exec >> outputs/logs/sr_train.log 2>&1      # write the log ourselves; PBS output copy-back does not work here
+echo "== job $PBS_JOBID on $(hostname) at $(date)"
 ENV="${SR_ENV:-$HOME/envs/sr}"
 export PATH="$ENV/bin:$PATH"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
