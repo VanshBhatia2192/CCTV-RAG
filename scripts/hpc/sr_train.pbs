@@ -1,0 +1,16 @@
+#!/bin/bash
+# Fine-tune BasicVSR++ on 1 GPU. Resumes from models/finetuned/sr/last.pth if it exists, so if the job hits
+# its time limit just qsub this again. Stops itself cleanly 30 min before the walltime.
+#   qsub scripts/hpc/sr_train.pbs                 (pass extra args with: qsub -v ARGS="--iters 20000" ...)
+#PBS -N sr_train
+#PBS -q gpu
+#PBS -l select=1:ncpus=16:ngpus=1:mem=96gb
+#PBS -l walltime=24:00:00
+#PBS -j oe
+#PBS -o outputs/logs/sr_train.log
+cd "$PBS_O_WORKDIR"
+ENV="${SR_ENV:-$HOME/envs/sr}"
+export PATH="$ENV/bin:$PATH"
+nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+python -m training.sr.train --data data/processed/sr_meva --iters 30000 --workers 12 --max-hours 23.5 ${ARGS:-}
+python -m eval.sr.eval_sr --data data/processed/sr_meva

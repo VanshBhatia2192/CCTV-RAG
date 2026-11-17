@@ -1,0 +1,36 @@
+#!/bin/bash
+# 5-minute check on 1 GPU: which GPU we got, and BasicVSR++ training speed at the real batch shape.
+#   qsub scripts/hpc/sr_gpu_test.pbs
+#PBS -N sr_gpu_test
+#PBS -q gpu
+#PBS -l select=1:ncpus=8:ngpus=1:mem=32gb
+#PBS -l walltime=00:20:00
+#PBS -j oe
+#PBS -o outputs/logs/sr_gpu_test.log
+cd "$PBS_O_WORKDIR"
+ENV="${SR_ENV:-$HOME/envs/sr}"
+export PATH="$ENV/bin:$PATH"
+nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
+python - <<'EOF'
+import time, torch
+from src.sr.basicvsrpp import build
+from training.sr.train import charbonnier
+dev = torch.device("cuda")
+print("torch", torch.__version__, "|", torch.cuda.get_device_name(0))
+torch.backends.cudnn.benchmark = True
+m = build("models/pretrained/basicvsrpp_reds4.pth", dev).train()
+opt = torch.optim.Adam(m.parameters(), lr=1e-5)
+for amp in (torch.bfloat16, None):
+    lq, gt = torch.rand(8, 15, 3, 64, 64, device=dev), torch.rand(8, 15, 3, 256, 256, device=dev)
+    for i in range(25):
+        if i == 5:
+            torch.cuda.synchronize(); t = time.time()
+        with torch.autocast("cuda", dtype=amp or torch.float32, enabled=amp is not None):
+            loss = charbonnier(m(lq).float(), gt)
+        opt.zero_grad(); loss.backward(); opt.step()
+    torch.cuda.synchronize()
+    s = (time.time() - t) / 20
+    print(f"{'bf16' if amp else 'fp32'}: {s:.3f} s/iter -> 30k iters ~ {s * 30000 / 3600:.1f} h | "
+          f"peak mem {torch.cuda.max_memory_allocated() / 1e9:.1f} GB | loss finite {torch.isfinite(loss).item()}")
+    torch.cuda.reset_peak_memory_stats()
+EOF

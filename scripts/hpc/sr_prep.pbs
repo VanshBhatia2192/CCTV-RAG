@@ -1,0 +1,16 @@
+#!/bin/bash
+# Build the BasicVSR++ training pairs from the downloaded MEVA subset. CPU only (workq), no GPU used.
+#   qsub scripts/hpc/sr_prep.pbs
+#PBS -N sr_prep
+#PBS -q workq
+#PBS -l select=1:ncpus=16:mem=64gb
+#PBS -l walltime=06:00:00
+#PBS -j oe
+#PBS -o outputs/logs/sr_prep.log
+cd "$PBS_O_WORKDIR"
+ENV="${SR_ENV:-$HOME/envs/sr}"
+export PATH="$ENV/bin:$PATH"
+VAL_CAMS=$(python -c "from training.sr.download_meva import VAL_CAMS; print(VAL_CAMS)")
+python -m training.sr.prepare_meva data/raw/meva --out data/processed/sr_meva --workers 16 \
+  --videos-per-cam 5 --val-videos-per-cam 7 --val-cam "$VAL_CAMS"
+du -sh data/processed/sr_meva
