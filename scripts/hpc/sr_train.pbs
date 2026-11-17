@@ -1,10 +1,14 @@
 #!/bin/bash
 # Fine-tune BasicVSR++ on 1 GPU. Resumes from models/finetuned/sr/last.pth if it exists, so if the job hits
-# its time limit just qsub this again. Stops itself cleanly 30 min before the walltime.
-#   qsub scripts/hpc/sr_train.pbs                 (pass extra args with: qsub -v ARGS="--iters 20000" ...)
+# its time limit just submit it again.
+#   bash scripts/hpc/submit.sh scripts/hpc/sr_train.pbs        (extra train args: qsub -v ARGS="--iters 20000")
+#
+# On this cluster a job sees all 8 GPUs of the node and none is reserved for it, so the job waits (up to
+# SR_WAIT_HOURS) for a GPU with at least SR_MIN_FREE_GB free memory and at most SR_MAX_UTIL % use, then pins
+# itself to that one GPU with CUDA_VISIBLE_DEVICES. Batch size follows the free memory (8 if plenty, else 4).
 #PBS -N sr_train
 #PBS -q gpu
-#PBS -l select=1:ncpus=16:ngpus=1:mem=96gb
+#PBS -l select=1:ncpus=8:ngpus=1:mem=24gb
 #PBS -l walltime=24:00:00
 #PBS -j oe
 #PBS -k oed
@@ -13,7 +17,23 @@ mkdir -p outputs/logs
 exec >> outputs/logs/sr_train.log 2>&1      # write the log ourselves; PBS output copy-back does not work here
 echo "== job $PBS_JOBID on $(hostname) at $(date)"
 ENV="${SR_ENV:-$HOME/envs/sr}"
-export PATH="$ENV/bin:$PATH"
-nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
-python -m training.sr.train --data data/processed/sr_meva --iters 30000 --workers 12 --max-hours 23.5 ${ARGS:-}
+export PATH="$ENV/bin:$PATH"; export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+MIN_FREE=${SR_MIN_FREE_GB:-30}; MAX_UTIL=${SR_MAX_UTIL:-50}; WAIT_H=${SR_WAIT_HOURS:-8}; WALL_H=24
+START=$(date +%s); GPU=""
+while :; do
+  # index, free MiB, util % -> best GPU = most free memory among those under the utilisation cap
+  read -r GPU FREE UTIL < <(nvidia-smi --query-gpu=index,memory.free,utilization.gpu --format=csv,noheader,nounits |
+    tr -d ' ' | awk -F, -v u="$MAX_UTIL" '$3<=u {print $1, $2, $3}' | sort -k2 -nr | head -1)
+  if [ -n "${GPU:-}" ] && [ "$((FREE / 1024))" -ge "$MIN_FREE" ]; then break; fi
+  WAITED=$(( ($(date +%s) - START) / 60 ))
+  echo "$(date +%H:%M) no GPU with >= ${MIN_FREE} GB free and <= ${MAX_UTIL}% use yet (waited ${WAITED} min)"
+  nvidia-smi --query-gpu=index,memory.used,memory.free,utilization.gpu --format=csv,noheader | sed 's/^/   /'
+  if [ "$WAITED" -ge "$((WAIT_H * 60))" ]; then echo "gave up after ${WAIT_H} h; submit again later"; exit 0; fi
+  GPU=""; sleep 300
+done
+export CUDA_VISIBLE_DEVICES=$GPU
+BS=$([ "$((FREE / 1024))" -ge 55 ] && echo 8 || echo 4)
+LEFT=$(python -c "print(round($WALL_H - 0.5 - ($(date +%s) - $START) / 3600, 2))")
+echo "$(date +%H:%M) using GPU $GPU ($((FREE / 1024)) GB free, ${UTIL}% busy) -> batch $BS, max ${LEFT} h"
+python -m training.sr.train --data data/processed/sr_meva --iters 30000 --bs "$BS" --workers 6 --max-hours "$LEFT" ${ARGS:-}
 python -m eval.sr.eval_sr --data data/processed/sr_meva
