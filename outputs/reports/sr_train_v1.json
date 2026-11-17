@@ -1,0 +1,82 @@
+{
+ "args": {
+  "data": "data/processed/sr_meva",
+  "init": "models/pretrained/basicvsrpp_reds4.pth",
+  "out": "models/finetuned/sr",
+  "iters": 30000,
+  "bs": 8,
+  "frames": 15,
+  "patch": 64,
+  "lr": 2e-05,
+  "min_lr_ratio": 0.05,
+  "flow_lr_mult": 0.25,
+  "fix_flow_iters": 5000,
+  "amp": "bf16",
+  "workers": 4,
+  "val_every": 5000,
+  "val_frames": 30,
+  "ckpt_every": 500,
+  "log_every": 100,
+  "max_hours": 23.6,
+  "fresh": false
+ },
+ "best_psnr": 22.4065,
+ "hist": [
+  {
+   "iter": 0,
+   "n": 14,
+   "psnr": 20.2407,
+   "ssim": 0.5015,
+   "psnr_bicubic": 21.5978,
+   "ssim_bicubic": 0.5342
+  },
+  {
+   "iter": 5000,
+   "n": 14,
+   "psnr": 22.1444,
+   "ssim": 0.5781,
+   "psnr_bicubic": 21.5978,
+   "ssim_bicubic": 0.5342
+  },
+  {
+   "iter": 10000,
+   "n": 14,
+   "psnr": 22.2341,
+   "ssim": 0.5827,
+   "psnr_bicubic": 21.5978,
+   "ssim_bicubic": 0.5342
+  },
+  {
+   "iter": 15000,
+   "n": 14,
+   "psnr": 22.4065,
+   "ssim": 0.5857,
+   "psnr_bicubic": 21.5978,
+   "ssim_bicubic": 0.5342
+  },
+  {
+   "iter": 20000,
+   "n": 14,
+   "psnr": 22.3929,
+   "ssim": 0.5859,
+   "psnr_bicubic": 21.5978,
+   "ssim_bicubic": 0.5342
+  },
+  {
+   "iter": 25000,
+   "n": 14,
+   "psnr": 22.3373,
+   "ssim": 0.5855,
+   "psnr_bicubic": 21.5978,
+   "ssim_bicubic": 0.5342
+  },
+  {
+   "iter": 30000,
+   "n": 14,
+   "psnr": 22.3245,
+   "ssim": 0.5847,
+   "psnr_bicubic": 21.5978,
+   "ssim_bicubic": 0.5342
+  }
+ ]
+}
