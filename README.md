@@ -146,6 +146,19 @@ Evaluated on 14 clips from two held-out cameras (`bus.G509`, `school.G424`) neve
 
 Run v1: 30k iterations, batch 8 x 15 frames x 64 px, lr 2e-5 (cosine), 220 training clips (11k frames) from 25 cameras, ~7 h on one shared H100; best checkpoint at 15k. Reports in `outputs/reports/sr_eval_v1.json` / `sr_train_v1.json`, figures in `outputs/figures/sr_v1/`.
 
+**v2** continues from v1 with 2.4x more data (528 clips / 26k frames from 22 cameras), longer clips (20 frames, 80 px crops), EMA weights and a lower lr (1e-5), 20k iterations (~8 h on one shared H100; best EMA checkpoint at 12.5k). It is evaluated on a larger test set (30 clips, same two held-out cameras), so its numbers are not directly comparable with the v1 table above; all rows below are on that same 30-clip set. "+ flip TTA" averages 8 flipped/transposed passes at inference (8x slower).
+
+| Method (30-clip test set) | PSNR (dB) | SSIM |
+| :--- | :---: | :---: |
+| Bicubic upscaling | 21.12 | 0.508 |
+| Pretrained BasicVSR++ (REDS4) | 19.67 | 0.473 |
+| v1 | 21.85 | 0.556 |
+| v1 + flip TTA | 21.97 | 0.559 |
+| v2 (`models/finetuned/sr_v2/basicvsrpp_meva.pth`) | 21.88 | 0.558 |
+| **v2 + flip TTA** | **22.03** | **0.562** |
+
+v2 beats v1 only slightly (+0.03 dB PSNR, +0.002 SSIM; on the bus camera v2 alone is level with v1), so the extra data and longer clips gave little; the flip ensemble adds a further ~+0.14 dB. Best overall: v2 + flip TTA, +2.35 dB over the pretrained model and +0.91 dB over bicubic. Reports in `outputs/reports/sr_eval_v2.json` / `sr_train_v2.json`, figures in `outputs/figures/sr_v2/`.
+
 ---
 
 ## 📁 Repository Structure

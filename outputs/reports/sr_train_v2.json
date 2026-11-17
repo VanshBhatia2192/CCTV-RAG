@@ -1,0 +1,102 @@
+{
+ "args": {
+  "data": "data/processed/sr_meva_v2",
+  "init": "models/finetuned/sr_v1/basicvsrpp_meva_v1.pth",
+  "out": "models/finetuned/sr_v2",
+  "iters": 20000,
+  "bs": 8,
+  "frames": 20,
+  "patch": 80,
+  "lr": 1e-05,
+  "min_lr_ratio": 0.05,
+  "flow_lr_mult": 0.25,
+  "fix_flow_iters": 0,
+  "amp": "bf16",
+  "workers": 1,
+  "val_every": 2500,
+  "val_frames": 30,
+  "ckpt_every": 500,
+  "log_every": 100,
+  "max_hours": 23.6,
+  "fresh": false,
+  "report": "outputs/reports/sr_train_v2.json",
+  "reuse": 4,
+  "ema": true,
+  "ema_decay": 0.999
+ },
+ "best_psnr": 21.8812,
+ "hist": [
+  {
+   "iter": 0,
+   "n": 30,
+   "psnr": 21.8385,
+   "ssim": 0.556,
+   "psnr_bicubic": 21.1196,
+   "ssim_bicubic": 0.5077
+  },
+  {
+   "iter": 2500,
+   "n": 30,
+   "psnr": 21.8648,
+   "ssim": 0.5572,
+   "psnr_bicubic": 21.1196,
+   "ssim_bicubic": 0.5077
+  },
+  {
+   "iter": 5000,
+   "n": 30,
+   "psnr": 21.8762,
+   "ssim": 0.5583,
+   "psnr_bicubic": 21.1196,
+   "ssim_bicubic": 0.5077
+  },
+  {
+   "iter": 7500,
+   "n": 30,
+   "psnr": 21.8566,
+   "ssim": 0.5578,
+   "psnr_bicubic": 21.1196,
+   "ssim_bicubic": 0.5077
+  },
+  {
+   "iter": 10000,
+   "n": 30,
+   "psnr": 21.859,
+   "ssim": 0.5578,
+   "psnr_bicubic": 21.1196,
+   "ssim_bicubic": 0.5077
+  },
+  {
+   "iter": 12500,
+   "n": 30,
+   "psnr": 21.8812,
+   "ssim": 0.5582,
+   "psnr_bicubic": 21.1196,
+   "ssim_bicubic": 0.5077
+  },
+  {
+   "iter": 15000,
+   "n": 30,
+   "psnr": 21.8767,
+   "ssim": 0.5581,
+   "psnr_bicubic": 21.1196,
+   "ssim_bicubic": 0.5077
+  },
+  {
+   "iter": 17500,
+   "n": 30,
+   "psnr": 21.8804,
+   "ssim": 0.5581,
+   "psnr_bicubic": 21.1196,
+   "ssim_bicubic": 0.5077
+  },
+  {
+   "iter": 20000,
+   "n": 30,
+   "psnr": 21.8796,
+   "ssim": 0.5582,
+   "psnr_bicubic": 21.1196,
+   "ssim_bicubic": 0.5077
+  }
+ ]
+}

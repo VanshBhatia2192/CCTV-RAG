@@ -66,7 +66,7 @@ def fig_loss(it, loss, out, unfreeze):
     ax.set_xlabel("iteration"); ax.set_ylabel("loss, lower is better"); kfmt(ax)
     ax.text(0.99, 0.97, "dark line: moving average of 10 log points (every 100 iters)", transform=ax.transAxes,
             ha="right", va="top", color=TEXT2, fontsize=10)
-    if it.max() > unfreeze:
+    if unfreeze and it.max() > unfreeze:
         unfreeze_marker(ax, unfreeze, ax.get_ylim()[1])
     fig.tight_layout(); fig.savefig(out / "1_training_loss.png", dpi=200); plt.close(fig)
 
