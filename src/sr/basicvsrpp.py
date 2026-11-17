@@ -199,6 +199,37 @@ class BasicVSRPlusPlus(nn.Module):
         return torch.stack(out, 1)
 
 
+def _aug(x, hf, vf, tr):
+    if tr:
+        x = x.transpose(-1, -2)
+    if hf:
+        x = x.flip(-1)
+    if vf:
+        x = x.flip(-2)
+    return x
+
+
+def _unaug(x, hf, vf, tr):
+    if vf:
+        x = x.flip(-2)
+    if hf:
+        x = x.flip(-1)
+    if tr:
+        x = x.transpose(-1, -2)
+    return x
+
+
+@torch.no_grad()
+def tta_forward(model, lq, n=8):
+    """Self-ensemble: average the outputs for flipped / transposed copies of the clip (n = 1, 2, 4 or 8)."""
+    combos = [(hf, vf, tr) for tr in (0, 1) for vf in (0, 1) for hf in (0, 1)][:n]
+    out = None
+    for c in combos:
+        y = _unaug(model(_aug(lq, *c)).float(), *c)
+        out = y if out is None else out.add_(y)
+    return out.div_(len(combos))
+
+
 def load_weights(model, path, strict=True):
     """Load an mmedit/MMagic BasicVSR++ checkpoint (keys `generator.*`) or one saved by training/sr/train.py."""
     ck = torch.load(path, map_location="cpu")

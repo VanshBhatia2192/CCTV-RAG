@@ -1,6 +1,8 @@
 #!/bin/bash
 # Fine-tune BasicVSR++ on 1 GPU of a shared node, using whatever GPU memory is free.
-#   bash scripts/hpc/submit.sh scripts/hpc/sr_train.pbs        (extra train args: qsub -v ARGS="--iters 20000")
+#   bash scripts/hpc/submit.sh scripts/hpc/sr_train.pbs                 run v1 (REDS4 -> MEVA, 30k iters)
+#   bash scripts/hpc/submit.sh scripts/hpc/sr_train.pbs -v RUN=v2       run v2 (v1 -> more MEVA, longer clips, EMA)
+#   extra train args: -v RUN=v2,ARGS="--iters 15000"
 #
 # On this cluster a job sees all 8 GPUs and none is reserved for it. So the job repeatedly:
 #   1. picks the GPU with the most free memory (waiting while none has >= SR_MIN_FREE_GB),
@@ -16,17 +18,27 @@
 #PBS -k oed
 cd "$PBS_O_WORKDIR"
 mkdir -p outputs/logs
-exec >> outputs/logs/sr_train.log 2>&1      # write the log ourselves; PBS output copy-back does not work here
-echo "== job $PBS_JOBID on $(hostname) at $(date)"
+RUN=${RUN:-v1}
+if [ "$RUN" = v2 ]; then
+  DATA=data/processed/sr_meva_v2; OUT=models/finetuned/sr_v2; REPORT=outputs/reports/sr_train_v2.json; ITERS=20000
+  LOG=outputs/logs/sr_train_v2.log; NEED=(20 28 40 70)     # GB free for batch 1/2/4/8 (20 frames x 80 px clips)
+  RUN_ARGS="--init models/finetuned/sr_v1/basicvsrpp_meva_v1.pth --frames 20 --patch 80 --lr 1e-5 --fix-flow-iters 0 --val-every 2500"
+  EVAL_ARGS="--models pretrained=models/pretrained/basicvsrpp_reds4.pth v1=models/finetuned/sr_v1/basicvsrpp_meva_v1.pth v2=$OUT/basicvsrpp_meva.pth --tta 8 --report outputs/reports/sr_eval_v2.json"
+else
+  DATA=data/processed/sr_meva; OUT=models/finetuned/sr; REPORT=outputs/reports/sr_train.json; ITERS=30000
+  LOG=outputs/logs/sr_train.log; NEED=(12 18 26 45); RUN_ARGS=""; EVAL_ARGS=""
+fi
+exec >> "$LOG" 2>&1      # write the log ourselves; PBS output copy-back does not work here
+echo "== job $PBS_JOBID ($RUN) on $(hostname) at $(date)"
 ENV="${SR_ENV:-$HOME/envs/sr}"
 export PATH="$ENV/bin:$PATH"; export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-MIN_FREE=${SR_MIN_FREE_GB:-12}; WAIT_H=${SR_WAIT_HOURS:-10}; WALL_H=24
+MIN_FREE=${SR_MIN_FREE_GB:-${NEED[0]}}; WAIT_H=${SR_WAIT_HOURS:-10}; WALL_H=24
 START=$(date +%s); MAXBS=8; TRIES=0
 trap 'kill -TERM $PID 2>/dev/null; wait $PID' TERM   # pass a job kill on to training so it checkpoints
 
 bs_for() {  # free GB -> batch size (rough guess; an out-of-memory just halves it and retries)
   local f=$1 b=1
-  [ "$f" -ge 18 ] && b=2; [ "$f" -ge 26 ] && b=4; [ "$f" -ge 45 ] && b=8
+  [ "$f" -ge "${NEED[1]}" ] && b=2; [ "$f" -ge "${NEED[2]}" ] && b=4; [ "$f" -ge "${NEED[3]}" ] && b=8
   [ "$b" -gt "$MAXBS" ] && b=$MAXBS
   echo "$b"
 }
@@ -45,8 +57,8 @@ while :; do
   fi
   BS=$(bs_for "$FREE")
   echo "$(date +%H:%M) GPU $GPU: ${FREE} GB free, ${UTIL}% busy -> batch $BS, up to ${LEFT} h"
-  CUDA_VISIBLE_DEVICES=$GPU python -m training.sr.train --data data/processed/sr_meva --iters 30000 --bs "$BS" \
-    --workers 4 --max-hours "$LEFT" ${ARGS:-} &
+  CUDA_VISIBLE_DEVICES=$GPU python -m training.sr.train --data "$DATA" --out "$OUT" --report "$REPORT" --iters "$ITERS" \
+    --bs "$BS" --workers 4 --max-hours "$LEFT" $RUN_ARGS ${ARGS:-} &
   PID=$!; wait $PID; RC=$?
   if [ "$RC" -eq 3 ]; then                      # out of GPU memory: smaller batch next time, try again
     TRIES=$((TRIES + 1)); MAXBS=$(( BS > 1 ? BS / 2 : 1 ))
@@ -54,12 +66,8 @@ while :; do
     echo "$(date +%H:%M) out of memory (restart $TRIES), next batch <= $MAXBS"; sleep 120; continue
   fi
   [ "$RC" -ne 0 ] && { echo "training failed with exit code $RC"; exit "$RC"; }
-  grep -q '"iter": 30000' outputs/reports/sr_train.json 2>/dev/null || python - <<'EOF' || break
-import sys, torch
-ck = torch.load("models/finetuned/sr/last.pth", map_location="cpu", weights_only=False)
-sys.exit(0 if ck["iter"] >= 30000 else 1)
-EOF
+  python -c "import sys, torch; ck = torch.load('$OUT/last.pth', map_location='cpu', weights_only=False); sys.exit(0 if ck['iter'] >= $ITERS else 1)" || break
   echo "$(date +%H:%M) training finished"
-  CUDA_VISIBLE_DEVICES=$GPU python -m eval.sr.eval_sr --data data/processed/sr_meva || echo "eval failed (GPU busy?) - run eval.sr.eval_sr later"
+  CUDA_VISIBLE_DEVICES=$GPU python -m eval.sr.eval_sr --data "$DATA" $EVAL_ARGS || echo "eval failed (GPU busy?) - run eval.sr.eval_sr later"
   break
 done

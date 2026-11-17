@@ -9,13 +9,13 @@ import json, subprocess, sys, threading
 from pathlib import Path
 import numpy as np, torch
 from src.common.config import MODELS, PIPE
-from src.sr.basicvsrpp import build
+from src.sr.basicvsrpp import build, tta_forward
 
 _MODEL, _LOCK = None, threading.Lock()
 
 
 def cfg():
-    return {"in_width": 480, "window": 30, "overlap": 4, "crf": 20, **(PIPE.get("sr") or {})}
+    return {"in_width": 480, "window": 30, "overlap": 4, "crf": 20, "tta": 1, **(PIPE.get("sr") or {})}
 
 
 def _model():
@@ -49,8 +49,8 @@ def _read(path, max_w):
 
 
 @torch.no_grad()
-def upscale(frames, window=30, overlap=4):
-    """(t,h,w,3) uint8 RGB -> (t,4h,4w,3) uint8 RGB."""
+def upscale(frames, window=30, overlap=4, tta=1):
+    """(t,h,w,3) uint8 RGB -> (t,4h,4w,3) uint8 RGB. tta > 1 averages flipped passes (better, tta x slower)."""
     model = _model()
     dev = next(model.parameters()).device
     t = len(frames)
@@ -63,7 +63,7 @@ def upscale(frames, window=30, overlap=4):
         s0 = max(0, end - window)                          # a short last window is extended backwards
         x = torch.from_numpy(frames[s0:end]).to(dev).permute(0, 3, 1, 2).float().div_(255)[None]
         with torch.autocast(device_type=dev.type, dtype=torch.bfloat16, enabled=dev.type == "cuda"):
-            y = model(x).float()[0]
+            y = (tta_forward(model, x, tta) if tta > 1 else model(x).float())[0]
         y = (y.clamp_(0, 1) * 255).round_().byte().permute(0, 2, 3, 1).cpu().numpy()
         hi = T if end == T else end - (overlap - half)     # neighbours split the overlap; edges are dropped
         out.extend(y[kept - s0:hi - s0]); kept = hi
@@ -83,7 +83,7 @@ def enhance(src, out=None):
     if frames.shape[1] < 64 or frames.shape[2] < 64:
         return str(src)                                    # too small for BasicVSR++
     with _LOCK:                                            # one clip at a time on the GPU
-        hr = upscale(frames, c["window"], c["overlap"])
+        hr = upscale(frames, c["window"], c["overlap"], c["tta"])
     t, h, w, _ = hr.shape
     tmp = out.with_suffix(".tmp.mp4")
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}", "-r", f"{fps:.3f}",

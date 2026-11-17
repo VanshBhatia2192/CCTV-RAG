@@ -64,3 +64,25 @@ def test_metrics():
     assert psnr(a, a) > 90
     assert abs(ssim(a, a) - 1) < 1e-4
     assert ssim(a, torch.rand_like(a)) < 0.5
+
+
+def test_tta_undoes_its_flips():
+    class Up(torch.nn.Module):          # position-dependent but flip-equivariant: plain 4x nearest upsample
+        def forward(s, x):
+            return torch.nn.functional.interpolate(x.flatten(0, 1), scale_factor=4).view(*x.shape[:3], x.shape[3] * 4, x.shape[4] * 4)
+    x = torch.rand(1, 3, 3, 64, 72)
+    expect = Up()(x)
+    for n in (2, 4, 8):
+        assert torch.allclose(B.tta_forward(Up(), x, n), expect, atol=1e-6), n
+
+
+def test_ema_update_moves_towards_model():
+    from training.sr.train import ema_update
+    m, e = torch.nn.Linear(4, 4), torch.nn.Linear(4, 4)
+    with torch.no_grad():
+        for p in e.parameters():
+            p.zero_()
+        for p in m.parameters():
+            p.fill_(1.0)
+    ema_update(e, m, decay=0.9, step=10**6)
+    assert all(torch.allclose(p, torch.full_like(p, 0.1)) for p in e.parameters())
