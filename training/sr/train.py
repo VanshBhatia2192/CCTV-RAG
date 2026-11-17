@@ -98,7 +98,7 @@ def main(a):
 
     gb = torch.cuda.mem_get_info()[0] / 1e9 if dev.type == "cuda" else 0
     print(f"device {dev} free {gb:.1f} GB | batch {a.bs} x {a.frames} frames x {a.patch}px | amp {a.amp if amp else 'none'} | {a.iters} iters", flush=True)
-    dl = torch.utils.data.DataLoader(TrainSet(a.data, a.frames, a.patch), batch_size=a.bs, num_workers=a.workers,
+    dl = torch.utils.data.DataLoader(TrainSet(a.data, a.frames, a.patch, reuse=a.reuse), batch_size=a.bs, num_workers=a.workers,
                                      pin_memory=dev.type == "cuda", drop_last=True,
                                      **(dict(persistent_workers=True, prefetch_factor=4) if a.workers else {}))
     t_start, t_log, loss_sum = time.time(), time.time(), 0.0
@@ -178,6 +178,7 @@ if __name__ == "__main__":
     ap.add_argument("--max-hours", type=float, default=0, help="stop cleanly after this many hours (0 = no limit)")
     ap.add_argument("--fresh", action="store_true", help="ignore last.pth and start over from --init")
     ap.add_argument("--report", default="outputs/reports/sr_train.json")
+    ap.add_argument("--reuse", type=int, default=1, help="random crops per decoded clip (saves CPU when it is scarce)")
     ap.add_argument("--ema", action=argparse.BooleanOptionalAction, default=True, help="keep an EMA of the weights")
     ap.add_argument("--ema-decay", type=float, default=0.999)
     main(ap.parse_args())

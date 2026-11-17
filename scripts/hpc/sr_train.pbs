@@ -23,7 +23,7 @@ RUN=${RUN:-v1}
 if [ "$RUN" = v2 ]; then
   DATA=data/processed/sr_meva_v2; OUT=models/finetuned/sr_v2; REPORT=outputs/reports/sr_train_v2.json; ITERS=20000
   LOG=outputs/logs/sr_train_v2.log; NEED=(20 28 40 70)     # GB free for batch 1/2/4/8 (20 frames x 80 px clips)
-  RUN_ARGS="--init models/finetuned/sr_v1/basicvsrpp_meva_v1.pth --frames 20 --patch 80 --lr 1e-5 --fix-flow-iters 0 --val-every 2500"
+  RUN_ARGS="--init models/finetuned/sr_v1/basicvsrpp_meva_v1.pth --frames 20 --patch 80 --lr 1e-5 --fix-flow-iters 0 --val-every 2500 --reuse 4"
   EVAL_ARGS="--models pretrained=models/pretrained/basicvsrpp_reds4.pth v1=models/finetuned/sr_v1/basicvsrpp_meva_v1.pth v2=$OUT/basicvsrpp_meva.pth --tta 8 --report outputs/reports/sr_eval_v2.json"
 else
   DATA=data/processed/sr_meva; OUT=models/finetuned/sr; REPORT=outputs/reports/sr_train.json; ITERS=30000
