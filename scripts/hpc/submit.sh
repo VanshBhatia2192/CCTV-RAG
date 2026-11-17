@@ -10,7 +10,7 @@ cd "$(dirname "$0")/../.."
 P=/opt/pbs/bin
 SCRIPT="$1"; shift || true
 HOST="${SR_HOST:-gpu01}"
-SEL=$(grep -E '^#PBS -l select=' "$SCRIPT" | head -1 | sed 's/^#PBS -l select=//')
+SEL=${SR_SELECT:-$(grep -E '^#PBS -l select=' "$SCRIPT" | head -1 | sed 's/^#PBS -l select=//')}   # SR_SELECT overrides, e.g. 1:ncpus=4:ngpus=1:mem=12gb
 J=$($P/qsub -l "select=${SEL}:host=${HOST}" "$@" "$SCRIPT")
 echo "submitted $J to $HOST (select=${SEL})"
 for i in $(seq 1 10); do
