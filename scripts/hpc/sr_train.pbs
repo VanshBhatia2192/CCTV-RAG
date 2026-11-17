@@ -10,7 +10,7 @@
 # the loop goes back to step 1 with a smaller batch. Re-submitting the job after a time limit resumes too.
 #PBS -N sr_train
 #PBS -q gpu
-#PBS -l select=1:ncpus=8:ngpus=1:mem=24gb
+#PBS -l select=1:ncpus=6:ngpus=1:mem=16gb
 #PBS -l walltime=24:00:00
 #PBS -j oe
 #PBS -k oed
@@ -46,7 +46,7 @@ while :; do
   BS=$(bs_for "$FREE")
   echo "$(date +%H:%M) GPU $GPU: ${FREE} GB free, ${UTIL}% busy -> batch $BS, up to ${LEFT} h"
   CUDA_VISIBLE_DEVICES=$GPU python -m training.sr.train --data data/processed/sr_meva --iters 30000 --bs "$BS" \
-    --workers 6 --max-hours "$LEFT" ${ARGS:-} &
+    --workers 4 --max-hours "$LEFT" ${ARGS:-} &
   PID=$!; wait $PID; RC=$?
   if [ "$RC" -eq 3 ]; then                      # out of GPU memory: smaller batch next time, try again
     TRIES=$((TRIES + 1)); MAXBS=$(( BS > 1 ? BS / 2 : 1 ))
