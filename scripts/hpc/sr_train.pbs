@@ -10,9 +10,10 @@
 #   3. trains, resuming from models/finetuned/sr/last.pth (saved every 500 iters).
 # If the GPU runs out of memory because someone else grew their job, training saves and exits with code 3 and
 # the loop goes back to step 1 with a smaller batch. Re-submitting the job after a time limit resumes too.
+# The job can be queued before data prep has finished: it first waits (up to 4 h) for $DATA/meta.json.
 #PBS -N sr_train
 #PBS -q gpu
-#PBS -l select=1:ncpus=6:ngpus=1:mem=16gb
+#PBS -l select=1:ncpus=4:ngpus=1:mem=12gb
 #PBS -l walltime=24:00:00
 #PBS -j oe
 #PBS -k oed
@@ -36,6 +37,11 @@ MIN_FREE=${SR_MIN_FREE_GB:-${NEED[0]}}; WAIT_H=${SR_WAIT_HOURS:-10}; WALL_H=24
 START=$(date +%s); MAXBS=8; TRIES=0
 trap 'kill -TERM $PID 2>/dev/null; wait $PID' TERM   # pass a job kill on to training so it checkpoints
 
+until [ -f "$DATA/meta.json" ]; do                  # queued early: wait for the prep job to write its index
+  [ $(( $(date +%s) - START )) -gt 14400 ] && { echo "no $DATA/meta.json after 4 h; run sr_prep first"; exit 1; }
+  echo "$(date +%H:%M) waiting for data prep ($DATA/meta.json)"; sleep 120
+done
+
 bs_for() {  # free GB -> batch size (rough guess; an out-of-memory just halves it and retries)
   local f=$1 b=1
   [ "$f" -ge "${NEED[1]}" ] && b=2; [ "$f" -ge "${NEED[2]}" ] && b=4; [ "$f" -ge "${NEED[3]}" ] && b=8
@@ -58,7 +64,7 @@ while :; do
   BS=$(bs_for "$FREE")
   echo "$(date +%H:%M) GPU $GPU: ${FREE} GB free, ${UTIL}% busy -> batch $BS, up to ${LEFT} h"
   CUDA_VISIBLE_DEVICES=$GPU python -m training.sr.train --data "$DATA" --out "$OUT" --report "$REPORT" --iters "$ITERS" \
-    --bs "$BS" --workers 4 --max-hours "$LEFT" $RUN_ARGS ${ARGS:-} &
+    --bs "$BS" --workers "$(( ${NCPUS:-4} > 1 ? ${NCPUS:-4} - 1 : 1 ))" --max-hours "$LEFT" $RUN_ARGS ${ARGS:-} &
   PID=$!; wait $PID; RC=$?
   if [ "$RC" -eq 3 ]; then                      # out of GPU memory: smaller batch next time, try again
     TRIES=$((TRIES + 1)); MAXBS=$(( BS > 1 ? BS / 2 : 1 ))
