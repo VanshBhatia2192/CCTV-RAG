@@ -3,10 +3,13 @@
     python -m training.sr.train --data data/processed/sr_meva --init models/pretrained/basicvsrpp_reds4.pth
 
 Writes models/finetuned/sr/{last.pth,basicvsrpp_meva.pth (best val PSNR)} and outputs/reports/sr_train.json.
-Re-running the same command resumes from last.pth, so a job cut off by a cluster time limit just gets resubmitted.
-`--max-hours` stops cleanly (with a checkpoint) before a wall-time limit.
+Re-running the same command resumes from last.pth (saved every --ckpt-every iterations), so any interruption
+costs at most a few minutes of work. `--max-hours` and SIGTERM (job killed / time limit) stop cleanly with a
+checkpoint. If the GPU runs out of memory (it is shared with other users) the run saves and exits with code 3,
+so the job script can retry with a smaller batch; batch size can change between resumes.
 """
-import argparse, json, math, time
+OOM_EXIT = 3
+import argparse, json, math, signal, sys, time
 from pathlib import Path
 import torch
 from src.sr.basicvsrpp import BasicVSRPlusPlus, load_weights
@@ -23,6 +26,16 @@ def save(path, model, opt, sched, it, best, hist):
     tmp = Path(str(path) + ".tmp")
     torch.save(dict(model=model.state_dict(), opt=opt.state_dict(), sched=sched.state_dict(), iter=it, best=best, hist=hist), tmp)
     tmp.replace(path)
+
+
+def safe_eval(model, a, dev, amp):
+    """Validation, skipped (not fatal) if the shared GPU has no memory for it right now."""
+    try:
+        return evaluate(model, a.data, dev, a.val_frames, amp)
+    except torch.cuda.OutOfMemoryError:
+        torch.cuda.empty_cache()
+        print("  val skipped: GPU out of memory (shared GPU busy)", flush=True)
+        return None
 
 
 def main(a):
@@ -53,8 +66,8 @@ def main(a):
         assert a.init and Path(a.init).exists(), f"--init checkpoint not found: {a.init}"
         load_weights(model, a.init)
         print(f"init from {a.init}", flush=True)
-        if a.val_every:
-            v = evaluate(model, a.data, dev, a.val_frames, amp)
+        v = safe_eval(model, a, dev, amp) if a.val_every else None
+        if v:
             hist.append(dict(iter=0, **{k: v[k] for k in v if k != "per_seq"}))
             best = v.get("psnr", -1.0)
             print(f"pretrained val: psnr {v.get('psnr')} ssim {v.get('ssim')} | bicubic psnr {v.get('psnr_bicubic')}", flush=True)
@@ -63,10 +76,12 @@ def main(a):
     gb = torch.cuda.mem_get_info()[0] / 1e9 if dev.type == "cuda" else 0
     print(f"device {dev} free {gb:.1f} GB | batch {a.bs} x {a.frames} frames x {a.patch}px | amp {a.amp if amp else 'none'} | {a.iters} iters", flush=True)
     dl = torch.utils.data.DataLoader(TrainSet(a.data, a.frames, a.patch), batch_size=a.bs, num_workers=a.workers,
-                                     pin_memory=dev.type == "cuda", drop_last=True, persistent_workers=a.workers > 0,
-                                     prefetch_factor=4 if a.workers else None)
+                                     pin_memory=dev.type == "cuda", drop_last=True,
+                                     **(dict(persistent_workers=True, prefetch_factor=4) if a.workers else {}))
     t_start, t_log, loss_sum = time.time(), time.time(), 0.0
     stop = False
+    term = []
+    signal.signal(signal.SIGTERM, lambda *_: term.append(1))   # job killed / walltime: checkpoint and leave
     model.train()
     for lq, gt in dl:
         if it >= a.iters or stop:
@@ -75,10 +90,17 @@ def main(a):
         for p in flow:
             p.requires_grad_(not frozen)
         lq, gt = lq.to(dev, non_blocking=True), gt.to(dev, non_blocking=True)
-        with autocast(dev, amp):
-            loss = charbonnier(model(lq).float(), gt)
-        opt.zero_grad(set_to_none=True)
-        scaler.scale(loss).backward()
+        try:
+            with autocast(dev, amp):
+                loss = charbonnier(model(lq).float(), gt)
+            opt.zero_grad(set_to_none=True)
+            scaler.scale(loss).backward()
+        except torch.cuda.OutOfMemoryError:
+            del lq, gt
+            opt.zero_grad(set_to_none=True); torch.cuda.empty_cache()
+            save(last, model, opt, sched, it, best, hist)
+            print(f"GPU out of memory at iter {it} (batch {a.bs}); saved {last}, exiting with code {OOM_EXIT}", flush=True)
+            sys.exit(OOM_EXIT)
         scaler.step(opt); scaler.update(); sched.step()
         it += 1; loss_sum += loss.item()
         if it % a.log_every == 0:
@@ -88,9 +110,11 @@ def main(a):
                   f"{dt:.3f}s/it eta {eta:.1f}h" + (" [flow frozen]" if frozen else ""), flush=True)
             loss_sum = 0.0
         hours = (time.time() - t_start) / 3600
-        stop = a.max_hours and hours >= a.max_hours
-        if a.val_every and (it % a.val_every == 0 or it == a.iters or stop):
-            v = evaluate(model, a.data, dev, a.val_frames, amp); model.train()
+        stop = bool(term) or bool(a.max_hours and hours >= a.max_hours)
+        v = None
+        if a.val_every and (it % a.val_every == 0 or it == a.iters) and not term:
+            v = safe_eval(model, a, dev, amp); model.train()
+        if v:
             hist.append(dict(iter=it, **{k: v[k] for k in v if k != "per_seq"}))
             print(f"val @ {it}: psnr {v.get('psnr')} ssim {v.get('ssim')} (best {best:.3f})", flush=True)
             if v.get("psnr", -1) > best:
@@ -101,7 +125,8 @@ def main(a):
         if it % a.ckpt_every == 0 or it == a.iters or stop:
             save(last, model, opt, sched, it, best, hist)
     if stop:
-        print(f"stopped at iter {it} after {a.max_hours}h; re-run the same command to resume", flush=True)
+        why = "job was stopped (SIGTERM)" if term else f"time limit {a.max_hours}h"
+        print(f"stopped at iter {it}: {why}; checkpoint saved, re-run the same command to resume", flush=True)
     else:
         print(f"done: {it} iters, best val psnr {best:.3f}", flush=True)
 
@@ -123,7 +148,7 @@ if __name__ == "__main__":
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--val-every", type=int, default=5000, help="0 disables validation")
     ap.add_argument("--val-frames", type=int, default=30)
-    ap.add_argument("--ckpt-every", type=int, default=2500)
+    ap.add_argument("--ckpt-every", type=int, default=500)
     ap.add_argument("--log-every", type=int, default=100)
     ap.add_argument("--max-hours", type=float, default=0, help="stop cleanly after this many hours (0 = no limit)")
     ap.add_argument("--fresh", action="store_true", help="ignore last.pth and start over from --init")
