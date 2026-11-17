@@ -51,9 +51,10 @@ def kfmt(ax):
     ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, _: f"{x / 1000:g}k" if x else "0"))
 
 
-def unfreeze_marker(ax, at, y):
-    ax.axvline(at, color=REF, lw=1, ls=":")
-    ax.annotate("flow network unfrozen", (at, y), xytext=(6, 0), textcoords="offset points", color=TEXT2, fontsize=10, va="top")
+def unfreeze_marker(ax, at, y, bottom=False):
+    ax.axvline(at, color=REF, lw=1, ls=":", zorder=1)
+    ax.annotate("flow network unfrozen", (at, y), xytext=(6, 4 if bottom else 0), textcoords="offset points", color=TEXT2,
+                fontsize=10, va="bottom" if bottom else "top")
 
 
 def fig_loss(it, loss, out, unfreeze):
@@ -62,8 +63,8 @@ def fig_loss(it, loss, out, unfreeze):
     ax.plot(it, smooth(loss), color=FT, lw=2)
     ax.set_title("Training loss (Charbonnier) on MEVA")
     ax.set_xlabel("iteration"); ax.set_ylabel("loss, lower is better"); kfmt(ax)
-    ax.annotate("moving average of 10 log points", (it[-1], smooth(loss)[-1]), xytext=(-8, 14), textcoords="offset points",
-                ha="right", color=TEXT2, fontsize=10)
+    ax.text(0.99, 0.97, "dark line: moving average of 10 log points (every 100 iters)", transform=ax.transAxes,
+            ha="right", va="top", color=TEXT2, fontsize=10)
     if it.max() > unfreeze:
         unfreeze_marker(ax, unfreeze, ax.get_ylim()[1])
     fig.tight_layout(); fig.savefig(out / "1_training_loss.png", dpi=200); plt.close(fig)
@@ -100,12 +101,14 @@ def fig_val(hist, key, label, out, name, unfreeze):
     ax.set_xlabel("iteration"); ax.set_ylabel(label); kfmt(ax)
     ax.set_ylim(min(ys + [pre, bic]) - 6 * pad, max(ys + [pre, bic]) + 6 * pad)
     if x_end > unfreeze:
-        unfreeze_marker(ax, unfreeze, ax.get_ylim()[1])
-    ax.legend(handles=[plt.Line2D([], [], color=FT, lw=2, marker="o", ms=8, label="fine-tuned on MEVA"),
+        unfreeze_marker(ax, unfreeze, ax.get_ylim()[0], bottom=True)
+    title = ax.get_title(loc="left"); ax.set_title("", loc="left")
+    fig.suptitle(title, x=0.01, y=0.985, ha="left", va="top", fontsize=15, fontweight="bold", color=TEXT)
+    ax.legend(loc="lower left", bbox_to_anchor=(0, 1.0), ncols=3, borderaxespad=0.3, handles=[plt.Line2D([], [], color=FT, lw=2, marker="o", ms=8, label="fine-tuned on MEVA"),
                        plt.Line2D([], [], color=PRE, lw=2, ls="--", label="pretrained BasicVSR++ (REDS4)"),
                        plt.Line2D([], [], color=REF, lw=2, ls="--", label="bicubic upscaling")],
-              loc="upper left")
-    fig.tight_layout(); fig.savefig(out / name, dpi=200); plt.close(fig)
+)
+    fig.tight_layout(rect=(0, 0, 1, 0.985)); fig.savefig(out / name, dpi=200); plt.close(fig)
 
 
 def fig_bars(vals, key, label, out, name):
