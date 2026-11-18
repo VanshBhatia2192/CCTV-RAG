@@ -1,0 +1,20 @@
+#!/bin/bash
+# Build the BasicVSR++ training pairs from the downloaded MEVA subset. CPU only (workq), no GPU used.
+#   bash scripts/hpc/submit.sh scripts/hpc/sr_prep.pbs [-v RUN=v2]
+#PBS -N sr_prep
+#PBS -q workq
+#PBS -l select=1:ncpus=8:mem=16gb
+#PBS -l walltime=06:00:00
+#PBS -j oe
+#PBS -k oed
+cd "$PBS_O_WORKDIR"
+mkdir -p outputs/logs
+exec >> outputs/logs/sr_prep.log 2>&1      # write the log ourselves; PBS output copy-back does not work here
+echo "== job $PBS_JOBID on $(hostname) at $(date)"
+ENV="${SR_ENV:-$HOME/envs/sr}"
+export PATH="$ENV/bin:$PATH"
+VAL_CAMS=$(python -c "from training.sr.download_meva import VAL_CAMS; print(VAL_CAMS)")
+if [ "${RUN:-v1}" = v2 ]; then OUTD=data/processed/sr_meva_v2; VPC=12; VVPC=15; else OUTD=data/processed/sr_meva; VPC=5; VVPC=7; fi
+python -m training.sr.prepare_meva data/raw/meva --out "$OUTD" --workers "${NCPUS:-8}" \
+  --videos-per-cam "$VPC" --val-videos-per-cam "$VVPC" --val-cam "$VAL_CAMS"
+du -sh "$OUTD"

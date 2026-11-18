@@ -53,15 +53,22 @@ def _visual(kind, text, k, where, ids=None):
     vec = iembed.embed_text([text])[0] if kind == "incident" else clip.embed_text([text])[0]
     return [(h.id, h.score, h.payload) for h in vector_db.search(kind, vec.tolist(), k, where, ids)]
 
-FT_MODELS = {"person": ("models/finetuned/text2person/clip_t2p.pt", "person_ft"),
-             "vehicle": ("models/finetuned/vehicle/clip_vehicle.pt", "vehicle_ft")}
+FT_MODELS = {
+    "person": ("models/finetuned/text2person/clip_t2p.pt", "person_ft"),
+    "vehicle": ("models/finetuned/vehicle/clip_vehicle.pt", "vehicle_ft"),
+}
 
 def _visual_ft(kind, text, k, where, ids=None):
+    from pathlib import Path
+    ckpt_path, coll = FT_MODELS.get(kind, (None, None))
+    if not ckpt_path or not Path(ckpt_path).exists():
+        return _visual(kind, text, k, where, ids)
     from src.person import t2p
-    ckpt, coll = FT_MODELS[kind]
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     if kind not in _ft:
-        m, tok = t2p.load(ckpt, dev); m.eval(); _ft[kind] = (m, tok)
+        m, tok = t2p.load(str(ckpt_path), dev)
+        m.eval()
+        _ft[kind] = (m, tok)
     m, tok = _ft[kind]
     with torch.no_grad():
         f = t2p.txt_feat(m, tok, [text], dev)

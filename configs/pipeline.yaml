@@ -1,5 +1,5 @@
 ingest: {chunk_sec: 10, max_chunk_sec: 30, motion_threshold: 0.002}
-sr: {enabled: false, final_clip_only: true}
+sr: {enabled: false, final_clip_only: true, in_width: 480, window: 30, overlap: 4, crf: 20, tta: 1}
 incident: {window_sec: 8, step_sec: 4}
 gait: {enabled: false, min_frames: 30, min_height_px: 64}
 collections: [vehicle, person, person_gait, incident]

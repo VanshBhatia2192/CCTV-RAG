@@ -12,7 +12,11 @@ if os.environ.get("DEMO_DB"):   # use a node-local copy of the SQLite index (WAL
 
 app = FastAPI(title="CCTV search demo")
 STATIC = Path(__file__).parent / "static"
-MODES = {"person": "hybrid_ft", "vehicle": "hybrid_ft", "incident": "hybrid"}
+MODES = {
+    "person": "hybrid_ft" if Path("models/finetuned/text2person/clip_t2p.pt").exists() else "hybrid",
+    "vehicle": "hybrid_ft" if Path("models/finetuned/vehicle/clip_vehicle.pt").exists() else "hybrid",
+    "incident": "hybrid",
+}
 WARM = {"done": False, "error": None, "secs": None}   # model warm-up status, shown by the page
 
 

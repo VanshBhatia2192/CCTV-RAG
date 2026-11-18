@@ -1,0 +1,29 @@
+{
+ "bicubic": {
+  "psnr": 21.5978,
+  "ssim": 0.5342,
+  "psnr_by_camera": {
+   "bus.G509": 21.948,
+   "school.G424": 21.2476
+  }
+ },
+ "pretrained": {
+  "weights": "models/pretrained/basicvsrpp_reds4.pth",
+  "psnr": 20.2682,
+  "ssim": 0.5025,
+  "psnr_by_camera": {
+   "bus.G509": 20.6529,
+   "school.G424": 19.8834
+  }
+ },
+ "finetuned": {
+  "weights": "models/finetuned/sr/basicvsrpp_meva.pth",
+  "psnr": 22.4048,
+  "ssim": 0.5856,
+  "psnr_by_camera": {
+   "bus.G509": 22.7552,
+   "school.G424": 22.0544
+  }
+ },
+ "gain_psnr_db": 2.1366
+}
