@@ -1,0 +1,78 @@
+{
+ "bicubic": {
+  "psnr": 21.1196,
+  "ssim": 0.5077,
+  "n": 30,
+  "psnr_by_camera": {
+   "bus.G509": 21.261,
+   "school.G424": 20.9783
+  }
+ },
+ "pretrained": {
+  "weights": "models/pretrained/basicvsrpp_reds4.pth",
+  "tta": 1,
+  "psnr": 19.6748,
+  "ssim": 0.4731,
+  "psnr_by_camera": {
+   "bus.G509": 19.4445,
+   "school.G424": 19.9051
+  }
+ },
+ "pretrained+tta": {
+  "weights": "models/pretrained/basicvsrpp_reds4.pth",
+  "tta": 8,
+  "psnr": 20.1061,
+  "ssim": 0.4907,
+  "psnr_by_camera": {
+   "bus.G509": 19.9614,
+   "school.G424": 20.2508
+  }
+ },
+ "v1": {
+  "weights": "models/finetuned/sr_v1/basicvsrpp_meva_v1.pth",
+  "tta": 1,
+  "psnr": 21.8503,
+  "ssim": 0.556,
+  "psnr_by_camera": {
+   "bus.G509": 22.0215,
+   "school.G424": 21.6791
+  }
+ },
+ "v1+tta": {
+  "weights": "models/finetuned/sr_v1/basicvsrpp_meva_v1.pth",
+  "tta": 8,
+  "psnr": 21.9693,
+  "ssim": 0.5585,
+  "psnr_by_camera": {
+   "bus.G509": 22.1383,
+   "school.G424": 21.8003
+  }
+ },
+ "v2": {
+  "weights": "models/finetuned/sr_v2/basicvsrpp_meva.pth",
+  "tta": 1,
+  "psnr": 21.8845,
+  "ssim": 0.5581,
+  "psnr_by_camera": {
+   "bus.G509": 22.0055,
+   "school.G424": 21.7635
+  }
+ },
+ "v2+tta": {
+  "weights": "models/finetuned/sr_v2/basicvsrpp_meva.pth",
+  "tta": 8,
+  "psnr": 22.0261,
+  "ssim": 0.5616,
+  "psnr_by_camera": {
+   "bus.G509": 22.1973,
+   "school.G424": 21.855
+  }
+ },
+ "gain_psnr_db": {
+  "pretrained+tta": 0.4313,
+  "v1": 2.1755,
+  "v1+tta": 2.2945,
+  "v2": 2.2097,
+  "v2+tta": 2.3513
+ }
+}

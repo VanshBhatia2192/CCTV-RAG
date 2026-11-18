@@ -28,21 +28,32 @@ def _tensor(a):                                          # (t,h,w,3) uint8 -> (t
 
 
 class TrainSet(torch.utils.data.Dataset):
-    """Random `frames`-long windows, random lq crop of `patch` px (gt crop is 4x), flips, transpose, time reversal."""
-    def __init__(s, root, frames=15, patch=64, scale=4, length=10**7):
+    """Random `frames`-long windows, random lq crop of `patch` px (gt crop is 4x), flips, transpose, time reversal.
+
+    Decoding full-size PNGs dominates CPU time, so a decoded window is reused for `reuse` random crops before a
+    new one is loaded (each worker keeps its own). reuse=4 cuts decoding 4x for little loss of variety.
+    """
+    def __init__(s, root, frames=15, patch=64, scale=4, length=10**7, reuse=1):
         meta = load_meta(root)
-        s.root, s.frames, s.patch, s.scale, s.length = root, frames, patch, scale, length
+        s.root, s.frames, s.patch, s.scale, s.length, s.reuse = root, frames, patch, scale, length, max(1, reuse)
         s.rows = [r for r in meta["sequences"] if r["split"] == "train" and r["n"] >= frames]
         assert s.rows, f"no train sequences with >= {frames} frames in {root}"
+        s._win, s._left = None, 0
 
     def __len__(s):
         return s.length                              # sampling is random; length only bounds the loader
 
+    def _window(s):
+        if s._left <= 0 or s._win is None:
+            r = random.choice(s.rows)
+            t0 = random.randint(0, r["n"] - s.frames)
+            idx = range(t0, t0 + s.frames)
+            s._win, s._left = (_seq(s.root, r, "lq", idx), _seq(s.root, r, "gt", idx)), s.reuse
+        s._left -= 1
+        return s._win
+
     def __getitem__(s, _):
-        r = random.choice(s.rows)
-        t0 = random.randint(0, r["n"] - s.frames)
-        idx = range(t0, t0 + s.frames)
-        lq, gt = _seq(s.root, r, "lq", idx), _seq(s.root, r, "gt", idx)
+        lq, gt = s._window()
         h, w = lq.shape[1:3]
         y, x = random.randint(0, h - s.patch), random.randint(0, w - s.patch)
         lq = lq[:, y:y + s.patch, x:x + s.patch]

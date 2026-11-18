@@ -86,3 +86,14 @@ def test_ema_update_moves_towards_model():
             p.fill_(1.0)
     ema_update(e, m, decay=0.9, step=10**6)
     assert all(torch.allclose(p, torch.full_like(p, 0.1)) for p in e.parameters())
+
+
+def test_trainset_reuse_decodes_less(tmp_path, monkeypatch):
+    import json
+    from training.sr import data as D
+    json.dump({"sequences": [{"id": "a", "split": "train", "camera": "c", "n": 6}]}, open(tmp_path / "meta.json", "w"))
+    calls = []
+    monkeypatch.setattr(D, "_seq", lambda root, r, sub, idx: calls.append(sub) or np.zeros((len(idx), 80 if sub == "lq" else 320, 80 if sub == "lq" else 320, 3), np.uint8))
+    ds = D.TrainSet(tmp_path, frames=4, patch=64, reuse=4)
+    shapes = [ds[0][0].shape for _ in range(8)]
+    assert len(calls) == 4 and all(sh == (4, 3, 64, 64) for sh in shapes)   # 8 samples, 2 decodes of (lq, gt)
