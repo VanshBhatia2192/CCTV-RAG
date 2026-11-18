@@ -12,7 +12,7 @@ if os.environ.get("DEMO_DB"):   # use a node-local copy of the SQLite index (WAL
 
 app = FastAPI(title="CCTV search demo")
 STATIC = Path(__file__).parent / "static"
-MODES = {"person": "hybrid_ft", "vehicle": "hybrid", "incident": "hybrid"}
+MODES = {"person": "hybrid_ft", "vehicle": "hybrid_ft", "incident": "hybrid"}
 WARM = {"done": False, "error": None, "secs": None}   # model warm-up status, shown by the page
 
 
@@ -140,15 +140,43 @@ def health():
     return {"ok": True, **WARM}
 
 
+@app.get("/api/stats")
+def stats():
+    db = _db()
+    try:
+        cameras = [r[0] for r in db.execute("select distinct camera from chunks where camera is not null order by camera").fetchall()]
+        n_chunks = db.execute("select count(*) from chunks").fetchone()[0]
+        track_counts = dict(db.execute("select kind, count(*) from tracks group by kind").fetchall())
+        n_windows = 0
+        try:
+            n_windows = db.execute("select count(*) from windows").fetchone()[0]
+        except Exception:
+            pass
+    finally:
+        db.close()
+    return {
+        "cameras": cameras,
+        "chunks": n_chunks,
+        "tracks": track_counts,
+        "windows": n_windows,
+        "models": {
+            "appearance": "CLIP ViT-B/32 (Fine-Tuned)",
+            "gait": "DeepGaitV2 (Fine-Tuned)",
+            "vlm": "Qwen2.5-VL-7B"
+        }
+    }
+
+
 @app.get("/api/search")
-def search(kind: str, q: str, k: int = 20, mode: str | None = None):
+def search(kind: str, q: str, k: int = 24, mode: str | None = None, camera: str | None = None):
     if kind not in MODES:
         raise HTTPException(400, f"kind must be one of {list(MODES)}")
     if not q.strip():
         raise HTTPException(400, "empty query")
     from src.captions import hybrid
     t0 = time.time(); mode = mode or MODES[kind]
-    hits = hybrid.retrieve(kind, q.strip(), k=min(max(k, 1), 60), mode=mode, w=_fusion_weights(kind))
+    where = {"camera": camera} if camera else None
+    hits = hybrid.retrieve(kind, q.strip(), k=min(max(k, 1), 60), mode=mode, where=where, w=_fusion_weights(kind))
     db = _db(); out = []
     try:
         for h in hits:

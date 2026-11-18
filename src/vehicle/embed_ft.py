@@ -1,50 +1,51 @@
-import json, sqlite3
+"""Embed indexed tracks with a fine-tuned CLIP image tower into a *_ft collection
+(mean of the L2-normalised crop embeddings, re-normalised). Default: vehicles -> vehicle_ft."""
+import argparse, json
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import torch, torch.nn.functional as F
 from PIL import Image
 from tqdm import tqdm
-from src.vehicle import t2v
+from src.person import t2p
 from src.index import vector_db
 from src.index.sql_db import connect
 
+
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--kind", default="vehicle"); ap.add_argument("--ckpt", default="models/finetuned/vehicle/clip_vehicle.pt")
+    ap.add_argument("--collection", default="vehicle_ft"); ap.add_argument("--limit", type=int, default=0); ap.add_argument("--block", type=int, default=256)
+    a = ap.parse_args()
     dev = "cuda" if torch.cuda.is_available() else "cpu"
-    ckpt = "models/finetuned/text2vehicle/clip_t2v.pt"
-    if not Path(ckpt).exists():
-        raise SystemExit(f"Checkpoint not found at {ckpt}. Please run training.vehicle.train first.")
-    m, _ = t2v.load(ckpt, dev)
-    m.eval()
-    db_path = Path("data/indexes/sqlite/meta.db").resolve()
-    try:
-        db = sqlite3.connect(f"file:{db_path}?mode=ro&nolock=1", uri=True)
-    except Exception:
-        db = connect()
-    db.row_factory = sqlite3.Row
-    rows = db.execute("SELECT t.*, c.camera FROM tracks t JOIN chunks c ON c.id=t.chunk_id WHERE t.kind='vehicle'").fetchall()
-    ids, vecs, pays, n = [], [], [], 0
-    for r in tqdm(rows, desc="vehicle_ft embed"):
+    m, _ = t2p.load(a.ckpt, dev); m.eval(); db = connect()
+    rows = db.execute("SELECT t.*, c.camera FROM tracks t JOIN chunks c ON c.id=t.chunk_id WHERE t.kind=?", (a.kind,)).fetchall()
+    if a.limit:
+        rows = rows[:a.limit]
+    print(f"{len(rows)} {a.kind} tracks -> {a.collection} | device {dev}", flush=True)
+    pool = ThreadPoolExecutor(8); n = skipped = 0
+
+    def load(r):
         files = sorted(Path(r["crops_dir"]).glob("*.jpg"))
-        if not files:
+        return [t2p.prep(Image.open(f)) for f in files]
+
+    for i in tqdm(range(0, len(rows), a.block), desc=a.collection):
+        blk = rows[i:i + a.block]; crops = list(pool.map(load, blk))
+        keep = [(r, c) for r, c in zip(blk, crops) if c]
+        skipped += len(blk) - len(keep)
+        if not keep:
             continue
-        # Use up to 8 frames per vehicle track
-        x = torch.stack([t2v.prep(Image.open(f)) for f in files[:8]]).to(dev)
-        with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16 if dev == "cuda" else torch.float32):
-            f = t2v.img_feat(m, x)
-        v = F.normalize(F.normalize(f.float(), dim=-1).mean(0), dim=0).cpu().numpy()
-        a = json.loads(r["attrs_json"] or "{}")
-        ids.append(r["id"])
-        vecs.append(v.tolist())
-        pays.append({"track_row": r["id"], "chunk_id": r["chunk_id"], "camera": r["camera"],
-                     "start_s": r["start_s"], "end_s": r["end_s"], **a})
-        if len(ids) >= 256:
-            vector_db.upsert("vehicle_ft", ids, vecs, pays)
-            n += len(ids)
-            ids, vecs, pays = [], [], []
-    if ids:
-        vector_db.upsert("vehicle_ft", ids, vecs, pays)
-        n += len(ids)
-    print("vehicle_ft indexed:", n)
+        x = torch.cat([torch.stack(c) for _, c in keep]); feats = []
+        for j in range(0, len(x), 512):
+            with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16, enabled=(dev == "cuda")):
+                feats.append(F.normalize(t2p.img_feat(m, x[j:j + 512].to(dev)).float(), dim=-1).cpu())
+        feats = torch.cat(feats); off = 0; ids, vecs, pays = [], [], []
+        for r, c in keep:
+            v = F.normalize(feats[off:off + len(c)].mean(0), dim=0); off += len(c)
+            ids.append(r["id"]); vecs.append(v.tolist())
+            pays.append({"track_row": r["id"], "chunk_id": r["chunk_id"], "camera": r["camera"], "start_s": r["start_s"], "end_s": r["end_s"], **json.loads(r["attrs_json"] or "{}")})
+        vector_db.upsert(a.collection, ids, vecs, pays); n += len(ids)
+    print(f"{a.collection} indexed: {n} | tracks without crops skipped: {skipped}", flush=True)
+
 
 if __name__ == "__main__":
     main()
-
