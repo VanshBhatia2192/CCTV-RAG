@@ -749,9 +749,14 @@
 
     <div class="toolbar">
       <div class="toolbar-left">
+        <span class="toolbar-label">Dataset:</span>
+        <select id="dataset-filter" class="select-filter" onchange="onDatasetChange()">
+          <option value="">All Datasets</option>
+        </select>
+
         <span class="toolbar-label">Camera:</span>
         <select id="cam-filter" class="select-filter" onchange="executeSearch()">
-          <option value="">All 24 Surveillance Cameras</option>
+          <option value="">All Cameras</option>
         </select>
 
         <span class="toolbar-label">Sort:</span>
@@ -832,6 +837,8 @@
       <label class="toggle-label"><input type="checkbox" id="fb-filter" checked onchange="loadReidMatches()"> Full-body tracklets only</label>
       <span id="reid-status" style="color:var(--text-muted); font-size:12.5px;"></span>
     </div>
+
+    <div id="reid-note-box" style="display:none; margin-bottom:14px; padding:10px 14px; border-radius:var(--radius-md); font-size:12.5px; background:rgba(234, 179, 8, 0.12); border:1px solid rgba(234, 179, 8, 0.3); color:#facc15;"></div>
 
     <div id="reid-grid" class="grid"></div>
   </div>
@@ -1068,7 +1075,7 @@ function createCard(item, opts = {}) {
   }
 
   mediaContainer.append(
-    el("div", {className: "overlay-badge", textContent: item.camera || "CAM"}),
+    el("div", {className: "overlay-badge", textContent: `${item.camera || "CAM"}${item.dataset ? " · " + item.dataset : ""}`}),
     el("div", {className: "overlay-time", textContent: `${fmtTime(item.start_s)} – ${fmtTime(item.end_s)}`}
   ));
 
@@ -1099,10 +1106,15 @@ function createCard(item, opts = {}) {
   }
 
   if (opts.reid) {
+    const appZ = item.appearance_z != null ? (item.appearance_z > 0 ? `+${item.appearance_z}` : `${item.appearance_z}`) : "–";
+    const gaitZ = item.gait_z != null ? (item.gait_z > 0 ? `+${item.gait_z}` : `${item.gait_z}`) : "none";
+    const gaitColor = item.gait_z != null ? (item.gait_z > 0.5 ? "var(--success, #22c55e)" : "var(--text-secondary)") : "var(--text-muted)";
     cardBody.append(el("div", {
-      style: "font-size:11.5px; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;",
-      textContent: `app_z: ${item.appearance_z ?? "–"} · gait_z: ${item.gait_z ?? "–"}`
-    }));
+      style: "font-size:11.5px; font-family:var(--font-mono); margin-top:3px; display:flex; gap:8px; color:var(--text-secondary);"
+    },
+      el("span", {}, "App z: ", el("b", {textContent: appZ})),
+      el("span", {style: `color:${gaitColor};`}, "Gait z: ", el("b", {textContent: gaitZ}))
+    ));
   } else if (opts.vehicle_reid) {
     cardBody.append(el("div", {
       style: "font-size:11.5px; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;",
@@ -1173,7 +1185,9 @@ async function executeSearch() {
       if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
       data = await res.json();
     } else {
+      const datasetFilter = $("#dataset-filter").value;
       let url = `/api/search?kind=${currentKind}&q=${encodeURIComponent(query)}&k=24`;
+      if (datasetFilter) url += `&dataset=${encodeURIComponent(datasetFilter)}`;
       if (camFilter) url += `&camera=${encodeURIComponent(camFilter)}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
@@ -1265,10 +1279,12 @@ function setReidMode(mode) {
 async function loadReidMatches() {
   if (!activeReidTrack) return;
   const status = $("#reid-status");
+  const noteBox = $("#reid-note-box");
   const grid = $("#reid-grid");
   const fullBody = $("#fb-filter").checked;
 
-  status.textContent = "Matching across other 23 cameras…";
+  status.textContent = "Matching across other cameras…";
+  if (noteBox) noteBox.style.display = "none";
   grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "Computing appearance & gait cosine metrics…"})));
 
   try {
@@ -1276,8 +1292,20 @@ async function loadReidMatches() {
     if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
     const data = await res.json();
 
-    status.textContent = `Found ${data.results.length} cross-camera matches (App Weight: ${data.w_appearance})`;
-    grid.replaceChildren(...data.results.map(c => createCard(c, {reid: true})));
+    const appPct = Math.round(data.w_appearance * 100);
+    const gaitPct = Math.round((1 - data.w_appearance) * 100);
+    status.textContent = `${data.results.length} matches · Mode: ${data.mode === 'cloth_change' ? 'Gait Only' : 'Dual Fusion'} (${appPct}% App / ${gaitPct}% Gait)`;
+
+    if (noteBox && data.note) {
+      noteBox.textContent = `ℹ️ ${data.note}`;
+      noteBox.style.display = "block";
+    }
+
+    if (!data.results.length) {
+      grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "No cross-camera matches found matching the criteria."})));
+    } else {
+      grid.replaceChildren(...data.results.map(c => createCard(c, {reid: true})));
+    }
   } catch (err) {
     status.textContent = `Re-ID failed: ${err.message}`;
     grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1; color:var(--danger);"}, el("p", {textContent: err.message})));
@@ -1327,19 +1355,44 @@ function exportFindingsJSON() {
 // Initialize on page load
 setKind("ask");
 
+let allCamerasByDataset = {};
+let allCamerasList = [];
+
+function onDatasetChange() {
+  const ds = $("#dataset-filter").value;
+  const camSelect = $("#cam-filter");
+  const cams = (ds && allCamerasByDataset[ds]) ? allCamerasByDataset[ds] : allCamerasList;
+  camSelect.replaceChildren(
+    el("option", {value: "", textContent: ds ? `All ${cams.length} Cameras in ${ds.toUpperCase()}` : `All ${cams.length} Cameras`}),
+    ...cams.map(c => el("option", {value: c, textContent: c}))
+  );
+  executeSearch();
+}
+
 // Fetch stats and cameras dynamically
 (async function initTelemetry() {
   try {
     const res = await fetch("/api/stats");
     if (res.ok) {
       const data = await res.json();
-      if (data.cameras && data.cameras.length) {
+      allCamerasList = data.cameras || [];
+      allCamerasByDataset = data.cameras_by_dataset || {};
+
+      if (data.datasets && data.datasets.length) {
+        const dsSelect = $("#dataset-filter");
+        dsSelect.replaceChildren(
+          el("option", {value: "", textContent: `All ${data.datasets.length} Datasets`}),
+          ...data.datasets.map(d => el("option", {value: d, textContent: d.toUpperCase()}))
+        );
+      }
+
+      if (allCamerasList.length) {
         const select = $("#cam-filter");
         select.replaceChildren(
-          el("option", {value: "", textContent: `All ${data.cameras.length} Cameras`}),
-          ...data.cameras.map(c => el("option", {value: c, textContent: c}))
+          el("option", {value: "", textContent: `All ${allCamerasList.length} Cameras`}),
+          ...allCamerasList.map(c => el("option", {value: c, textContent: c}))
         );
-        $("#stat-cams").textContent = data.cameras.length;
+        $("#stat-cams").textContent = allCamerasList.length;
       }
       if (data.tracks && data.tracks.person) {
         $("#stat-tracks").textContent = Number(data.tracks.person).toLocaleString();

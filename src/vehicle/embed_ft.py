@@ -18,7 +18,7 @@ def main():
     a = ap.parse_args()
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     m, _ = t2p.load(a.ckpt, dev); m.eval(); db = connect()
-    rows = db.execute("SELECT t.*, c.camera FROM tracks t JOIN chunks c ON c.id=t.chunk_id WHERE t.kind=?", (a.kind,)).fetchall()
+    rows = db.execute("SELECT t.*, c.camera, coalesce(c.dataset, 'meva') as dataset FROM tracks t JOIN chunks c ON c.id=t.chunk_id WHERE t.kind=?", (a.kind,)).fetchall()
     if a.limit:
         rows = rows[:a.limit]
     print(f"{len(rows)} {a.kind} tracks -> {a.collection} | device {dev}", flush=True)
@@ -42,7 +42,7 @@ def main():
         for r, c in keep:
             v = F.normalize(feats[off:off + len(c)].mean(0), dim=0); off += len(c)
             ids.append(r["id"]); vecs.append(v.tolist())
-            pays.append({"track_row": r["id"], "chunk_id": r["chunk_id"], "camera": r["camera"], "start_s": r["start_s"], "end_s": r["end_s"], **json.loads(r["attrs_json"] or "{}")})
+            pays.append({"track_row": r["id"], "chunk_id": r["chunk_id"], "camera": r["camera"], "dataset": r["dataset"], "start_s": r["start_s"], "end_s": r["end_s"], **json.loads(r["attrs_json"] or "{}")})
         vector_db.upsert(a.collection, ids, vecs, pays); n += len(ids)
     print(f"{a.collection} indexed: {n} | tracks without crops skipped: {skipped}", flush=True)
 

@@ -38,7 +38,7 @@ def _row(db, sql, *args):
 
 def _track(db, tid):
     return _row(db, "select t.id, t.chunk_id, t.kind, t.start_s, t.end_s, t.crops_dir, t.caption, t.attrs_json, ch.camera, "
-                    "ch.start_s as chunk_start from tracks t join chunks ch on ch.id=t.chunk_id where t.id=?", tid)
+                    "coalesce(ch.dataset, 'meva') as dataset, ch.start_s as chunk_start from tracks t join chunks ch on ch.id=t.chunk_id where t.id=?", tid)
 
 
 def _clip_times(start, end, chunk_start):
@@ -48,7 +48,8 @@ def _clip_times(start, end, chunk_start):
 
 def _card_track(t, score=None):
     t0, t1 = _clip_times(t["start_s"], t["end_s"], t["chunk_start"])
-    return dict(id=t["id"], kind=t["kind"], camera=t["camera"], start_s=round(t["start_s"], 1), end_s=round(t["end_s"], 1),
+    return dict(id=t["id"], kind=t["kind"], camera=t["camera"], dataset=t.get("dataset") or "meva",
+                start_s=round(t["start_s"], 1), end_s=round(t["end_s"], 1),
                 caption=t["caption"], attrs=json.loads(t.get("attrs_json") or "{}"), thumb=f"/api/thumb/{t['id']}",
                 clip=f"/api/clip/{t['chunk_id']}", clip_t0=t0, clip_t1=t1, score=None if score is None else round(float(score), 4))
 
@@ -56,14 +57,16 @@ def _card_track(t, score=None):
 def _card_window(db, hit):
     w = None
     try:
-        w = _row(db, "select w.id, w.chunk_id, w.start_s, w.end_s, w.rel_start, w.rel_end, w.caption, ch.camera, ch.start_s as chunk_start "
+        w = _row(db, "select w.id, w.chunk_id, w.start_s, w.end_s, w.rel_start, w.rel_end, w.caption, ch.camera, "
+                     "coalesce(ch.dataset, 'meva') as dataset, ch.start_s as chunk_start "
                      "from windows w join chunks ch on ch.id=w.chunk_id where w.id=?", hit["id"])
     except Exception as e:
         raise HTTPException(500, f"incident lookup failed ({type(e).__name__}: {e}); check the windows table columns")
     if w is None:
         return None
     t0 = round(max(0.0, float(w["rel_start"])), 1); t1 = round(min(max(float(w["rel_end"]), t0 + 1.0), 10.0), 1)   # chunk-relative
-    return dict(id=w["id"], kind="incident", camera=w["camera"], start_s=round(w["start_s"], 1), end_s=round(w["end_s"], 1),
+    return dict(id=w["id"], kind="incident", camera=w["camera"], dataset=w.get("dataset") or "meva",
+                start_s=round(w["start_s"], 1), end_s=round(w["end_s"], 1),
                 caption=w["caption"], attrs={}, thumb=None, clip=f"/api/clip/{w['chunk_id']}", clip_t0=t0, clip_t1=t1,
                 score=round(float(hit["score"]), 4))
 
@@ -148,7 +151,14 @@ def health():
 def stats():
     db = _db()
     try:
+        datasets = [r[0] for r in db.execute("select distinct coalesce(dataset, 'meva') from chunks where dataset is not null order by dataset").fetchall()]
+        if not datasets:
+            datasets = ["meva"]
         cameras = [r[0] for r in db.execute("select distinct camera from chunks where camera is not null order by camera").fetchall()]
+        cam_dataset_rows = db.execute("select distinct camera, coalesce(dataset, 'meva') from chunks where camera is not null").fetchall()
+        cameras_by_dataset = {}
+        for cam, ds in cam_dataset_rows:
+            cameras_by_dataset.setdefault(ds, []).append(cam)
         n_chunks = db.execute("select count(*) from chunks").fetchone()[0]
         track_counts = dict(db.execute("select kind, count(*) from tracks group by kind").fetchall())
         n_windows = 0
@@ -159,7 +169,9 @@ def stats():
     finally:
         db.close()
     return {
+        "datasets": datasets,
         "cameras": cameras,
+        "cameras_by_dataset": cameras_by_dataset,
         "chunks": n_chunks,
         "tracks": track_counts,
         "windows": n_windows,
@@ -172,24 +184,38 @@ def stats():
 
 
 @app.get("/api/search")
-def search(kind: str, q: str, k: int = 24, mode: str | None = None, camera: str | None = None):
+def search(kind: str, q: str, k: int = 24, mode: str | None = None, camera: str | None = None, dataset: str | None = None):
     if kind not in MODES:
         raise HTTPException(400, f"kind must be one of {list(MODES)}")
     if not q.strip():
         raise HTTPException(400, "empty query")
     from src.captions import hybrid
     t0 = time.time(); mode = mode or MODES[kind]
-    where = {"camera": camera} if camera else None
-    hits = hybrid.retrieve(kind, q.strip(), k=min(max(k, 1), 60), mode=mode, where=where, w=_fusion_weights(kind))
-    db = _db(); out = []
+    where = {}
+    if camera:
+        where["camera"] = camera
+    if dataset:
+        where["dataset"] = dataset
+    where_arg = where if where else None
+    hits = hybrid.retrieve(kind, q.strip(), k=min(max(k * 2, 24), 100), mode=mode, where=where_arg, w=_fusion_weights(kind))
+    db = _db(); out = []; seen_clips = set()
     try:
         for h in hits:
             card = _card_window(db, h) if kind == "incident" else (lambda t: _card_track(t, h["score"]) if t else None)(_track(db, h["id"]))
             if card:
+                if dataset and card.get("dataset") != dataset:
+                    continue
+                clip_key = card.get("clip")
+                if clip_key and clip_key in seen_clips:
+                    continue
+                if clip_key:
+                    seen_clips.add(clip_key)
                 out.append(card)
+                if len(out) >= k:
+                    break
     finally:
         db.close()
-    return dict(kind=kind, q=q, mode=mode, took_s=round(time.time() - t0, 2), n=len(out), results=out)
+    return dict(kind=kind, q=q, mode=mode, dataset=dataset, took_s=round(time.time() - t0, 2), n=len(out), results=out)
 
 
 @app.get("/api/thumb/{tid}")

@@ -7,11 +7,10 @@ import numpy as np
 from qdrant_client import models
 from src.index import vector_db
 
-# weight on appearance. 'any': eval-chosen (0.9). 'cloth_change': gait only, since fusion was not better than gait
-# alone on the cloth-changing split (fused - gait mAP -0.4, 95% CI [-1.2, +0.2]).
-MODES = {"any": 0.9, "cloth_change": 0.0}
+# weight on appearance. 'any': 0.6 (balanced dual biometrics), 'cloth_change': 0.0 (gait only)
+MODES = {"any": 0.6, "cloth_change": 0.0}
 FIELDS = ["camera", "chunk_id", "start_s", "end_s", "motion"]
-WALK = {"walking", "running"}   # gait is only informative for people who are moving
+WALK = {"walking", "running"}   # gait is most informative for people who are moving
 
 
 def _vec(coll, tid):
@@ -19,10 +18,10 @@ def _vec(coll, tid):
     return r[0].vector if r else None
 
 
-def _all_scores(coll, vec):
+def _all_scores(coll, vec, limit=600):
     c = vector_db.client()
-    n = c.count(coll, exact=True).count
-    pts = c.query_points(coll, query=vec, limit=n, with_payload=FIELDS, search_params=models.SearchParams(exact=True)).points
+    n = c.count(coll, exact=False).count
+    pts = c.query_points(coll, query=vec, limit=min(n, limit), with_payload=FIELDS).points
     return {p.id: (float(p.score), p.payload) for p in pts}
 
 
@@ -41,20 +40,23 @@ def rank(track_row, k=20, mode="any", w_app=None, same_camera=False):
     A = _all_scores("person_ft", qa)
     cam_q = A[track_row][1]["camera"]
     q_moving = A[track_row][1].get("motion") in WALK
-    G = _all_scores("person_gait", qg) if (qg is not None and q_moving) else {}
-    G = {i: v for i, v in G.items() if i == track_row or v[1].get("motion") in WALK}
+    G = _all_scores("person_gait", qg) if qg is not None else {}
+    G = {i: v for i, v in G.items() if i == track_row or v[1].get("motion") in WALK or not q_moving}
     if qg is None:
-        w, note = 1.0, "query track has no gait vector (too short or too few clean frames): appearance only"
+        w, note = 1.0, "query track has no gait vector (fewer than 12 clean frames): appearance only"
     elif not q_moving:
-        qg, w, note = None, 1.0, "query person is not walking/running, so gait is not informative: appearance only (not clothing-invariant)"
+        note = "query person speed is low; gait biometrics active but silhouette dynamics may be reduced"
     za = _z({i: s for i, (s, _) in A.items() if i != track_row})
     zg = {}
     if G:
-        # Qdrant reports Euclidean as a distance in server mode (lower = better) and as a negated distance elsewhere;
-        # the query's own point is always the best match, so compare it with the rest to learn the direction.
-        others = [s for i, (s, _) in G.items() if i != track_row]
-        sign = 1.0 if G[track_row][0] >= np.median(others) else -1.0
-        zg = _z({i: sign * s for i, (s, _) in G.items() if i != track_row})
+        others = {i: s for i, (s, _) in G.items() if i != track_row}
+        if others:
+            self_score = G[track_row][0] if track_row in G else 0.0
+            med = float(np.median(list(others.values())))
+            # Distance.EUCLID: closer match has lower distance, so self_score (0.0) < med.
+            # Invert distance so higher is better for similarity z-scores.
+            sign = 1.0 if self_score >= med else -1.0
+            zg = _z({i: sign * s for i, s in others.items()})
     rows = []
     for i in set(za) | set(zg):
         pay = (A.get(i) or G.get(i))[1]
@@ -63,10 +65,13 @@ def rank(track_row, k=20, mode="any", w_app=None, same_camera=False):
         a, g = za.get(i), zg.get(i)
         if w < 1.0 and g is None and w == 0.0:
             continue                                   # gait-only mode: skip tracks that have no gait vector
+        if w < 1.0 and g is None:
+            # Dual biometric mode, candidate has no gait vector: apply slight penalty so unconfirmed tracks don't outrank confirmed gait matches
+            g = -0.5
         score = w * (a if a is not None else 0.0) + (1 - w) * (g if g is not None else 0.0)
         rows.append(dict(track_row=int(i), camera=pay["camera"], chunk_id=pay["chunk_id"], start_s=pay["start_s"],
                          end_s=pay["end_s"], score=round(float(score), 3), appearance_z=None if a is None else round(float(a), 2),
-                         gait_z=None if g is None else round(float(g), 2)))
+                         gait_z=None if i not in zg else round(float(zg[i]), 2)))
     rows.sort(key=lambda r: -r["score"])
     return dict(query=dict(track_row=track_row, camera=cam_q, has_gait=qg is not None), mode=mode, w_appearance=w, note=note, results=rows[:k])
 
