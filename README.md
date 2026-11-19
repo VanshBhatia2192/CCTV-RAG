@@ -313,6 +313,12 @@ python -m eval.sr.eval_sr
 # enhance one clip
 python -m src.sr.enhance in.mp4 out.mp4
 ```
+**Using the trained model (no training needed):** the final v2 weights are committed at `models/finetuned/sr_v2/basicvsrpp_meva.pth` (29 MB) and `configs/models.yaml` already points to them, so a fresh clone works after `pip install -r requirements.txt` plus [ffmpeg](https://ffmpeg.org/download.html) on the PATH (`brew install ffmpeg` on macOS; it is a system tool, not a pip package). Run from the repo root:
+```bash
+python -m src.sr.enhance in.mp4 out.mp4
+```
+It uses an NVIDIA GPU automatically if CUDA is available, otherwise the CPU. On CPU it is slow (about 7 s per 1920 px output frame on an Apple M-series laptop, so roughly 30 min for a 10 s clip at 30 fps): use short clips, or lower `sr.in_width` in `configs/pipeline.yaml` (output is 4x the input width). `sr.tta: 8` gives the best quality (+0.15 dB) but is 8x slower. If the fine-tuned file is missing, the code falls back to the REDS4 pretrained model and prints a warning; that model is worse than bicubic on CCTV.
+
 Set `sr.enabled: true` in `configs/pipeline.yaml` to enhance final search-result clips (`src/query/trim.py`). The default data settings give ~280 train sequences of 50 frames (~14k frames) from 5 videos per camera; on one H100 30k iterations should take roughly 4–7 h.
 
 ---
