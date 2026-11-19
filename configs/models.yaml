@@ -1,6 +1,6 @@
 detector: yolov8m.pt
 tracker: bytetrack
-sr: {name: basicvsrpp, weights: models/finetuned/sr/basicvsrpp_meva.pth, pretrained: models/pretrained/basicvsrpp_reds4.pth, scale: 4}
+sr: {name: basicvsrpp, weights: models/finetuned/sr_v2/basicvsrpp_meva.pth, pretrained: models/pretrained/basicvsrpp_reds4.pth, scale: 4}
 text_video: {name: xclip, path: models/pretrained/xclip}
 vlm: {name: qwen2.5-vl, path: models/pretrained/qwen2.5-vl}
 parser_llm: Qwen/Qwen2.5-3B-Instruct

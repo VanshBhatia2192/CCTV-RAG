@@ -25,6 +25,9 @@ def _model():
         w = m["weights"] if Path(m["weights"]).exists() else m.get("pretrained")
         if not w or not Path(w).exists():
             raise FileNotFoundError(f"no BasicVSR++ weights at {m['weights']} or {m.get('pretrained')}")
+        if w != m["weights"]:
+            print(f"[sr] WARNING: fine-tuned weights not found at {m['weights']}; using the REDS4 pretrained model, "
+                  "which is worse than bicubic on CCTV footage", flush=True)
         dev = "cuda" if torch.cuda.is_available() else "cpu"
         _MODEL = build(w, dev)
         print(f"[sr] loaded {w} on {dev}", flush=True)
