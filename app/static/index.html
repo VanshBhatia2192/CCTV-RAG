@@ -1247,26 +1247,43 @@ function openVideoModal(item) {
   const title = $("#video-modal-title");
   title.textContent = `📹 ${item.camera} · ${fmtTime(item.start_s)}–${fmtTime(item.end_s)} (#${item.id || item.chunk_id})`;
   
-  const seekTime = item.clip_t0 || 0;
-  // If full recording, start at detection timestamp without hard cutoff so user can watch continuously
-  cinemaPlayer.src = item.is_full_video ? `${item.clip}#t=${seekTime}` : `${item.clip}#t=${item.clip_t0},${item.clip_t1}`;
-  cinemaPlayer.currentTime = seekTime;
+  const seekTime = (item.clip_t0 && item.clip_t0 > 0) ? item.clip_t0 : 0;
+
+  // Reset player before loading new clip
+  cinemaPlayer.pause();
+  cinemaPlayer.src = item.clip;
+
+  // Seek and play after metadata is loaded to prevent browser race conditions
+  cinemaPlayer.onloadedmetadata = () => {
+    if (seekTime > 0 && seekTime < (cinemaPlayer.duration || Infinity)) {
+      cinemaPlayer.currentTime = seekTime;
+    }
+    cinemaPlayer.play().catch(err => {
+      console.warn("Autoplay notice (user can click play):", err);
+    });
+  };
+
+  cinemaPlayer.onerror = () => {
+    console.error("Playback error:", cinemaPlayer.error);
+    const meta = $("#video-metadata");
+    if (meta) meta.textContent = "⚠️ Video decoding failed or format unsupported.";
+  };
   
   const jumpBtn = $("#btn-jump-event");
   if (jumpBtn) {
-    jumpBtn.style.display = item.is_full_video ? "inline-block" : "none";
+    jumpBtn.style.display = (item.is_full_video && seekTime > 0) ? "inline-block" : "none";
     jumpBtn.textContent = `🎯 Jump to Detection (${fmtTime(item.start_s)})`;
   }
 
-  const streamBadge = item.is_full_video ? " · 🎥 Full CCTV Recording (free scrubbing across timeline)" : " · ⏱️ 10s Clip";
+  const streamBadge = item.is_full_video ? " · 🎥 Full CCTV Recording (free scrubbing across timeline)" : " · ⏱️ CCTV Clip";
   $("#video-metadata").textContent = `${item.caption ? `Description: "${item.caption}" ` : ""}${streamBadge}`;
   videoModal.showModal();
-  cinemaPlayer.play().catch(() => {});
 }
 
 function jumpToEvent() {
   if (activeModalItem && cinemaPlayer) {
-    cinemaPlayer.currentTime = activeModalItem.clip_t0 || 0;
+    const t = activeModalItem.clip_t0 || 0;
+    cinemaPlayer.currentTime = t;
     cinemaPlayer.play().catch(() => {});
   }
 }

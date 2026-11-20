@@ -14,7 +14,8 @@ _m = _t = None
 def _llm(q):
     global _m, _t
     if _m is None:
-        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from transformers import AutoModelForCausalLM, AutoTokenizer, logging as hf_logging
+        hf_logging.set_verbosity_error()
         try:
             _t = AutoTokenizer.from_pretrained(MODELS["parser_llm"], local_files_only=True)
             _m = AutoModelForCausalLM.from_pretrained(MODELS["parser_llm"], torch_dtype="auto", local_files_only=True).to(DEV).eval()

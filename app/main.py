@@ -126,24 +126,40 @@ def drop_closeups(db, rows, min_aspect=1.3):
 
 
 def _range_response(path, request):
-    size = path.stat().st_size; hdr = request.headers.get("range")
-    m = re.match(r"bytes=(\d*)-(\d*)", hdr or "")
+    size = path.stat().st_size
+    hdr = request.headers.get("range")
+    if not hdr:
+        return FileResponse(path, media_type="video/mp4", headers={"Accept-Ranges": "bytes"})
+    m = re.match(r"bytes=(\d*)-(\d*)", hdr.strip())
     if not m:
         return FileResponse(path, media_type="video/mp4", headers={"Accept-Ranges": "bytes"})
     g1, g2 = m.groups()
-    start, end = (max(0, size - int(g2)), size - 1) if (not g1 and g2) else (int(g1 or 0), min(int(g2), size - 1) if g2 else size - 1)
+    start = int(g1) if g1 else max(0, size - int(g2)) if g2 else 0
+    end = min(int(g2), size - 1) if g2 else size - 1
     if start >= size or start > end:
         raise HTTPException(416, "range not satisfiable")
+    chunk_len = end - start + 1
     def body():
         with open(path, "rb") as f:
-            f.seek(start); left = end - start + 1
+            f.seek(start)
+            left = chunk_len
             while left > 0:
-                b = f.read(min(1 << 20, left))
+                b = f.read(min(512 * 1024, left))
                 if not b:
                     break
-                left -= len(b); yield b
-    return StreamingResponse(body(), status_code=206, media_type="video/mp4",
-                             headers={"Content-Range": f"bytes {start}-{end}/{size}", "Accept-Ranges": "bytes", "Content-Length": str(end - start + 1)})
+                left -= len(b)
+                yield b
+    return StreamingResponse(
+        body(),
+        status_code=206,
+        media_type="video/mp4",
+        headers={
+            "Content-Range": f"bytes {start}-{end}/{size}",
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(chunk_len),
+            "Cache-Control": "public, max-age=3600",
+        }
+    )
 
 
 MEDIA = {}   # token -> trimmed clip path returned by src.query.trim (only these files are ever served)
