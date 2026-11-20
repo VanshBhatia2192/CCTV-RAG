@@ -71,6 +71,7 @@ cctv_*.o*
 cctv_*.e*
 
 # OS & Editor Metadata
+_archive_old/
 .DS_Store
 .DS_Store?
 ._*
