@@ -1,8 +1,7 @@
 """Demo API: text search over person / vehicle / incident indexes + gait/appearance re-id. Run from the project root."""
-import hashlib, json, re, threading, time
+import hashlib, json, re, shutil, threading, time, uuid
 from pathlib import Path
 import numpy as np
-import uuid
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
@@ -273,7 +272,14 @@ MAIN_JOBS: dict = {}
 
 
 def _run_main_gait_job(job_id: str, dest_path: Path, uploads_dir: Path):
-    from demo_showcase.video_tracker import process_video_and_detect_gait_alerts
+    import sys
+    if sys.meta_path is None:
+        return
+    try:
+        from demo_showcase.video_tracker import process_video_and_detect_gait_alerts
+    except (ImportError, TypeError):
+        return
+
     def update_prog(pct: int, msg: str):
         if job_id in MAIN_JOBS:
             MAIN_JOBS[job_id]["progress"] = pct
@@ -286,13 +292,14 @@ def _run_main_gait_job(job_id: str, dest_path: Path, uploads_dir: Path):
         )
         MAIN_JOBS[job_id] = {"status": "completed", "progress": 100, "message": "Done", "report": report}
     except Exception as e:
+        if sys.meta_path is None:
+            return
         MAIN_JOBS[job_id] = {"status": "error", "progress": 0, "message": str(e), "report": None}
 
 
 @app.post("/api/upload_video")
 async def upload_video_api(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     """Upload any video file, track people, extract 2D skeleton gait, and alert on re-appearance."""
-    import shutil
     uploads_dir = Path("data/uploads")
     uploads_dir.mkdir(parents=True, exist_ok=True)
     dest_path = uploads_dir / file.filename
@@ -320,13 +327,24 @@ def index():
 @app.on_event("startup")
 def warm():
     def go():
+        import sys
         t0 = time.time()
         try:
+            if sys.meta_path is None:
+                return
             from src.captions import hybrid
             from src.query import search as _S   # import the pipeline modules now, not on the first request
             for kind, mode in MODES.items():
+                if sys.meta_path is None:
+                    return
                 hybrid.retrieve(kind, "a person" if kind == "person" else "a car" if kind == "vehicle" else "people walking", k=1, mode=mode, w=_fusion_weights(kind))
+        except (ImportError, TypeError) as e:
+            if "sys.meta_path" in str(e) or sys.meta_path is None:
+                return
+            WARM["error"] = f"{type(e).__name__}: {e}"; print("warm-up failed:", WARM["error"])
         except Exception as e:
+            if sys.meta_path is None:
+                return
             WARM["error"] = f"{type(e).__name__}: {e}"; print("warm-up failed:", WARM["error"])
         WARM["secs"] = round(time.time() - t0, 1); WARM["done"] = True
     threading.Thread(target=go, daemon=True).start()
