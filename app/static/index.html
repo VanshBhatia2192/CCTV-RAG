@@ -805,7 +805,8 @@
           <button class="speed-pill" onclick="setSpeed(2.0)">2.0x</button>
         </span>
       </div>
-      <div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button id="btn-jump-event" class="btn-card" style="display:none; font-size:12px; padding:4px 10px;" onclick="jumpToEvent()">🎯 Jump to Detection</button>
         <label class="toggle-label"><input type="checkbox" id="loop-toggle" onchange="cinemaPlayer.loop = this.checked"> Loop Clip</label>
       </div>
     </div>
@@ -1079,7 +1080,16 @@ function createCard(item, opts = {}) {
     el("div", {className: "overlay-time", textContent: `${fmtTime(item.start_s)} – ${fmtTime(item.end_s)}`}
   ));
 
-  const scorePct = item.score != null ? Math.round(Math.min(Math.max(item.score, 0), 1) * 100) : null;
+  let scorePct = null;
+  if (opts.reid) {
+    // Person Re-ID: fused Z-score (-1.0 to +4.0). Convert to sigmoid percentage:
+    // z = +3.0 -> 94%, z = +2.0 -> 86%, z = +1.0 -> 75%, z = 0.0 -> 50%
+    const z = item.score != null ? item.score : 0;
+    scorePct = Math.round(100 / (1 + Math.exp(-0.85 * z)));
+    scorePct = Math.min(99, Math.max(10, scorePct));
+  } else if (item.score != null) {
+    scorePct = Math.round(Math.min(Math.max(item.score, 0), 1) * 100);
+  }
   const scoreLabel = scorePct != null ? `${scorePct}% match` : "";
 
   const cardBody = el("div", {className: "card-body"});
@@ -1227,16 +1237,35 @@ function renderCurrentResults() {
 }
 
 // Video Modal Control
+let activeModalItem = null;
+
 function openVideoModal(item) {
+  activeModalItem = item;
   const title = $("#video-modal-title");
   title.textContent = `📹 ${item.camera} · ${fmtTime(item.start_s)}–${fmtTime(item.end_s)} (#${item.id || item.chunk_id})`;
   
-  cinemaPlayer.src = `${item.clip}#t=${item.clip_t0},${item.clip_t1}`;
-  cinemaPlayer.currentTime = item.clip_t0 || 0;
+  const seekTime = item.clip_t0 || 0;
+  // If full recording, start at detection timestamp without hard cutoff so user can watch continuously
+  cinemaPlayer.src = item.is_full_video ? `${item.clip}#t=${seekTime}` : `${item.clip}#t=${item.clip_t0},${item.clip_t1}`;
+  cinemaPlayer.currentTime = seekTime;
   
-  $("#video-metadata").textContent = item.caption ? `Description: "${item.caption}"` : "";
+  const jumpBtn = $("#btn-jump-event");
+  if (jumpBtn) {
+    jumpBtn.style.display = item.is_full_video ? "inline-block" : "none";
+    jumpBtn.textContent = `🎯 Jump to Detection (${fmtTime(item.start_s)})`;
+  }
+
+  const streamBadge = item.is_full_video ? " · 🎥 Full CCTV Recording (free scrubbing across timeline)" : " · ⏱️ 10s Clip";
+  $("#video-metadata").textContent = `${item.caption ? `Description: "${item.caption}" ` : ""}${streamBadge}`;
   videoModal.showModal();
   cinemaPlayer.play().catch(() => {});
+}
+
+function jumpToEvent() {
+  if (activeModalItem && cinemaPlayer) {
+    cinemaPlayer.currentTime = activeModalItem.clip_t0 || 0;
+    cinemaPlayer.play().catch(() => {});
+  }
 }
 
 function closeVideoModal() {

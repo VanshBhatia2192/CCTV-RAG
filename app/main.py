@@ -36,39 +36,71 @@ def _row(db, sql, *args):
     return dict(r) if r is not None else None
 
 
+def _resolve_video_path(p_str: str | None) -> Path | None:
+    if not p_str:
+        return None
+    p = Path(p_str)
+    if p.exists():
+        return p
+    from src.common.config import ROOT
+    p_root = ROOT / p_str
+    if p_root.exists():
+        return p_root
+    return None
+
+
 def _track(db, tid):
     return _row(db, "select t.id, t.chunk_id, t.kind, t.start_s, t.end_s, t.crops_dir, t.caption, t.attrs_json, ch.camera, "
-                    "coalesce(ch.dataset, 'meva') as dataset, ch.start_s as chunk_start from tracks t join chunks ch on ch.id=t.chunk_id where t.id=?", tid)
+                    "coalesce(ch.dataset, 'meva') as dataset, ch.start_s as chunk_start, ch.source as video_source, ch.path as chunk_path "
+                    "from tracks t join chunks ch on ch.id=t.chunk_id where t.id=?", tid)
 
 
 def _clip_times(start, end, chunk_start):
     t0 = max(0.0, float(start) - float(chunk_start)); t1 = max(t0 + 1.0, float(end) - float(chunk_start))
-    return round(t0, 1), round(min(t1, 10.0), 1)
+    return round(t0, 1), round(t1, 1)
 
 
 def _card_track(t, score=None):
-    t0, t1 = _clip_times(t["start_s"], t["end_s"], t["chunk_start"])
+    src_path = _resolve_video_path(t.get("video_source"))
+    if src_path and src_path.exists():
+        t0 = round(max(0.0, float(t["start_s"])), 1)
+        t1 = round(max(t0 + 1.0, float(t["end_s"])), 1)
+        is_full = True
+    else:
+        t0, t1 = _clip_times(t["start_s"], t["end_s"], t["chunk_start"])
+        is_full = False
+
     return dict(id=t["id"], kind=t["kind"], camera=t["camera"], dataset=t.get("dataset") or "meva",
                 start_s=round(t["start_s"], 1), end_s=round(t["end_s"], 1),
                 caption=t["caption"], attrs=json.loads(t.get("attrs_json") or "{}"), thumb=f"/api/thumb/{t['id']}",
-                clip=f"/api/clip/{t['chunk_id']}", clip_t0=t0, clip_t1=t1, score=None if score is None else round(float(score), 4))
+                clip=f"/api/clip/{t['chunk_id']}", clip_t0=t0, clip_t1=t1, is_full_video=is_full,
+                score=None if score is None else round(float(score), 4))
 
 
 def _card_window(db, hit):
     w = None
     try:
         w = _row(db, "select w.id, w.chunk_id, w.start_s, w.end_s, w.rel_start, w.rel_end, w.caption, ch.camera, "
-                     "coalesce(ch.dataset, 'meva') as dataset, ch.start_s as chunk_start "
+                     "coalesce(ch.dataset, 'meva') as dataset, ch.start_s as chunk_start, ch.source as video_source, ch.path as chunk_path "
                      "from windows w join chunks ch on ch.id=w.chunk_id where w.id=?", hit["id"])
     except Exception as e:
         raise HTTPException(500, f"incident lookup failed ({type(e).__name__}: {e}); check the windows table columns")
     if w is None:
         return None
-    t0 = round(max(0.0, float(w["rel_start"])), 1); t1 = round(min(max(float(w["rel_end"]), t0 + 1.0), 10.0), 1)   # chunk-relative
+    src_path = _resolve_video_path(w.get("video_source"))
+    if src_path and src_path.exists():
+        t0 = round(max(0.0, float(w["start_s"])), 1)
+        t1 = round(max(t0 + 1.0, float(w["end_s"])), 1)
+        is_full = True
+    else:
+        t0 = round(max(0.0, float(w["rel_start"])), 1)
+        t1 = round(max(float(w["rel_end"]), t0 + 1.0), 1)
+        is_full = False
+
     return dict(id=w["id"], kind="incident", camera=w["camera"], dataset=w.get("dataset") or "meva",
                 start_s=round(w["start_s"], 1), end_s=round(w["end_s"], 1),
                 caption=w["caption"], attrs={}, thumb=None, clip=f"/api/clip/{w['chunk_id']}", clip_t0=t0, clip_t1=t1,
-                score=round(float(hit["score"]), 4))
+                is_full_video=is_full, score=round(float(hit["score"]), 4))
 
 
 def drop_closeups(db, rows, min_aspect=1.3):
@@ -197,14 +229,58 @@ def search(kind: str, q: str, k: int = 24, mode: str | None = None, camera: str 
     if dataset:
         where["dataset"] = dataset
     where_arg = where if where else None
-    hits = hybrid.retrieve(kind, q.strip(), k=min(max(k * 2, 24), 100), mode=mode, where=where_arg, w=_fusion_weights(kind))
+    hits = hybrid.retrieve(kind, q.strip(), k=min(max(k * 4, 48), 150), mode=mode, where=where_arg, w=_fusion_weights(kind))
     db = _db(); out = []; seen_clips = set()
+    cam_counts = {}
+    seen_stationary = set()  # (camera, coarse_window_bin)
+    seen_events = set()      # (camera, event_time_bin)
+    deferred_overflow = []
     try:
         for h in hits:
             card = _card_window(db, h) if kind == "incident" else (lambda t: _card_track(t, h["score"]) if t else None)(_track(db, h["id"]))
-            if card:
-                if dataset and card.get("dataset") != dataset:
+            if not card:
+                continue
+            if dataset and card.get("dataset") != dataset:
+                continue
+
+            clip_key = card.get("clip")
+            if clip_key and clip_key in seen_clips:
+                continue
+
+            cam = card.get("camera")
+            start_s = float(card.get("start_s") or 0.0)
+            attrs = card.get("attrs") or {}
+            motion = (attrs.get("motion") or "").lower()
+            is_stopped = motion in ("stopped", "standing", "parked", "idle")
+
+            # Temporal deduplication on the same camera (within 20s is typically the same vehicle/track)
+            event_bin = int(start_s // 20)
+            if (cam, event_bin) in seen_events:
+                continue
+
+            # Stationary object throttling
+            if is_stopped:
+                stat_bin = int(start_s // 240)  # 4-minute stationary window
+                if (cam, stat_bin) in seen_stationary:
                     continue
+                seen_stationary.add((cam, stat_bin))
+
+            # Camera diversity: avoid flooding the screen with one camera when user hasn't selected a camera
+            if not camera and cam_counts.get(cam, 0) >= 3:
+                deferred_overflow.append(card)
+                continue
+
+            if clip_key:
+                seen_clips.add(clip_key)
+            seen_events.add((cam, event_bin))
+            cam_counts[cam] = cam_counts.get(cam, 0) + 1
+            out.append(card)
+            if len(out) >= k:
+                break
+
+        # If diversity constraint left us under k results, backfill with remaining diverse items
+        if len(out) < k and deferred_overflow:
+            for card in deferred_overflow:
                 clip_key = card.get("clip")
                 if clip_key and clip_key in seen_clips:
                     continue
@@ -213,6 +289,16 @@ def search(kind: str, q: str, k: int = 24, mode: str | None = None, camera: str 
                 out.append(card)
                 if len(out) >= k:
                     break
+
+        # Calibrate raw RRF scores to intuitive percentage confidence (98% down to 72%)
+        if out:
+            max_raw = max((c.get("score") or 0.0 for c in out), default=0.0)
+            if 0.0 < max_raw < 0.25:  # Raw RRF fusion scores
+                for card in out:
+                    if card.get("score") is not None:
+                        rel = max(0.0, card["score"]) / max_raw
+                        calibrated = round(0.68 + 0.30 * (rel ** 1.3), 3)
+                        card["score"] = min(0.98, max(0.50, calibrated))
     finally:
         db.close()
     return dict(kind=kind, q=q, mode=mode, dataset=dataset, took_s=round(time.time() - t0, 2), n=len(out), results=out)
@@ -232,15 +318,30 @@ def thumb(tid: int):
 
 
 @app.get("/api/clip/{chunk_id}")
-def clip(chunk_id: int, request: Request):
+def clip(chunk_id: int, request: Request, full: bool = True):
     db = _db()
     try:
-        c = _row(db, "select path from chunks where id=?", chunk_id)
+        c = _row(db, "select path, source from chunks where id=?", chunk_id)
     finally:
         db.close()
-    if not c or not Path(c["path"]).exists():
-        raise HTTPException(404, "no video")
-    return _range_response(Path(c["path"]), request)
+    if not c:
+        raise HTTPException(404, "no video record")
+    
+    video_path = None
+    if full and c.get("source"):
+        p_src = _resolve_video_path(c["source"])
+        if p_src and p_src.exists():
+            video_path = p_src
+            
+    if not video_path:
+        p_chunk = _resolve_video_path(c.get("path"))
+        if p_chunk and p_chunk.exists():
+            video_path = p_chunk
+
+    if not video_path or not video_path.exists():
+        raise HTTPException(404, "no video file on disk")
+        
+    return _range_response(video_path, request)
 
 
 @app.get("/api/reid/vehicle/{tid}")
