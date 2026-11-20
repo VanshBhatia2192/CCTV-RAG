@@ -7,12 +7,15 @@ SEG = "models/pretrained/yolov8m-seg.pt"
 
 def norm64(mask):
     """uint8 0/255 HxW -> 64x64 uint8 silhouette (rows cropped to mask, height 64, centred on mass)."""
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     ys = np.where(mask.any(1))[0]
     if len(ys) < 20:
         return None
     img = mask[ys[0]:ys[-1] + 1]
     w = max(1, int(round(64 * img.shape[1] / img.shape[0])))
     img = cv2.resize(img, (w, 64), interpolation=cv2.INTER_CUBIC)
+    img = (img > 127).astype(np.uint8) * 255
     col = img.sum(0, dtype=np.float64).cumsum()
     if col[-1] == 0:
         return None
@@ -21,7 +24,7 @@ def norm64(mask):
     return img[:, xc:xc + 64].astype(np.uint8)
 
 def person_mask(model, im):
-    r = model.predict(im, imgsz=320, classes=[0], retina_masks=True, verbose=False)[0]
+    r = model.predict(im, imgsz=480, classes=[0], retina_masks=True, verbose=False)[0]
     if r.masks is None or len(r.masks.data) == 0:
         return None
     d = r.masks.data.cpu().numpy()

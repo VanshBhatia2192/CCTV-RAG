@@ -1,0 +1,25 @@
+#!/bin/bash
+#PBS -N cctv_train
+#PBS -q gpu
+#PBS -l select=1:ncpus=8:mem=64gb:ngpus=1
+#PBS -l walltime=01:30:00
+#PBS -j oe
+#PBS -V
+cd $PBS_O_WORKDIR
+mkdir -p outputs/logs
+exec > outputs/logs/train_${PBS_JOBID%%.*}.log 2>&1
+source /home/soft/anaconda3/etc/profile.d/conda.sh
+conda activate cctv
+module load cuda
+export LD_PRELOAD=$CONDA_PREFIX/lib/libstdc++.so.6
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True PYTHONUNBUFFERED=1
+export HF_HOME=$PWD/hf_cache HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+nvidia-smi --query-gpu=index,memory.used,memory.free --format=csv
+if [ -z "$CUDA_VISIBLE_DEVICES" ]; then
+  read G F <<< $(nvidia-smi --query-gpu=index,memory.free --format=csv,noheader,nounits | tr -d ' ' | awk -F, '{print $1, $2}' | sort -k2 -nr | head -1)
+  echo "using GPU $G (free ${F} MiB)"
+  [ "$F" -lt 12000 ] && { echo "not enough free GPU memory on any GPU"; exit 1; }
+  export CUDA_VISIBLE_DEVICES=$G
+fi
+echo "running: $J"; bash $J; echo "job finished, exit code $?"

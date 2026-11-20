@@ -6,7 +6,12 @@ from src.ingest.motion_gate import has_motion
 
 def cam_name(v):
     m = re.match(r"\d{4}-\d{2}-\d{2}\.[\d-]+\.[\d-]+\.([^.]+)\.([^.]+)\.", Path(v).name)
-    return f"{m.group(1)}.{m.group(2)}" if m else Path(v).parent.name
+    if m:
+        return f"{m.group(1)}.{m.group(2)}"
+    p = Path(v)
+    if p.name.startswith("vdo") and p.parent.name.startswith("c"):
+        return f"{p.parent.parent.name}.{p.parent.name}"
+    return p.parent.name
 
 def duration(p):
     out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", str(p)],
@@ -20,9 +25,17 @@ def split(video, out_dir, sec):
                     "-f", "segment", "-segment_time", str(sec), "-reset_timestamps", "1", str(out_dir / "c%04d.mp4")], check=True)
     return sorted(out_dir.glob("c*.mp4"))
 
-def main(src, camera):
+def main(src, camera, dataset="meva"):
     P = yaml.safe_load(open("configs/paths.yaml")); C = yaml.safe_load(open("configs/pipeline.yaml"))["ingest"]
     db = connect()
+    try:
+        cols = [r[1] for r in db.execute("PRAGMA table_info(chunks)").fetchall()]
+        if "dataset" not in cols:
+            db.execute("ALTER TABLE chunks ADD COLUMN dataset TEXT DEFAULT 'meva'")
+            db.execute("UPDATE chunks SET dataset='meva' WHERE dataset IS NULL")
+            db.commit()
+    except Exception:
+        pass
     vids = [src] if Path(src).is_file() else sorted(Path(src).rglob("*.[mM][pP]4")) + sorted(Path(src).rglob("*.avi"))
     for v in vids:
         v = Path(v)
@@ -38,13 +51,13 @@ def main(src, camera):
         for c in parts:
             d = duration(c)
             keep, score = has_motion(c, C["motion_threshold"])
-            db.execute("INSERT OR IGNORE INTO chunks(camera,source,path,start_s,end_s,motion,kept) VALUES(?,?,?,?,?,?,?)",
-                       (cam, str(v), str(c), t, t + d, score, int(keep)))
+            db.execute("INSERT OR IGNORE INTO chunks(camera,source,path,start_s,end_s,motion,kept,dataset) VALUES(?,?,?,?,?,?,?,?)",
+                       (cam, str(v), str(c), t, t + d, score, int(keep), dataset))
             t += d
         db.commit()
         print("chunked", v.name, cam, len(parts), "chunks", flush=True)
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("src"); ap.add_argument("--camera", default=None)
-    a = ap.parse_args(); main(a.src, a.camera)
+    ap.add_argument("src"); ap.add_argument("--camera", default=None); ap.add_argument("--dataset", default="meva")
+    a = ap.parse_args(); main(a.src, a.camera, a.dataset)

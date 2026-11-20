@@ -1,0 +1,16 @@
+#!/bin/bash
+#PBS -N cctv_build
+#PBS -q gpu
+#PBS -l select=1:ncpus=16:mem=128gb:ngpus=1
+#PBS -l walltime=12:00:00
+#PBS -j oe
+#PBS -V
+cd $PBS_O_WORKDIR
+source /home/soft/anaconda3/etc/profile.d/conda.sh
+conda activate cctv
+module load cuda
+export LD_PRELOAD=$CONDA_PREFIX/lib/libstdc++.so.6
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True PYTHONUNBUFFERED=1
+export HF_HOME=$PWD/hf_cache HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 YOLO_OFFLINE=1
+export QDRANT__TELEMETRY_DISABLED=true
+bash scripts/gpu_build.sh
