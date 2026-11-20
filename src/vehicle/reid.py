@@ -105,11 +105,22 @@ def get_track_crop_embedding(crops_dir: str) -> Optional[np.ndarray]:
     mid_file = str(files[len(files) // 2])
 
     try:
-        from src.common import clip as cutil
-        embs = cutil.embed_images([mid_file])
-        vec = embs[0]
-        norm = np.linalg.norm(vec) + 1e-9
-        vec = vec / norm
+        from src.person import t2p
+        from PIL import Image
+        import torch, torch.nn.functional as F
+        ckpt = "models/finetuned/vehicle/clip_vehicle.pt"
+        if Path(ckpt).exists():
+            m, _ = t2p.load(ckpt, "cpu")
+            m.eval()
+            with torch.no_grad():
+                im = t2p.prep(Image.open(mid_file)).unsqueeze(0)
+                vec = F.normalize(t2p.img_feat(m, im).float(), dim=-1)[0].cpu().numpy()
+        else:
+            from src.common import clip as cutil
+            embs = cutil.embed_images([mid_file])
+            vec = embs[0]
+            norm = np.linalg.norm(vec) + 1e-9
+            vec = vec / norm
         _EMB_CACHE[crops_dir] = vec
         return vec
     except Exception as e:
