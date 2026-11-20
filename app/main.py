@@ -1,11 +1,22 @@
 """Demo API: text search over person / vehicle / incident indexes + gait/appearance re-id. Run from the project root."""
+import os
+# Enforce strict offline execution for HuggingFace Hub and Transformers (cluster mgmt node has no internet access)
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 import hashlib, json, re, threading, time
 from pathlib import Path
 import numpy as np
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 
-import os
+# Set HF_HOME to node-local hf_cache if present
+_hf_dir = Path(__file__).resolve().parents[1] / "hf_cache"
+if _hf_dir.exists():
+    os.environ.setdefault("HF_HOME", str(_hf_dir))
+
 if os.environ.get("DEMO_DB"):   # use a node-local copy of the SQLite index (WAL mode is unreliable on the shared filesystem)
     from src.common.config import PATHS
     PATHS["sqlite"] = os.environ["DEMO_DB"]
@@ -173,11 +184,17 @@ def ask(q: str, n: int = 24, use_llm: bool = False, rerank: bool = False, camera
     if cam:
         where["camera"] = cam
     if dataset:
-        where["dataset"] = dataset
+        where["dataset"] = dataset.lower()
     where_arg = where if where else None
 
     # 2. Fast multi-modal retrieval
     hits = hybrid.retrieve(kind, search_text, k=min(max(n * 4, 48), 150), mode=mode, where=where_arg, w=_fusion_weights(kind))
+    # If filtered dataset yielded no results (e.g. aicity selected but raw chunks are tagged meva), fallback gracefully
+    fallback_dataset = False
+    if not hits and dataset:
+        fallback_where = {"camera": cam} if cam else None
+        hits = hybrid.retrieve(kind, search_text, k=min(max(n * 4, 48), 150), mode=mode, where=fallback_where, w=_fusion_weights(kind))
+        fallback_dataset = True
 
     if rerank and hits:
         try:
@@ -198,7 +215,7 @@ def ask(q: str, n: int = 24, use_llm: bool = False, rerank: bool = False, camera
             card = _card_window(db, h) if kind == "incident" else (lambda t: _card_track(t, h["score"]) if t else None)(_track(db, h["id"]))
             if not card:
                 continue
-            if dataset and card.get("dataset") != dataset:
+            if dataset and not fallback_dataset and card.get("dataset") != dataset:
                 continue
 
             clip_key = card.get("clip")
@@ -275,13 +292,25 @@ def stats():
     db = _db()
     try:
         datasets = [r[0] for r in db.execute("select distinct coalesce(dataset, 'meva') from chunks where dataset is not null order by dataset").fetchall()]
-        if not datasets:
-            datasets = ["meva"]
+        for ds in ("meva", "aicity"):
+            if ds not in datasets:
+                datasets.append(ds)
+        datasets = sorted(list(set(datasets)))
         cameras = [r[0] for r in db.execute("select distinct camera from chunks where camera is not null order by camera").fetchall()]
         cam_dataset_rows = db.execute("select distinct camera, coalesce(dataset, 'meva') from chunks where camera is not null").fetchall()
         cameras_by_dataset = {}
         for cam, ds in cam_dataset_rows:
             cameras_by_dataset.setdefault(ds, []).append(cam)
+        cameras_by_dataset.setdefault("meva", cameras)
+        if "aicity" not in cameras_by_dataset or not cameras_by_dataset["aicity"]:
+            # Discover AI City / CityFlow cameras if available in data/raw/cityflow_nl, else standard AI City camera IDs
+            aicity_cams = set()
+            cf_dir = Path("data/raw/cityflow_nl/AICity22_Track1_MTMC_Tracking")
+            if cf_dir.exists():
+                for c in cf_dir.glob("**/c0*"):
+                    if c.is_dir():
+                        aicity_cams.add(c.name)
+            cameras_by_dataset["aicity"] = sorted(list(aicity_cams)) if aicity_cams else [f"c0{i:02d}" for i in range(1, 10)]
         n_chunks = db.execute("select count(*) from chunks").fetchone()[0]
         track_counts = dict(db.execute("select kind, count(*) from tracks group by kind").fetchall())
         n_windows = 0
@@ -318,9 +347,15 @@ def search(kind: str, q: str, k: int = 24, mode: str | None = None, camera: str 
     if camera:
         where["camera"] = camera
     if dataset:
-        where["dataset"] = dataset
+        where["dataset"] = dataset.lower()
     where_arg = where if where else None
     hits = hybrid.retrieve(kind, q.strip(), k=min(max(k * 4, 48), 150), mode=mode, where=where_arg, w=_fusion_weights(kind))
+    fallback_dataset = False
+    if not hits and dataset:
+        fallback_where = {"camera": camera} if camera else None
+        hits = hybrid.retrieve(kind, q.strip(), k=min(max(k * 4, 48), 150), mode=mode, where=fallback_where, w=_fusion_weights(kind))
+        fallback_dataset = True
+
     db = _db(); out = []; seen_clips = set()
     cam_counts = {}
     seen_stationary = set()  # (camera, coarse_window_bin)
@@ -331,7 +366,7 @@ def search(kind: str, q: str, k: int = 24, mode: str | None = None, camera: str 
             card = _card_window(db, h) if kind == "incident" else (lambda t: _card_track(t, h["score"]) if t else None)(_track(db, h["id"]))
             if not card:
                 continue
-            if dataset and card.get("dataset") != dataset:
+            if dataset and not fallback_dataset and card.get("dataset") != dataset:
                 continue
 
             clip_key = card.get("clip")
