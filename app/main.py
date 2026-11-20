@@ -446,7 +446,7 @@ def search(kind: str, q: str, k: int = 24, mode: str | None = None, camera: str 
     return dict(kind=kind, q=q, mode=mode, dataset=dataset, took_s=round(time.time() - t0, 2), n=len(out), results=out)
 
 
-@app.get("/api/thumb/{tid}")
+@app.api_route("/api/thumb/{tid}", methods=["GET", "HEAD"])
 def thumb(tid: int):
     db = _db()
     try:
@@ -459,7 +459,7 @@ def thumb(tid: int):
     return FileResponse(files[len(files) // 2], media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
 
 
-@app.get("/api/clip/{chunk_id}")
+@app.api_route("/api/clip/{chunk_id}", methods=["GET", "HEAD"])
 def clip(chunk_id: int, request: Request, full: bool = True):
     db = _db()
     try:
@@ -482,6 +482,11 @@ def clip(chunk_id: int, request: Request, full: bool = True):
 
     if not video_path or not video_path.exists():
         raise HTTPException(404, "no video file on disk")
+
+    if request.method == "HEAD":
+        from fastapi.responses import Response
+        size = video_path.stat().st_size
+        return Response(status_code=200, headers={"Accept-Ranges": "bytes", "Content-Length": str(size), "Content-Type": "video/mp4"})
         
     return _range_response(video_path, request)
 
