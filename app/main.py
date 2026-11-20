@@ -459,6 +459,46 @@ def thumb(tid: int):
     return FileResponse(files[len(files) // 2], media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
 
 
+def _ensure_web_playable(path: Path) -> Path:
+    """Ensure the video file is an MP4 playable by web browsers (Chrome/Safari/Firefox).
+    If it's an .avi (like raw MEVID recordings), fast-remux it without re-encoding
+    (-c copy -movflags +faststart) into an .mp4 cache in outputs/web_videos/ (< 0.8s).
+    """
+    if path.suffix.lower() == ".mp4":
+        return path
+    
+    out_dir = Path("outputs/web_videos")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_mp4 = out_dir / (path.stem + ".mp4")
+    if out_mp4.exists() and out_mp4.stat().st_size > 0:
+        return out_mp4
+        
+    import shutil, subprocess
+    ffmpeg_bin = shutil.which("ffmpeg")
+    if not ffmpeg_bin:
+        for p in ("/home/vansh.122433/.conda/envs/cctv/bin/ffmpeg", "/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"):
+            if Path(p).exists():
+                ffmpeg_bin = p
+                break
+    if not ffmpeg_bin:
+        return path
+
+    try:
+        subprocess.run([
+            ffmpeg_bin, "-y", "-loglevel", "error",
+            "-i", str(path),
+            "-c", "copy",
+            "-movflags", "+faststart",
+            str(out_mp4)
+        ], check=True, timeout=25)
+        if out_mp4.exists() and out_mp4.stat().st_size > 0:
+            return out_mp4
+    except Exception as e:
+        print(f"⚠️ [Web Remux] Could not remux {path} to MP4: {e}")
+        
+    return path
+
+
 @app.api_route("/api/clip/{chunk_id}", methods=["GET", "HEAD"])
 def clip(chunk_id: int, request: Request, full: bool = True):
     db = _db()
@@ -473,12 +513,14 @@ def clip(chunk_id: int, request: Request, full: bool = True):
     if full and c.get("source"):
         p_src = _resolve_video_path(c["source"])
         if p_src and p_src.exists():
-            video_path = p_src
+            p_playable = _ensure_web_playable(p_src)
+            if p_playable.suffix.lower() == ".mp4":
+                video_path = p_playable
             
     if not video_path:
         p_chunk = _resolve_video_path(c.get("path"))
         if p_chunk and p_chunk.exists():
-            video_path = p_chunk
+            video_path = _ensure_web_playable(p_chunk)
 
     if not video_path or not video_path.exists():
         raise HTTPException(404, "no video file on disk")
