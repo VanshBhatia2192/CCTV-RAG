@@ -1,4 +1,5 @@
 import argparse, torch
+from pathlib import Path
 from tqdm import tqdm
 from src.common.clip import DEV
 from src.common.config import MODELS
@@ -12,7 +13,8 @@ def _load():
     global _m, _p
     if _m is None:
         from transformers import XCLIPModel, XCLIPProcessor
-        path = MODELS["text_video"]["path"]
+        p = Path(MODELS["text_video"]["path"])
+        path = str(p) if p.exists() else "microsoft/xclip-base-patch32"
         _m = XCLIPModel.from_pretrained(path).to(DEV).eval()
         _p = XCLIPProcessor.from_pretrained(path)
     return _m, _p

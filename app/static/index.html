@@ -47,7 +47,10 @@
 </head>
 <body>
 <header>
-  <h1>CCTV search</h1>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <h1 style="margin:0;">CCTV search</h1>
+    <a href="http://127.0.0.1:8501" target="_blank" style="background:#2457d6; color:#fff; text-decoration:none; padding:7px 14px; border-radius:8px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">🏃 Video Upload & Gait Alert Demo (Port 8501) ➔</a>
+  </div>
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" data-kind="ask" aria-selected="true">Ask</button>
     <button class="tab" role="tab" data-kind="person" aria-selected="false">People</button>
@@ -67,7 +70,8 @@
     <strong>Same person on other cameras</strong>
     <div class="opts">
       <label><input type="radio" name="rmode" value="any" checked> Any appearance (fused)</label>
-      <label><input type="radio" name="rmode" value="cloth_change"> Clothing changed (gait only)</label>
+      <label><input type="radio" name="rmode" value="cloth_change"> Clothing changed (2D Skeleton Gait)</label>
+      <label><input type="radio" name="rmode" value="appearance_only"> Appearance only</label>
       <label><input type="checkbox" id="fb" checked> Full-body tracks only</label>
     </div>
     <button class="sm ghost" onclick="reid.close()">Close</button>
@@ -144,7 +148,12 @@ function card(c, opts = {}) {
   if (c.kind === "person") row.append(el("button", {className: "sm", textContent: "Find on other cameras", onclick: () => openReid(c)}));
   if (c.kind === "vehicle") row.append(el("button", {className: "sm", textContent: "Track this vehicle across cameras", onclick: () => openVehicleReid(c)}));
   const extra = [];
-  if (opts.reid) extra.push(el("div", {className: "meta", textContent: `score ${c.score}  ·  appearance ${c.appearance_z ?? "–"}  ·  gait ${c.gait_z ?? "–"}`}));
+  if (opts.reid) {
+    let reidText = `score ${c.score}  ·  visual ${c.appearance_z ?? "–"}  ·  gait ${c.gait_z ?? "–"}`;
+    if (c.cadence_bpm) reidText += `  ·  ${c.cadence_bpm} bpm`;
+    if (c.gait_symmetry) reidText += `  ·  sym ${c.gait_symmetry}`;
+    extra.push(el("div", {className: "meta", textContent: reidText}));
+  }
   else if (opts.vehicle_reid) extra.push(el("div", {className: "meta", textContent: `match score ${c.score}  ·  visual ${c.appearance_sim ?? "–"}${c.st_valid ? "  ·  topology verified" : ""}`}));
   else if (c.score != null) extra.push(el("div", {className: "meta", textContent: `score ${c.score}`}));
   return el("div", {className: "card"}, media, el("div", {className: "body"},

@@ -1,130 +1,167 @@
-"""Build `person_gait` vectors (4096-d = 16 parts x 256, Euclidean) for every indexed person track:
-re-read the chunk video, cut the track boxes, segment (YOLOv8-seg), run the fine-tuned gait model on up to K windows of
-64 consecutive frames, average the window embeddings. Tracks without enough clean frames get no vector."""
-import argparse, json, sqlite3, time
-from collections import deque
-from concurrent.futures import ThreadPoolExecutor
+"""Build `person_gait` vectors (256-d, Cosine similarity) for indexed person tracks:
+Extracts 17 COCO skeletal keypoints using YOLOv8-pose, normalizes coordinates for scale
+and translation invariance, and encodes temporal gait dynamics via Spatial-Temporal Graph
+Convolutional Networks (ST-GCN).
+
+Replaces legacy binary silhouette segmentation (DeepGaitV2) with 2D skeleton pose-guided
+gait biometrics, ensuring full invariance to clothing swaps, jackets, bags, and illumination.
+
+Works directly with already-indexed data (crops_dir or video chunks).
+"""
+
+import argparse
+import json
 from pathlib import Path
+import sqlite3
+import time
+from typing import Dict, List, Optional
+import cv2
 import numpy as np
-from src.gait.silhouettes import norm64
-from src.gait.track_crops import read_crops, windows
+import torch
+from tqdm import tqdm
 
-
-def segment(seg, crops, bs=64):
-    out = []
-    for b in range(0, len(crops), bs):
-        for r in seg.predict(crops[b:b + bs], imgsz=320, classes=[0], retina_masks=True, half=True, verbose=False):
-            if r.masks is None or len(r.masks.data) == 0:
-                out.append(None); continue
-            d = r.masks.data; k = int(d.flatten(1).sum(1).argmax())
-            out.append((d[k] > 0.5).byte().mul(255).cpu().numpy())
-    return out
-
-
-def clean_sil(m, min_asp):
-    if m is None:
-        return None
-    s = norm64(m)
-    if s is None:
-        return None
-    ys, xs = np.nonzero(m.any(1))[0], np.nonzero(m.any(0))[0]
-    return s if (ys[-1] - ys[0] + 1) / (xs[-1] - xs[0] + 1) >= min_asp else None
+from src.gait.pose_gait import encode_pose_gait
+from src.gait.track_crops import read_crops
+from src.index import vector_db
 
 
 def main():
-    import torch
-    from ultralytics import YOLO
-    from src.gait import og
-    from src.index import vector_db
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--fmt", default="cxcywh", choices=["cxcywh", "tlwh", "cxcyhw", "tlhw"])
-    ap.add_argument("--K", type=int, default=3); ap.add_argument("--min-asp", type=float, default=1.0)
-    ap.add_argument("--min-clean", type=int, default=20); ap.add_argument("--prefetch", type=int, default=3)
-    ap.add_argument("--model", default="deepgaitv2_gait3d"); ap.add_argument("--ckpt", default="models/finetuned/gait/deepgaitv2_gait3d_ft.pt")
-    ap.add_argument("--limit-chunks", type=int, default=0, help="sample N evenly spaced chunks (throughput test)")
-    ap.add_argument("--no-upsert", action="store_true"); ap.add_argument("--recreate", action="store_true")
-    ap.add_argument("--skip-existing", action="store_true", help="skip tracks already present in person_gait")
-    ap.add_argument("--part", default="0/1", help="i/N: process every N-th chunk starting at i (split the run into resumable jobs)")
-    a = ap.parse_args()
+    parser = argparse.ArgumentParser(description="Index 2D skeleton ST-GCN gait embeddings into Qdrant person_gait")
+    parser.add_argument("--limit", type=int, default=0, help="Max tracks to process (0 = all)")
+    parser.add_argument("--recreate", action="store_true", help="Recreate person_gait collection in Qdrant")
+    parser.add_argument("--skip-existing", action="store_true", help="Skip tracks already in person_gait")
+    parser.add_argument("--part", default="0/1", help="i/N chunk splitting for parallel runs")
+    parser.add_argument("--batch-size", type=int, default=32, help="Upsert batch size")
+    args = parser.parse_args()
+
     dev = "cuda" if torch.cuda.is_available() else "cpu"
-    db = sqlite3.connect("data/indexes/sqlite/meta.db"); db.row_factory = sqlite3.Row
-    groups = {}
-    for r in db.execute("select t.id, t.chunk_id, t.start_s, t.end_s, t.n_frames, t.path_json, t.attrs_json, ch.path vpath, ch.camera "
-                        "from tracks t join chunks ch on ch.id=t.chunk_id where t.kind='person' order by t.chunk_id, t.id"):
-        groups.setdefault(r["chunk_id"], []).append(dict(r))
-    if a.skip_existing and not a.recreate:
+    db_path = "data/indexes/sqlite/meta.db"
+    if not Path(db_path).exists():
+        print(f"Error: Database file '{db_path}' not found. Please ensure data is indexed.")
+        return
+
+    db = sqlite3.connect(db_path)
+    db.row_factory = sqlite3.Row
+
+    if args.recreate:
+        vector_db.recreate("person_gait")
+        vector_db.recreate("person_pose_gait")
+        print("Recreated 'person_gait' and 'person_pose_gait' collections in Qdrant (256-d, Cosine).")
+
+    # Fetch person tracks
+    sql = (
+        "SELECT t.id, t.chunk_id, t.crops_dir, t.fps, t.path_json, t.attrs_json, "
+        "t.start_s, t.end_s, ch.camera, ch.path AS vpath "
+        "FROM tracks t JOIN chunks ch ON ch.id=t.chunk_id "
+        "WHERE t.kind='person' ORDER BY t.id"
+    )
+    all_tracks = [dict(r) for r in db.execute(sql)]
+    if not all_tracks:
+        print("No person tracks found in database.")
+        db.close()
+        return
+
+    # Filter by part i/N if specified
+    pi, pn = (int(x) for x in args.part.split("/"))
+    tracks = all_tracks[pi::pn]
+
+    # Filter existing IDs if requested
+    if args.skip_existing and not args.recreate:
         try:
-            c = vector_db.client()
+            client = vector_db.client()
             have_ids = set()
             offset = None
             while True:
-                pts, offset = c.scroll("person_gait", limit=2000, offset=offset, with_payload=False, with_vectors=False)
+                pts, offset = client.scroll("person_gait", limit=2000, offset=offset, with_payload=False, with_vectors=False)
                 have_ids.update(p.id for p in pts)
                 if offset is None:
                     break
-            for cid in list(groups.keys()):
-                groups[cid] = [t for t in groups[cid] if t["id"] not in have_ids]
-                if not groups[cid]:
-                    del groups[cid]
-            print(f"Resume mode: skipping {len(have_ids)} already indexed tracks. {sum(len(v) for v in groups.values())} tracks remain.", flush=True)
+            tracks = [t for t in tracks if t["id"] not in have_ids]
+            print(f"Skipping {len(have_ids)} already indexed tracks. {len(tracks)} remaining.")
         except Exception as e:
-            print("Could not query existing gait IDs:", e, flush=True)
-    chunks = sorted(groups)
-    pi, pn = (int(x) for x in a.part.split("/")); chunks = chunks[pi::pn]
-    if a.limit_chunks:
-        chunks = [chunks[i] for i in np.linspace(0, len(chunks) - 1, a.limit_chunks).astype(int)]
-    ntr = sum(len(groups[c]) for c in chunks)
-    print(f"{len(chunks)} chunks, {ntr} person tracks | device {dev} | K={a.K} fmt={a.fmt}", flush=True)
-    gait = og.load(a.model, dev, ckpt=a.ckpt)[0]; seg = YOLO("models/pretrained/yolov8m-seg.pt")
-    if a.recreate and not a.no_upsert:
-        vector_db.recreate("person_gait")
+            print("Could not query existing gait IDs:", e)
 
-    def job(cid):
-        tr = groups[cid]
-        return cid, read_crops(tr[0]["vpath"], [json.loads(t["path_json"]) for t in tr], a.K, a.fmt)
+    if args.limit > 0:
+        tracks = tracks[:args.limit]
 
-    pool = ThreadPoolExecutor(a.prefetch); it = iter(chunks); q = deque()
-    for _ in range(a.prefetch):
-        c = next(it, None)
-        if c is not None: q.append(pool.submit(job, c))
-    ids, vecs, pays, t0 = [], [], [], time.time()
-    st = dict(tracks=0, embedded=0, crops=0, clean=0, empty_windows=0)
-    done = 0
-    while q:
-        cid, crops = q.popleft().result()
-        c = next(it, None)
-        if c is not None: q.append(pool.submit(job, c))
-        keys = sorted(crops); flat = [x for k in keys for x in crops[k]]
-        sils = iter(clean_sil(m, a.min_asp) for m in segment(seg, flat)) if flat else iter(())
-        per = {k: [s for s in (next(sils) for _ in crops[k]) if s is not None] for k in keys}
-        st["crops"] += len(flat)
-        for ti, t in enumerate(groups[cid]):
-            st["tracks"] += 1; embs, n_clean = [], 0
-            for wi in range(len(windows(int(t["n_frames"]), a.K))):
-                ss = per.get((ti, wi), [])
-                if len(ss) < a.min_clean:
-                    st["empty_windows"] += 1; continue
-                x = torch.from_numpy(np.stack(ss)).to(dev).float().div_(255)[:, :, 10:-10].unsqueeze(0)
-                with torch.autocast("cuda", dtype=torch.float16, enabled=(dev == "cuda")):
-                    embs.append(og.embed(gait, x)[0].float().cpu().numpy())
-                n_clean += len(ss)
-            if not embs:
-                continue
-            st["embedded"] += 1; st["clean"] += n_clean
-            ids.append(t["id"]); vecs.append(np.mean(embs, 0).reshape(-1).tolist())
-            pays.append({"track_row": t["id"], "chunk_id": t["chunk_id"], "camera": t["camera"], "start_s": t["start_s"],
-                         "end_s": t["end_s"], "gait_n": n_clean, **json.loads(t["attrs_json"] or "{}")})
-        if len(ids) >= 256 and not a.no_upsert:
-            vector_db.upsert("person_gait", ids, vecs, pays); ids, vecs, pays = [], [], []
-        done += 1
-        if done % 10 == 0 or not q:
-            el = time.time() - t0
-            print(f"{done}/{len(chunks)} chunks | {st['tracks']} tracks, {st['embedded']} embedded | {st['crops'] / el:.0f} crops/s | "
-                  f"{el:.0f}s elapsed, ETA {(len(chunks) - done) * el / done / 60:.0f} min", flush=True)
-    if ids and not a.no_upsert:
-        vector_db.upsert("person_gait", ids, vecs, pays)
-    print(f"done. tracks {st['tracks']}, with gait vector {st['embedded']} ({100 * st['embedded'] / max(st['tracks'], 1):.1f}%), "
-          f"mean clean frames/vector {st['clean'] / max(st['embedded'], 1):.0f}, windows rejected {st['empty_windows']}, {time.time() - t0:.0f}s", flush=True)
+    print(f"Processing {len(tracks)} person tracks on device '{dev}' using 2D Skeleton ST-GCN...")
+
+    ids, vecs, payloads = [], [], []
+    count_indexed = 0
+    t0 = time.time()
+
+    for t in tqdm(tracks, desc="Pose-Gait Indexing"):
+        tid = t["id"]
+        fps = float(t["fps"]) if t["fps"] else 25.0
+        images: List[np.ndarray] = []
+
+        # Option A: Read directly from saved crops_dir (already extracted during track detection)
+        crops_dir = Path(t["crops_dir"]) if t.get("crops_dir") else None
+        if crops_dir and crops_dir.exists():
+            files = sorted(crops_dir.glob("*.jpg")) + sorted(crops_dir.glob("*.png"))
+            for f in files:
+                im = cv2.imread(str(f))
+                if im is not None and im.shape[0] >= 30 and im.shape[1] >= 12:
+                    images.append(im)
+
+        # Option B: Fallback to reading from video chunk if crops_dir is missing
+        if len(images) < 5 and t.get("vpath") and Path(t["vpath"]).exists() and t.get("path_json"):
+            try:
+                pj = json.loads(t["path_json"])
+                crops_dict = read_crops(t["vpath"], [pj], K=3, fmt="cxcywh")
+                if crops_dict and 0 in crops_dict:
+                    images = crops_dict[0]
+            except Exception:
+                pass
+
+        if len(images) < 5:
+            # Need minimum frames for gait cycle evaluation
+            continue
+
+        emb, bio_metrics = encode_pose_gait(images, device=dev, fps=fps)
+        if emb is None:
+            continue
+
+        attrs = json.loads(t.get("attrs_json") or "{}")
+        attrs.update(bio_metrics)
+
+        # Update SQLite with extracted biomechanical markers (cadence, symmetry, etc.)
+        db.execute(
+            "UPDATE tracks SET attrs_json=? WHERE id=?",
+            (json.dumps(attrs), tid),
+        )
+
+        p = {
+            "track_row": tid,
+            "chunk_id": t["chunk_id"],
+            "camera": t["camera"],
+            "start_s": t["start_s"],
+            "end_s": t["end_s"],
+            "motion": attrs.get("motion", "walking"),
+            **bio_metrics,
+        }
+
+        ids.append(tid)
+        vecs.append(emb.tolist())
+        payloads.append(p)
+
+        if len(ids) >= args.batch_size:
+            vector_db.upsert("person_gait", ids, vecs, payloads)
+            vector_db.upsert("person_pose_gait", ids, vecs, payloads)
+            count_indexed += len(ids)
+            ids, vecs, payloads = [], [], []
+
+    if ids:
+        vector_db.upsert("person_gait", ids, vecs, payloads)
+        vector_db.upsert("person_pose_gait", ids, vecs, payloads)
+        count_indexed += len(ids)
+
+    db.commit()
+    db.close()
+
+    elapsed = time.time() - t0
+    rate = count_indexed / max(0.1, elapsed)
+    print(f"Successfully indexed {count_indexed}/{len(tracks)} tracks into 'person_gait' in {elapsed:.1f}s ({rate:.1f} tracks/s).")
 
 
 if __name__ == "__main__":
