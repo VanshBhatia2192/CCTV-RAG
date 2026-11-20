@@ -125,6 +125,22 @@ def extract_color(attrs: Dict, caption: Optional[str] = None) -> Optional[str]:
 _EMB_CACHE: Dict[str, np.ndarray] = {}
 
 
+_VEHICLE_MODEL = None
+
+
+def _load_vehicle_model():
+    global _VEHICLE_MODEL
+    if _VEHICLE_MODEL is None:
+        from src.person import t2p
+        from src.common.clip import DEV
+        ckpt = "models/finetuned/vehicle/clip_vehicle.pt"
+        if Path(ckpt).exists():
+            m, tok = t2p.load(ckpt, DEV)
+            m.eval()
+            _VEHICLE_MODEL = (m, tok, DEV)
+    return _VEHICLE_MODEL
+
+
 def get_track_crop_embedding(crops_dir: str) -> Optional[np.ndarray]:
     """Compute normalized CLIP embedding from crop images with in-memory caching."""
     if not crops_dir:
@@ -143,15 +159,14 @@ def get_track_crop_embedding(crops_dir: str) -> Optional[np.ndarray]:
     mid_file = str(files[len(files) // 2])
 
     try:
-        from src.person import t2p
         from PIL import Image
         import torch, torch.nn.functional as F
-        ckpt = "models/finetuned/vehicle/clip_vehicle.pt"
-        if Path(ckpt).exists():
-            m, _ = t2p.load(ckpt, "cpu")
-            m.eval()
+        vmod = _load_vehicle_model()
+        if vmod is not None:
+            m, _, dev = vmod
+            from src.person import t2p
             with torch.no_grad():
-                im = t2p.prep(Image.open(mid_file)).unsqueeze(0)
+                im = t2p.prep(Image.open(mid_file)).unsqueeze(0).to(dev)
                 vec = F.normalize(t2p.img_feat(m, im).float(), dim=-1)[0].cpu().numpy()
         else:
             from src.common import clip as cutil
