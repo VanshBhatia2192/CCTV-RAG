@@ -1188,14 +1188,17 @@ async function executeSearch() {
   const t0 = performance.now();
   try {
     let data;
+    const datasetFilter = $("#dataset-filter").value;
     if (currentKind === "ask") {
       const useLlm = $("#llm-toggle").checked;
       const rerank = $("#rerank-toggle").checked;
-      const res = await fetch(`/api/ask?q=${encodeURIComponent(query)}&n=24&use_llm=${useLlm}&rerank=${rerank}`);
+      let url = `/api/ask?q=${encodeURIComponent(query)}&n=24&use_llm=${useLlm}&rerank=${rerank}`;
+      if (datasetFilter) url += `&dataset=${encodeURIComponent(datasetFilter)}`;
+      if (camFilter) url += `&camera=${encodeURIComponent(camFilter)}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
       data = await res.json();
     } else {
-      const datasetFilter = $("#dataset-filter").value;
       let url = `/api/search?kind=${currentKind}&q=${encodeURIComponent(query)}&k=24`;
       if (datasetFilter) url += `&dataset=${encodeURIComponent(datasetFilter)}`;
       if (camFilter) url += `&camera=${encodeURIComponent(camFilter)}`;

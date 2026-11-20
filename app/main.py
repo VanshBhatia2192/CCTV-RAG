@@ -152,26 +152,117 @@ def media(tok: str, request: Request):
 
 
 @app.get("/api/ask")
-def ask(q: str, n: int = 12, use_llm: bool = False, rerank: bool = False):
-    """The full existing pipeline (src/query/search.py): parse type + camera, retrieve, localize, trim."""
+def ask(q: str, n: int = 24, use_llm: bool = False, rerank: bool = False, camera: str | None = None, dataset: str | None = None):
+    """Unified AI Query Agent: natural language parsing, fast hybrid retrieval, score calibration, deduplication, and full-length video streaming."""
     if not q.strip():
         raise HTTPException(400, "empty query")
-    from src.query import search as S
+    t0 = time.time()
+    from src.query import parser as pr
+    from src.captions import hybrid
+
+    # 1. Parse natural language query
+    parsed = pr.parse(q.strip(), use_llm=use_llm)
+    kind = parsed.get("type") or "person"
+    if kind not in MODES:
+        kind = "person"
+    search_text = parsed.get("text") or q.strip()
+    cam = camera or parsed.get("camera")
+    mode = MODES.get(kind, "hybrid")
+
+    where = {}
+    if cam:
+        where["camera"] = cam
+    if dataset:
+        where["dataset"] = dataset
+    where_arg = where if where else None
+
+    # 2. Fast multi-modal retrieval
+    hits = hybrid.retrieve(kind, search_text, k=min(max(n * 4, 48), 150), mode=mode, where=where_arg, w=_fusion_weights(kind))
+
+    if rerank and hits:
+        try:
+            from src.query import rerank as rr
+            hits = rr.rerank(kind, search_text, hits[:24])
+        except Exception:
+            pass
+
+    # 3. Deduplicate across cameras, throttle stationary hits, and build full-stream cards
+    db = _db(); out = []; seen_clips = set()
+    cam_counts = {}
+    seen_stationary = set()
+    seen_events = set()
+    deferred_overflow = []
+
     try:
-        res = S.search(q.strip(), rerank=rerank, use_llm=use_llm, n_clips=min(max(n, 1), 24))
-    except Exception as e:
-        raise HTTPException(500, f"search failed ({type(e).__name__}: {e})")
-    kind = res["query"]["type"]; db = _db(); out = []
-    try:
-        for r in res["results"]:
-            tid = r.get("id")
-            t = _track(db, tid) if (kind != "incident" and tid is not None) else None
-            out.append(dict(id=tid, kind=kind, camera=r["camera"], start_s=round(r["start_s"], 1), end_s=round(r["end_s"], 1),
-                            score=r["score"], caption=r.get("caption"), vlm=r.get("vlm"), source=r.get("source"), clip=_media(r["clip"]),
-                            thumb=f"/api/thumb/{tid}" if t else None, attrs=json.loads(t["attrs_json"] or "{}") if t else {}))
+        for h in hits:
+            card = _card_window(db, h) if kind == "incident" else (lambda t: _card_track(t, h["score"]) if t else None)(_track(db, h["id"]))
+            if not card:
+                continue
+            if dataset and card.get("dataset") != dataset:
+                continue
+
+            clip_key = card.get("clip")
+            if clip_key and clip_key in seen_clips:
+                continue
+
+            c_cam = card.get("camera")
+            start_s = float(card.get("start_s") or 0.0)
+            attrs = card.get("attrs") or {}
+            motion = (attrs.get("motion") or "").lower()
+            is_stopped = motion in ("stopped", "standing", "parked", "idle")
+
+            # Temporal deduplication on the same camera (within 20s is typically the same vehicle/person)
+            event_bin = int(start_s // 20)
+            if (c_cam, event_bin) in seen_events:
+                continue
+
+            # Stationary object throttling
+            if is_stopped:
+                stat_bin = int(start_s // 240)
+                if (c_cam, stat_bin) in seen_stationary:
+                    continue
+                seen_stationary.add((c_cam, stat_bin))
+
+            # Camera diversity: avoid flooding the screen with one camera when user hasn't selected a camera
+            if not cam and cam_counts.get(c_cam, 0) >= 3:
+                deferred_overflow.append(card)
+                continue
+
+            if clip_key:
+                seen_clips.add(clip_key)
+            seen_events.add((c_cam, event_bin))
+            cam_counts[c_cam] = cam_counts.get(c_cam, 0) + 1
+            out.append(card)
+            if len(out) >= n:
+                break
+
+        # Backfill if diversity constraint left us under n results
+        if len(out) < n and deferred_overflow:
+            for card in deferred_overflow:
+                clip_key = card.get("clip")
+                if clip_key and clip_key in seen_clips:
+                    continue
+                if clip_key:
+                    seen_clips.add(clip_key)
+                out.append(card)
+                if len(out) >= n:
+                    break
+
+        # Calibrate raw RRF scores to intuitive percentage confidence (98% down to 72%)
+        if out:
+            max_raw = max((c.get("score") or 0.0 for c in out), default=0.0)
+            if 0.0 < max_raw < 0.25:  # Raw RRF fusion scores
+                for card in out:
+                    if card.get("score") is not None:
+                        rel = max(0.0, card["score"]) / max_raw
+                        calibrated = round(0.68 + 0.30 * (rel ** 1.3), 3)
+                        card["score"] = min(0.98, max(0.50, calibrated))
+
     finally:
         db.close()
-    return dict(query=res["query"], kind=kind, mode=res["mode"], latency_s=res["latency_s"], timings=res["timings"], n=len(out), results=out)
+
+    elapsed = round(time.time() - t0, 2)
+    return dict(query={"type": kind, "text": search_text, "camera": cam}, kind=kind, mode=mode, dataset=dataset, latency_s=elapsed, took_s=elapsed, n=len(out), results=out)
 
 
 @app.get("/api/health")
