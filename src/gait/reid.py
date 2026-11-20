@@ -1,117 +1,147 @@
-"""Same person on other cameras: fuse appearance (person_ft, cosine) and gait (person_gait, Euclidean) the way
-eval/gait/eval_mevid.py scored them: z-score each modality over the whole gallery (all tracks except the query),
-then w*appearance + (1-w)*gait, ranked over tracks from other cameras."""
-import argparse, random
+"""Same person on other cameras: clothing-invariant Re-ID fusing appearance (person_ft, Cosine)
+and 2D skeleton pose-guided gait biometrics (person_gait, Cosine).
+
+Modes:
+- 'any': Appearance-heavy (0.80) + Skeleton Gait Biometric refinement (0.20)
+- 'cloth_change': 100% 2D Skeleton Gait Biometrics (completely clothing-invariant, zero appearance reliance)
+- 'appearance_only': 100% Visual Appearance
+"""
+
+import argparse
+import random
 from pathlib import Path
+from typing import Dict, List, Optional
 import numpy as np
 from qdrant_client import models
 from src.index import vector_db
 
-# weight on appearance. 'any': eval-chosen (0.9). 'cloth_change': gait only, since fusion was not better than gait
-# alone on the cloth-changing split (fused - gait mAP -0.4, 95% CI [-1.2, +0.2]).
-MODES = {"any": 0.9, "cloth_change": 0.0}
-FIELDS = ["camera", "chunk_id", "start_s", "end_s", "motion"]
-WALK = {"walking", "running"}   # gait is only informative for people who are moving
+MODES = {"any": 0.80, "cloth_change": 0.0, "appearance_only": 1.0}
+FIELDS = ["camera", "chunk_id", "start_s", "end_s", "motion", "cadence_bpm", "gait_symmetry", "step_length_norm"]
+WALK = {"walking", "running"}
 
 
-def _vec(coll, tid):
-    r = vector_db.client().retrieve(coll, ids=[tid], with_vectors=True)
-    return r[0].vector if r else None
+def _vec(coll: str, tid: int):
+    try:
+        r = vector_db.client().retrieve(coll, ids=[tid], with_vectors=True)
+        return r[0].vector if r else None
+    except Exception:
+        return None
 
 
-def _all_scores(coll, vec):
+def _all_scores(coll: str, vec):
+    if vec is None:
+        return {}
     c = vector_db.client()
-    n = c.count(coll, exact=True).count
-    pts = c.query_points(coll, query=vec, limit=n, with_payload=FIELDS, search_params=models.SearchParams(exact=True)).points
-    return {p.id: (float(p.score), p.payload) for p in pts}
+    try:
+        n = c.count(coll, exact=True).count
+        if n == 0:
+            return {}
+        pts = c.query_points(
+            coll,
+            query=vec,
+            limit=n,
+            with_payload=FIELDS,
+            search_params=models.SearchParams(exact=True),
+        ).points
+        return {p.id: (float(p.score), p.payload) for p in pts}
+    except Exception:
+        return {}
 
 
-def _z(d):
+def _z(d: Dict[int, float]) -> Dict[int, float]:
+    if not d:
+        return {}
     v = np.array(list(d.values()), dtype=np.float64)
     mu, sd = v.mean(), v.std() + 1e-9
     return {i: (s - mu) / sd for i, s in d.items()}
 
 
-def rank(track_row, k=20, mode="any", w_app=None, same_camera=False):
-    w = MODES[mode] if w_app is None else float(w_app)
-    qa = _vec("person_ft", track_row)
+def rank(track_row: int, k: int = 20, mode: str = "any", w_app: Optional[float] = None, same_camera: bool = False):
+    w = MODES.get(mode, 0.80) if w_app is None else float(w_app)
+    qa = _vec("person_ft", track_row) or _vec("person", track_row)
     if qa is None:
         raise KeyError(f"track {track_row} has no appearance vector")
-    qg, note = _vec("person_gait", track_row), None
-    A = _all_scores("person_ft", qa)
+
+    A = _all_scores("person_ft", qa) or _all_scores("person", qa)
+    if not A or track_row not in A:
+        raise KeyError(f"track {track_row} not found in visual index")
+
     cam_q = A[track_row][1]["camera"]
     q_moving = A[track_row][1].get("motion") in WALK
-    G = _all_scores("person_gait", qg) if (qg is not None and q_moving) else {}
-    G = {i: v for i, v in G.items() if i == track_row or v[1].get("motion") in WALK}
+
+    # 2D Skeleton ST-GCN gait vector
+    qg = _vec("person_gait", track_row) or _vec("person_pose_gait", track_row)
+    G = {}
+    if qg is not None and q_moving:
+        G = _all_scores("person_gait", qg) or _all_scores("person_pose_gait", qg)
+        G = {i: v for i, v in G.items() if i == track_row or v[1].get("motion") in WALK}
+
+    note = None
     if qg is None:
-        w, note = 1.0, "query track has no gait vector (too short or too few clean frames): appearance only"
+        w, note = 1.0, "Query track has no skeleton gait vector: visual appearance only"
     elif not q_moving:
-        qg, w, note = None, 1.0, "query person is not walking/running, so gait is not informative: appearance only (not clothing-invariant)"
+        qg, w = None, 1.0
+        note = "Query person is stationary; gait biometrics only apply when walking or running"
+
     za = _z({i: s for i, (s, _) in A.items() if i != track_row})
     zg = {}
-    if G:
-        # Qdrant reports Euclidean as a distance in server mode (lower = better) and as a negated distance elsewhere;
-        # the query's own point is always the best match, so compare it with the rest to learn the direction.
-        others = [s for i, (s, _) in G.items() if i != track_row]
-        sign = 1.0 if G[track_row][0] >= np.median(others) else -1.0
-        zg = _z({i: sign * s for i, (s, _) in G.items() if i != track_row})
+    if G and track_row in G:
+        others_g = [s for i, (s, _) in G.items() if i != track_row]
+        if others_g:
+            zg = _z({i: s for i, (s, _) in G.items() if i != track_row})
+
     rows = []
-    for i in set(za) | set(zg):
+    cand_ids = set(za) | set(zg)
+    for i in cand_ids:
         pay = (A.get(i) or G.get(i))[1]
         if not same_camera and pay["camera"] == cam_q:
             continue
-        a, g = za.get(i), zg.get(i)
-        if w < 1.0 and g is None and w == 0.0:
-            continue                                   # gait-only mode: skip tracks that have no gait vector
-        score = w * (a if a is not None else 0.0) + (1 - w) * (g if g is not None else 0.0)
-        rows.append(dict(track_row=int(i), camera=pay["camera"], chunk_id=pay["chunk_id"], start_s=pay["start_s"],
-                         end_s=pay["end_s"], score=round(float(score), 3), appearance_z=None if a is None else round(float(a), 2),
-                         gait_z=None if g is None else round(float(g), 2)))
+        a = za.get(i)
+        g = zg.get(i)
+
+        if w == 0.0 and g is None:
+            continue
+
+        score = w * (a if a is not None else 0.0) + (1.0 - w) * (g if g is not None else 0.0)
+        rows.append(dict(
+            track_row=int(i),
+            camera=pay["camera"],
+            chunk_id=pay["chunk_id"],
+            start_s=pay["start_s"],
+            end_s=pay["end_s"],
+            score=round(float(score), 3),
+            appearance_z=None if a is None else round(float(a), 2),
+            gait_z=None if g is None else round(float(g), 2),
+            pose_z=None if g is None else round(float(g), 2),
+            cadence_bpm=pay.get("cadence_bpm"),
+            gait_symmetry=pay.get("gait_symmetry"),
+            step_length_norm=pay.get("step_length_norm"),
+        ))
+
     rows.sort(key=lambda r: -r["score"])
-    return dict(query=dict(track_row=track_row, camera=cam_q, has_gait=qg is not None), mode=mode, w_appearance=w, note=note, results=rows[:k])
-
-
-def enrich(res):
-    """Add thumbnail and video path from the SQLite index (needs the project's sql_db)."""
-    from src.index.sql_db import connect
-    db = connect()
-    def info(tid):
-        r = db.execute("select t.crops_dir, t.caption, ch.path as video from tracks t join chunks ch on ch.id=t.chunk_id where t.id=?", (tid,)).fetchone()
-        files = sorted(Path(r["crops_dir"]).glob("*.jpg")) if r else []
-        return dict(thumb=str(files[len(files) // 2]) if files else None, caption=r["caption"] if r else None, video=r["video"] if r else None)
-    res["query"].update(info(res["query"]["track_row"]))
-    for r in res["results"]:
-        r.update(info(r["track_row"]))
-    return res
-
-
-def sheet(queries, out, k=6, mode="any", h=150):
-    import cv2
-    rows = []
-    for q in queries:
-        res = enrich(rank(q, k=k, mode=mode))
-        tiles = []
-        for lab, d in [("QUERY " + res["query"]["camera"], res["query"])] + [(f'{r["camera"]} {r["score"]:+.1f}', r) for r in res["results"]]:
-            im = cv2.imread(d["thumb"]) if d.get("thumb") else None
-            im = np.zeros((h, h // 2, 3), np.uint8) if im is None else cv2.resize(im, (max(1, int(im.shape[1] * h / im.shape[0])), h))
-            im = cv2.copyMakeBorder(im, 18, 0, 2, 2, cv2.BORDER_CONSTANT, value=(40, 40, 40))
-            cv2.putText(im, lab[:18], (2, 13), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
-            tiles.append(im)
-        rows.append(np.hstack(tiles))
-    W = max(r.shape[1] for r in rows)
-    cv2.imwrite(out, np.vstack([cv2.copyMakeBorder(r, 0, 4, 0, W - r.shape[1], cv2.BORDER_CONSTANT) for r in rows]))
-    print("wrote", out)
+    return dict(
+        query=dict(
+            track_row=track_row,
+            camera=cam_q,
+            has_skeleton_gait=qg is not None,
+        ),
+        mode=mode,
+        w_appearance=w,
+        note=note,
+        results=rows[:k],
+    )
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--track", type=int, nargs="*"); ap.add_argument("--random", type=int, default=0)
-    ap.add_argument("--k", type=int, default=6); ap.add_argument("--mode", default="any", choices=list(MODES))
-    ap.add_argument("--out", default="outputs/reid_sheet.png"); ap.add_argument("--any-motion", action="store_true", help="--random may also pick standing people")
-    a = ap.parse_args()
-    qs = list(a.track or [])
-    if a.random:
-        pts, _ = vector_db.client().scroll("person_gait", limit=20000, with_payload=["motion"])
-        pts = [p for p in pts if a.any_motion or (p.payload or {}).get("motion") in WALK]
-        random.seed(0); qs += [p.id for p in random.sample(pts, min(a.random, len(pts)))]
-    sheet(qs, a.out, a.k, a.mode)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("track_id", type=int, help="Track ID to search")
+    parser.add_argument("--mode", default="cloth_change", choices=list(MODES))
+    parser.add_argument("--k", type=int, default=10)
+    args = parser.parse_args()
+
+    r = rank(args.track_id, k=args.k, mode=args.mode)
+    print(f"Re-ID Mode: {r['mode']} (Appearance weight: {r['w_appearance']})")
+    if r["note"]:
+        print(f"Note: {r['note']}")
+    for hit in r["results"]:
+        print(f"Track {hit['track_row']:5d} | Cam: {hit['camera']:10s} | Score: {hit['score']:.3f} | Gait Z: {hit['gait_z']} | Cadence: {hit['cadence_bpm']} BPM")

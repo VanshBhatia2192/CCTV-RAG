@@ -34,6 +34,7 @@ yolov8*.pt
 
 # Data & Video Storage
 data/
+demo_showcase/uploads/
 *.mp4
 *.avi
 *.mkv

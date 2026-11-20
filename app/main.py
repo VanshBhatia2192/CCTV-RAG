@@ -2,7 +2,8 @@
 import hashlib, json, re, threading, time
 from pathlib import Path
 import numpy as np
-from fastapi import FastAPI, HTTPException, Request
+import uuid
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
 import os
@@ -252,12 +253,63 @@ def reid_api(tid: int, mode: str = "any", k: int = 12, full_body: bool = True, u
         for r in rows[:k]:
             t = _track(db, r["track_row"])
             if t:
-                c = _card_track(t, r["score"]); c.update(appearance_z=r["appearance_z"], gait_z=r["gait_z"]); cards.append(c)
+                c = _card_track(t, r["score"])
+                c.update(
+                    appearance_z=r.get("appearance_z"),
+                    gait_z=r.get("gait_z"),
+                    pose_z=r.get("pose_z"),
+                    cadence_bpm=r.get("cadence_bpm"),
+                    gait_symmetry=r.get("gait_symmetry"),
+                )
+                cards.append(c)
         q = _track(db, tid)
         query = _card_track(q) if q else None
     finally:
         db.close()
     return dict(query=query, mode=mode, w_appearance=res["w_appearance"], note=res["note"], full_body_filter=full_body, results=cards)
+
+
+MAIN_JOBS: dict = {}
+
+
+def _run_main_gait_job(job_id: str, dest_path: Path, uploads_dir: Path):
+    from demo_showcase.video_tracker import process_video_and_detect_gait_alerts
+    def update_prog(pct: int, msg: str):
+        if job_id in MAIN_JOBS:
+            MAIN_JOBS[job_id]["progress"] = pct
+            MAIN_JOBS[job_id]["message"] = msg
+    try:
+        report = process_video_and_detect_gait_alerts(
+            str(dest_path),
+            output_dir=uploads_dir,
+            progress_callback=update_prog,
+        )
+        MAIN_JOBS[job_id] = {"status": "completed", "progress": 100, "message": "Done", "report": report}
+    except Exception as e:
+        MAIN_JOBS[job_id] = {"status": "error", "progress": 0, "message": str(e), "report": None}
+
+
+@app.post("/api/upload_video")
+async def upload_video_api(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    """Upload any video file, track people, extract 2D skeleton gait, and alert on re-appearance."""
+    import shutil
+    uploads_dir = Path("data/uploads")
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    dest_path = uploads_dir / file.filename
+    with open(dest_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    job_id = str(uuid.uuid4())
+    MAIN_JOBS[job_id] = {"status": "processing", "progress": 5, "message": f"Processing {file.filename}...", "report": None}
+    background_tasks.add_task(_run_main_gait_job, job_id, dest_path, uploads_dir)
+    return {"job_id": job_id, "status": "processing"}
+
+
+@app.get("/api/upload_status/{job_id}")
+def get_main_upload_status(job_id: str):
+    if job_id not in MAIN_JOBS:
+        raise HTTPException(404, "Job not found")
+    return MAIN_JOBS[job_id]
 
 
 @app.get("/")

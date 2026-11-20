@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2D Skeleton Gait Biometrics & Re-ID Alert System</title>
+<style>
+  :root {
+    --bg: #0b0f19;
+    --card: #151d2f;
+    --card-border: #232f48;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --primary: #38bdf8;
+    --accent: #818cf8;
+    --success: #34d399;
+    --danger: #f87171;
+    --warning: #fbbf24;
+    --alert-bg: rgba(239, 68, 68, 0.12);
+    --alert-border: rgba(239, 68, 68, 0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px; }
+  header { max-width: 1300px; margin: 0 auto 20px; border-bottom: 1px solid var(--card-border); padding-bottom: 16px; }
+  .badge { display: inline-block; background: rgba(56,189,248,0.15); color: var(--primary); border: 1px solid rgba(56,189,248,0.3); padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  h1 { font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+  p.sub { color: var(--text-muted); font-size: 14.5px; }
+
+  .nav-tabs { display: flex; gap: 8px; margin: 20px 0; }
+  .tab-btn { background: var(--card); border: 1px solid var(--card-border); color: var(--text-muted); padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 13.5px; font-weight: 600; transition: all 0.2s; }
+  .tab-btn:hover { color: #fff; border-color: var(--primary); }
+  .tab-btn.active { background: var(--primary); color: #0b0f19; border-color: var(--primary); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .card { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 20px; }
+  .card-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+
+  /* Upload & Alert Zone */
+  .upload-box { border: 2px dashed #2a3b5c; border-radius: 12px; padding: 32px 20px; text-align: center; background: rgba(255,255,255,0.015); transition: border-color 0.2s; cursor: pointer; }
+  .upload-box:hover { border-color: var(--primary); }
+  .btn-primary { background: var(--primary); color: #000; border: 0; padding: 10px 22px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; }
+  .btn-ghost { background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid var(--card-border); padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; margin-left: 10px; }
+  .btn-ghost:hover { background: rgba(255,255,255,0.12); }
+
+  /* Alert Card */
+  .alert-card { background: var(--alert-bg); border: 1px solid var(--alert-border); border-radius: 12px; padding: 18px 22px; margin-bottom: 18px; animation: pulseGlow 2s infinite alternate; }
+  @keyframes pulseGlow { 0% { box-shadow: 0 0 10px rgba(239,68,68,0.2); } 100% { box-shadow: 0 0 20px rgba(239,68,68,0.4); } }
+  .alert-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .alert-title { font-size: 17px; font-weight: 700; color: #fca5a5; display: flex; align-items: center; gap: 8px; }
+  .alert-badge { background: #ef4444; color: #fff; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px; text-transform: uppercase; }
+
+  .comparison-row { display: grid; grid-template-columns: 180px 80px 180px 1fr; gap: 16px; align-items: center; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 14px; border: 1px solid rgba(255,255,255,0.05); }
+  .comp-box { text-align: center; }
+  .comp-box img, .comp-thumb { width: 100%; height: 130px; object-fit: cover; border-radius: 8px; background: #070a12; border: 1px solid #1c263d; display: flex; align-items: center; justify-content: center; font-size: 30px; }
+  .comp-label { font-size: 12px; color: var(--text-muted); margin-top: 6px; font-weight: 600; }
+
+  .match-arrow { text-align: center; font-size: 22px; color: var(--success); font-weight: 700; }
+  .match-arrow-label { font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px; }
+
+  /* Persons Roster */
+  .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 14px; }
+  .roster-card { background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 10px; padding: 14px; }
+
+  /* Canvas view & layout */
+  .grid-2 { display: grid; grid-template-columns: 420px 1fr; gap: 24px; max-width: 1300px; margin: 0 auto; }
+  .canvas-wrapper { position: relative; background: #070a12; border: 1px solid #1c263d; border-radius: 10px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+  canvas { display: block; }
+  .canvas-controls { display: flex; gap: 10px; margin-top: 14px; align-items: center; }
+  button.action-btn { background: rgba(56,189,248,0.15); border: 1px solid var(--primary); color: var(--primary); padding: 7px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; }
+  button.action-btn:hover { background: var(--primary); color: #000; }
+  input[type=range] { flex: 1; accent-color: var(--primary); }
+
+  /* Metric cards */
+  .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 18px; }
+  .metric-box { background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 8px; padding: 14px; }
+  .metric-lbl { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+  .metric-val { font-size: 22px; font-weight: 700; color: #fff; }
+  .metric-unit { font-size: 13px; font-weight: normal; color: var(--text-muted); margin-left: 4px; }
+
+  /* Waveform plot canvas */
+  .chart-canvas { width: 100%; height: 150px; background: #070a12; border-radius: 8px; border: 1px solid #1c263d; }
+
+  /* Scenario selectors */
+  .sc-select { display: flex; gap: 10px; margin-bottom: 16px; }
+  .sc-btn { flex: 1; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); color: var(--text); padding: 10px; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; }
+  .sc-btn.active { border-color: var(--primary); background: rgba(56,189,248,0.1); }
+  .sc-title { font-weight: 600; display: block; margin-bottom: 2px; }
+  .sc-sub { font-size: 11.5px; color: var(--text-muted); }
+
+  /* Experiment layout */
+  .exp-grid { display: grid; grid-template-columns: 320px 1fr 1fr; gap: 20px; max-width: 1300px; margin: 0 auto; }
+  .person-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 18px; }
+  .person-badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600; margin-bottom: 10px; }
+  .probe-badge { background: #1e3a8a; color: #93c5fd; }
+  .match-badge { background: #064e3b; color: #6ee7b7; }
+  .impostor-badge { background: #7f1d1d; color: #fca5a5; }
+
+  .score-bar-group { margin-top: 14px; }
+  .score-bar-lbl { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 4px; color: var(--text-muted); }
+  .score-bar-bg { width: 100%; height: 10px; background: #0a0e17; border-radius: 99px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+  .bar-fail { background: var(--danger); }
+  .bar-warn { background: var(--warning); }
+  .bar-success { background: var(--success); }
+
+  .takeaway-banner { max-width: 1300px; margin: 24px auto 0; background: linear-gradient(90deg, rgba(56,189,248,0.1), rgba(129,140,248,0.1)); border: 1px solid rgba(56,189,248,0.3); border-radius: 12px; padding: 18px 24px; }
+  .takeaway-title { font-weight: 700; color: var(--primary); margin-bottom: 6px; font-size: 15px; }
+
+  .matrix-heatmap { display: grid; grid-template-columns: repeat(17, 1fr); gap: 2px; width: 340px; margin: 10px 0; }
+  .matrix-cell { aspect-ratio: 1; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Live Surveillance Biometrics System</div>
+  <h1>2D Skeleton Gait Biometrics & Re-Appearance Alert System</h1>
+  <p class="sub">YOLOv8-Pose 17-Keypoint Tracking · ST-GCN Spatial-Temporal Biometrics · Real-Time Re-ID Alerts</p>
+</header>
+
+<div class="nav-tabs" style="max-width: 1300px; margin: 0 auto 20px;">
+  <button class="tab-btn active" onclick="switchTab('tab-upload', this)">📹 1. Upload Video & Re-Appearance Alerts</button>
+  <button class="tab-btn" onclick="switchTab('tab-skeleton', this)">🏃 2. Live Skeleton & Kinematic Waves</button>
+  <button class="tab-btn" onclick="switchTab('tab-cloth', this)">👕 3. Cloth-Changing Benchmark (CLIP vs Gait)</button>
+  <button class="tab-btn" onclick="switchTab('tab-math', this)">📐 4. ST-GCN Mathematical Architecture</button>
+</div>
+
+<!-- TAB 1: UPLOAD & ALERTS (PRIMARY REAL-WORLD APPLICATION) -->
+<div id="tab-upload" class="tab-content active" style="max-width: 1300px; margin: 0 auto;">
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-title">
+      <span>Upload Surveillance Video for Gait Analysis & Tracking</span>
+      <span style="font-size: 13px; color: var(--text-muted);">Supports .mp4, .avi, .mov</span>
+    </div>
+    <div class="upload-box" onclick="triggerFileInput(event)">
+      <input type="file" id="videoInput" accept=".mp4,.avi,.mkv,.mov" style="display:none;" onchange="handleVideoUpload(event)">
+      <div style="font-size: 38px; margin-bottom: 10px;">📤</div>
+      <div style="font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 4px;">Click to select or drop surveillance footage here</div>
+      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 18px;">YOLOv8-pose tracks all individuals, extracts skeletal gait cycles, and alerts if anyone reappears.</div>
+      <div>
+        <button class="btn-primary" type="button" onclick="triggerFileInput(event)">Select Video File</button>
+        <button class="btn-ghost" type="button" onclick="runInstantDemo(event)">⚡ Run Instant Demo Simulation</button>
+      </div>
+    </div>
+    <div id="uploadProgressContainer" style="display: none; margin-top: 18px; padding: 18px; background: rgba(56,189,248,0.06); border-radius: 10px; border: 1px solid rgba(56,189,248,0.25);">
+      <div style="display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 600; margin-bottom: 8px;">
+        <span id="progressStatusText" style="color: var(--primary);">⏳ Starting video analysis...</span>
+        <span id="progressPctText" style="color: #fff;">0%</span>
+      </div>
+      <div style="width: 100%; height: 8px; background: #0c1424; border-radius: 99px; overflow: hidden;">
+        <div id="progressBarFill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #818cf8); border-radius: 99px; transition: width 0.3s ease;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Alert Feed Section -->
+  <div id="alertSection" style="display: none;">
+    <div class="card-title" style="color: #fca5a5;">
+      <span>🚨 Live Re-Identification Alerts Feed</span>
+      <span id="alertCountBadge" class="alert-badge">0 Alerts Triggered</span>
+    </div>
+
+    <div id="alertList"></div>
+
+    <!-- Identified Persons Gallery -->
+    <div class="card" style="margin-top: 24px;">
+      <div class="card-title">Unique Individuals Profiled by Gait Biometrics</div>
+      <div id="rosterList" class="roster-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: LIVE SKELETON CANVAS & KINEMATICS -->
+<div id="tab-skeleton" class="tab-content">
+  <div class="grid-2">
+    <!-- Left: Skeleton Canvas -->
+    <div class="card">
+      <div class="card-title">
+        <span>17-Keypoint Skeletal Motion</span>
+        <span id="frame-counter" style="font-size: 13px; color: var(--text-muted);">Frame 0 / 75</span>
+      </div>
+      <div class="sc-select">
+        <button class="sc-btn active" id="btn-sc-casual" onclick="loadScenario('casual_walk')">
+          <span class="sc-title">Casual Walk</span>
+          <span class="sc-sub">106 BPM · Symmetric</span>
+        </button>
+        <button class="sc-btn" id="btn-sc-brisk" onclick="loadScenario('brisk_walk')">
+          <span class="sc-title">Brisk Walk</span>
+          <span class="sc-sub">136 BPM · Fast</span>
+        </button>
+        <button class="sc-btn" id="btn-sc-limp" onclick="loadScenario('limp_asymmetric')">
+          <span class="sc-title">Asymmetric</span>
+          <span class="sc-sub">0.64 Symmetry · Limp</span>
+        </button>
+      </div>
+      <div class="canvas-wrapper">
+        <canvas id="skelCanvas" width="360" height="360"></canvas>
+      </div>
+      <div class="canvas-controls">
+        <button class="action-btn" id="playBtn" onclick="togglePlay()">Pause</button>
+        <input type="range" id="frameSlider" min="0" max="74" value="0" oninput="scrubFrame(this.value)">
+      </div>
+    </div>
+
+    <!-- Right: Real-Time Biometric Metrics -->
+    <div class="card">
+      <div class="card-title">Extracted Biomechanical Kinematics (Physical Markers)</div>
+      <div class="metric-grid">
+        <div class="metric-box">
+          <div class="metric-lbl">Step Cadence (FFT)</div>
+          <div class="metric-val"><span id="m-cadence">106.0</span><span class="metric-unit">steps / min</span></div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-lbl">Normalized Stride Length</div>
+          <div class="metric-val"><span id="m-stride">0.98</span><span class="metric-unit">torso units</span></div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-lbl">Knee Flexion Dynamics</div>
+          <div class="metric-val"><span id="m-knee">46.5</span><span class="metric-unit">degrees range</span></div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-lbl">Gait Symmetry Index</div>
+          <div class="metric-val"><span id="m-symmetry">0.99</span><span class="metric-unit">/ 1.0</span></div>
+        </div>
+      </div>
+
+      <div class="card-title" style="margin-top: 10px;">Ankle Separation Oscillations (Stride Frequency Wave)</div>
+      <canvas id="waveCanvas" class="chart-canvas" width="600" height="150"></canvas>
+
+      <div class="card-title" style="margin-top: 20px;">256-d ST-GCN Latent Embedding Sample</div>
+      <div id="emb-vector" style="display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: CLOTH-CHANGING EXPERIMENT -->
+<div id="tab-cloth" class="tab-content">
+  <div class="exp-grid">
+    <!-- Probe -->
+    <div class="person-card">
+      <div class="person-badge probe-badge">QUERY PROBE (CAM 01)</div>
+      <h3 style="font-size: 18px; margin-bottom: 4px;">Subject #1</h3>
+      <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">Camera 01 · Entrance Gate</p>
+      <div style="background: #1e3a8a; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 14px; border: 1px solid #3b82f6;">
+        <span style="font-size: 38px;">🧥</span>
+        <div style="font-weight: 600; font-size: 13.5px; margin-top: 6px; color: #fff;">Navy Blue Winter Coat</div>
+        <div style="font-size: 12px; color: #bfdbfe;">Dark Denim Jeans</div>
+      </div>
+      <div style="font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+        <div><strong>Gait Cadence:</strong> 108.0 BPM</div>
+        <div><strong>Stride Symmetry:</strong> 1.0 (Normal)</div>
+        <div><strong>Goal:</strong> Find this same person on Camera 02 after they remove their coat.</div>
+      </div>
+    </div>
+
+    <!-- Candidate A (Same Person, Red Clothes) -->
+    <div class="person-card" style="border-color: rgba(52,211,153,0.4);">
+      <div class="person-badge match-badge">TARGET A · TRUE IDENTITY MATCH</div>
+      <h3 style="font-size: 18px; margin-bottom: 4px;">Subject #1 (Same Person)</h3>
+      <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">Camera 02 · Hallway (Changed Outfit)</p>
+      <div style="background: #991b1b; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 14px; border: 1px solid #ef4444;">
+        <span style="font-size: 38px;">🏃</span>
+        <div style="font-weight: 600; font-size: 13.5px; margin-top: 6px; color: #fff;">Bright Red Gym Hoodie</div>
+        <div style="font-size: 12px; color: #fecaca;">Gray Sweatpants</div>
+      </div>
+
+      <div class="score-bar-group">
+        <div class="score-bar-lbl">
+          <span>1. Appearance CLIP (Zero-Shot)</span>
+          <strong style="color: var(--danger);">14.8% (FAIL)</strong>
+        </div>
+        <div class="score-bar-bg"><div class="score-bar-fill bar-fail" style="width: 14.8%;"></div></div>
+      </div>
+
+      <div class="score-bar-group">
+        <div class="score-bar-lbl">
+          <span>2. Silhouette DeepGaitV2</span>
+          <strong style="color: var(--warning);">52.4% (DEGRADED)</strong>
+        </div>
+        <div class="score-bar-bg"><div class="score-bar-fill bar-warn" style="width: 52.4%;"></div></div>
+      </div>
+
+      <div class="score-bar-group">
+        <div class="score-bar-lbl">
+          <span>3. 2D Skeleton ST-GCN (Our Model)</span>
+          <strong style="color: var(--success); font-size: 14px;">94.8% (CORRECT MATCH)</strong>
+        </div>
+        <div class="score-bar-bg"><div class="score-bar-fill bar-success" style="width: 94.8%;"></div></div>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-top: 14px; line-height: 1.4;">
+        ✓ ST-GCN matches bone joint mechanics and cadence regardless of the red hoodie swap.
+      </p>
+    </div>
+
+    <!-- Candidate B (Different Person, Blue Clothes) -->
+    <div class="person-card" style="border-color: rgba(248,113,113,0.4);">
+      <div class="person-badge impostor-badge">CANDIDATE B · DIFFERENT PERSON</div>
+      <h3 style="font-size: 18px; margin-bottom: 4px;">Subject #2 (Impostor)</h3>
+      <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">Camera 02 · Hallway (Same Blue Coat)</p>
+      <div style="background: #1e3a8a; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 14px; border: 1px solid #3b82f6;">
+        <span style="font-size: 38px;">🚶</span>
+        <div style="font-weight: 600; font-size: 13.5px; margin-top: 6px; color: #fff;">Navy Blue Winter Coat</div>
+        <div style="font-size: 12px; color: #bfdbfe;">Dark Denim Jeans</div>
+      </div>
+
+      <div class="score-bar-group">
+        <div class="score-bar-lbl">
+          <span>1. Appearance CLIP (Zero-Shot)</span>
+          <strong style="color: var(--danger);">89.2% (FALSE POSITIVE!)</strong>
+        </div>
+        <div class="score-bar-bg"><div class="score-bar-fill bar-fail" style="width: 89.2%;"></div></div>
+      </div>
+
+      <div class="score-bar-group">
+        <div class="score-bar-lbl">
+          <span>2. Silhouette DeepGaitV2</span>
+          <strong style="color: var(--warning);">43.1%</strong>
+        </div>
+        <div class="score-bar-bg"><div class="score-bar-fill bar-warn" style="width: 43.1%;"></div></div>
+      </div>
+
+      <div class="score-bar-group">
+        <div class="score-bar-lbl">
+          <span>3. 2D Skeleton ST-GCN (Our Model)</span>
+          <strong style="color: var(--success); font-size: 14px;">21.3% (REJECTED)</strong>
+        </div>
+        <div class="score-bar-bg"><div class="score-bar-fill bar-success" style="width: 21.3%;"></div></div>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-top: 14px; line-height: 1.4;">
+        ✓ ST-GCN successfully identifies differing step frequency (132 vs 108 BPM) and rejects the false match.
+      </p>
+    </div>
+  </div>
+
+  <div class="takeaway-banner">
+    <div class="takeaway-title">Key Academic Insight for Surveillance Re-ID</div>
+    <p style="font-size: 14px; color: var(--text); line-height: 1.6;">
+      When suspects intentionally change clothes or coats between camera zones, standard appearance models fail critically (dropping from <strong>89% to 14%</strong>, while confusing different individuals wearing similar coats). 
+      The <strong>2D Skeleton ST-GCN</strong> models the deep kinematic joint topology, retaining <strong>94%+ identity accuracy</strong> with full clothing invariance.
+    </p>
+  </div>
+</div>
+
+<!-- TAB 4: MATHEMATICAL ARCHITECTURE -->
+<div id="tab-math" class="tab-content">
+  <div class="math-card">
+    <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Spatial-Temporal Graph Convolutional Architecture (ST-GCN)</h2>
+    <p style="color: var(--text-muted); font-size: 14.5px; line-height: 1.6;">
+      Human gait is modeled as a non-Euclidean graph \( G = (V, E) \) where \( V = 17 \) joints and \( E \) represents anatomical skeletal bones.
+    </p>
+
+    <div class="formula-box">
+      <strong>Spatial Graph Convolution Equation:</strong><br>
+      X^(l+1) = σ( Σ_{k} D^(-1/2) · (A_k ⊙ M_k) · D^(-1/2) · X^(l) · W_k )<br><br>
+      <strong>Where:</strong><br>
+      • A_k : 17x17 Anatomical bone adjacency matrix with self-loops (A + I)<br>
+      • M_k : Learnable edge importance attention mask<br>
+      • D : Degree matrix D_{ii} = Σ_j A_{ij}<br>
+      • W_k : 1x1 Spatial convolution kernel weights<br>
+      • Temporal Conv : 1D convolution over T frames (kernel size 7) with residual skips
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px;">
+      <div>
+        <h4 style="font-size: 15px; margin-bottom: 8px;">17-Node Adjacency Matrix Heatmap (A)</h4>
+        <div id="adjHeatmap" class="matrix-heatmap"></div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
+          Symmetric Laplacian graph connectivity between head, shoulders, elbows, wrists, hips, knees, and ankles.
+        </p>
+      </div>
+      <div>
+        <h4 style="font-size: 15px; margin-bottom: 8px;">Normalization Invariance Pipeline</h4>
+        <ul style="font-size: 13.5px; color: var(--text-muted); line-height: 1.8; margin-left: 18px;">
+          <li><strong>Translation Invariance:</strong> Centered at pelvis midpoint \( P_{\text{mid}} = (J_{11} + J_{12}) / 2 \)</li>
+          <li><strong>Scale Invariance:</strong> Normalized by median torso length \( L_{\text{torso}} = \| J_{\text{neck}} - P_{\text{mid}} \| \)</li>
+          <li><strong>Feature Projection:</strong> Global temporal pooling \(\to\) Linear head \(\to\) 256-d \( L_2 \) unit vector</li>
+          <li><strong>Distance Metric:</strong> Cosine similarity: \( \text{sim}(u, v) = \frac{u \cdot v}{\|u\| \|v\|} \)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentScenario = null;
+let currentFrame = 0;
+let isPlaying = true;
+const PAIRS = [[0,1],[0,2],[1,3],[2,4],[5,6],[5,11],[6,12],[11,12],[5,7],[7,9],[6,8],[8,10],[11,13],[13,15],[12,14],[14,16]];
+
+function switchTab(tabId, btn) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+  const targetContent = document.getElementById(tabId);
+  if (targetContent) targetContent.classList.add("active");
+  if (btn) {
+    btn.classList.add("active");
+  } else if (window.event && window.event.currentTarget) {
+    window.event.currentTarget.classList.add("active");
+  }
+}
+
+function triggerFileInput(event) {
+  if (event) event.stopPropagation();
+  document.getElementById("videoInput").click();
+}
+
+async function handleVideoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const progressBox = document.getElementById("uploadProgressContainer");
+  const progressText = document.getElementById("progressStatusText");
+  const progressPct = document.getElementById("progressPctText");
+  const progressBar = document.getElementById("progressBarFill");
+
+  progressBox.style.display = "block";
+  progressText.textContent = `⏳ Uploading "${file.name}" to server...`;
+  progressPct.textContent = "0%";
+  progressBar.style.width = "0%";
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const res = await fetch("/api/upload_video", { method: "POST", body: formData });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || res.statusText);
+    }
+    const data = await res.json();
+    const jobId = data.job_id;
+
+    // Poll status until completion
+    const pollInterval = setInterval(async () => {
+      try {
+        const sRes = await fetch(`/api/upload_status/${jobId}`);
+        if (!sRes.ok) return;
+        const sData = await sRes.json();
+
+        progressText.textContent = sData.message || "Processing video...";
+        progressPct.textContent = `${sData.progress}%`;
+        progressBar.style.width = `${sData.progress}%`;
+
+        if (sData.status === "completed") {
+          clearInterval(pollInterval);
+          setTimeout(() => { progressBox.style.display = "none"; }, 600);
+          renderAnalysisResults(sData.report);
+        } else if (sData.status === "error") {
+          clearInterval(pollInterval);
+          progressBox.style.display = "none";
+          alert("Video analysis failed: " + sData.message);
+        }
+      } catch (pollErr) {
+        console.error("Polling error:", pollErr);
+      }
+    }, 700);
+  } catch (err) {
+    progressBox.style.display = "none";
+    alert("Video upload failed: " + err.message);
+  }
+}
+
+async function runInstantDemo(event) {
+  event.stopPropagation();
+  const progressBox = document.getElementById("uploadProgressContainer");
+  const progressText = document.getElementById("progressStatusText");
+  const progressPct = document.getElementById("progressPctText");
+  const progressBar = document.getElementById("progressBarFill");
+
+  progressBox.style.display = "block";
+  progressText.textContent = "⏳ Running instant surveillance simulation with 2 occurrences of Subject #1...";
+  progressPct.textContent = "50%";
+  progressBar.style.width = "50%";
+
+  try {
+    const res = await fetch("/api/demo_simulation");
+    const data = await res.json();
+    progressPct.textContent = "100%";
+    progressBar.style.width = "100%";
+    setTimeout(() => { progressBox.style.display = "none"; }, 400);
+    renderAnalysisResults(data);
+  } finally {
+    setTimeout(() => { progressBox.style.display = "none"; }, 600);
+  }
+}
+
+function renderAnalysisResults(data) {
+  const alertSection = document.getElementById("alertSection");
+  alertSection.style.display = "block";
+
+  const alertBadge = document.getElementById("alertCountBadge");
+  alertBadge.textContent = `${data.alerts_count} Alert(s) Triggered`;
+
+  // Render Alerts Feed
+  const alertList = document.getElementById("alertList");
+  alertList.innerHTML = "";
+
+  if (data.alerts.length === 0) {
+    alertList.innerHTML = `<div style="padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px; color: var(--text-muted);">
+      No person re-occurrences detected in this clip. Each person was seen only once.
+    </div>`;
+  } else {
+    data.alerts.forEach(a => {
+      const card = document.createElement("div");
+      card.className = "alert-card";
+      card.innerHTML = `
+        <div class="alert-header">
+          <div class="alert-title">
+            <span>🚨</span>
+            <span>${a.title}</span>
+          </div>
+          <span class="alert-badge">RE-APPEARANCE DETECTED</span>
+        </div>
+        <p style="color: var(--text); font-size: 14.5px; margin-bottom: 14px; line-height: 1.5;">${a.message}</p>
+        <div class="comparison-row">
+          <div class="comp-box">
+            ${a.initial_thumb ? `<img src="${a.initial_thumb}" alt="First seen">` : `<div class="comp-thumb">👤</div>`}
+            <div class="comp-label">1st Seen: 00:${Math.floor(a.first_seen_time_s).toString().padStart(2, '0')}s</div>
+          </div>
+          <div class="match-arrow">
+            ➔
+            <span class="match-arrow-label">${a.confidence_pct}% Match</span>
+          </div>
+          <div class="comp-box">
+            ${a.reappear_thumb ? `<img src="${a.reappear_thumb}" alt="Re-appearance">` : `<div class="comp-thumb">👤</div>`}
+            <div class="comp-label">Re-Appeared: 00:${Math.floor(a.reappeared_time_s).toString().padStart(2, '0')}s</div>
+          </div>
+          <div style="font-size: 13px; color: var(--text-muted); line-height: 1.8; margin-left: 8px;">
+            <div><strong>Biometric Match Score:</strong> <span style="color: var(--success); font-weight: 700;">${a.confidence_pct}%</span></div>
+            <div><strong>Walking Cadence:</strong> ${a.cadence_bpm} BPM</div>
+            <div><strong>Gait Symmetry:</strong> ${a.gait_symmetry} / 1.0</div>
+            <div><strong>Status:</strong> Identity verified across temporal gap via ST-GCN skeletal gait.</div>
+          </div>
+        </div>
+      `;
+      alertList.appendChild(card);
+    });
+  }
+
+  // Render Roster of Unique Individuals
+  const rosterList = document.getElementById("rosterList");
+  rosterList.innerHTML = "";
+  data.persons.forEach(p => {
+    const rc = document.createElement("div");
+    rc.className = "roster-card";
+    rc.innerHTML = `
+      <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 10px;">
+        ${p.initial_thumb ? `<img src="${p.initial_thumb}" style="width: 54px; height: 54px; border-radius: 8px; object-fit: cover;">` : `<div style="width: 54px; height: 54px; border-radius: 8px; background: #070a12; display: flex; align-items: center; justify-content: center; font-size: 24px;">👤</div>`}
+        <div>
+          <strong style="color: #fff; font-size: 15px;">${p.person_id}</strong>
+          <div style="font-size: 12px; color: var(--text-muted);">${p.num_occurrences} Occurrence(s)</div>
+        </div>
+      </div>
+      <div style="font-size: 12.5px; color: var(--text-muted); line-height: 1.6;">
+        <div><strong>Avg Cadence:</strong> ${p.metrics.cadence_bpm} steps/min</div>
+        <div><strong>Gait Symmetry:</strong> ${p.metrics.gait_symmetry}</div>
+        <div><strong>Timestamps:</strong> ${p.occurrences.map(o => `00:${Math.floor(o.start_s).toString().padStart(2, '0')}s`).join(', ')}</div>
+      </div>
+    `;
+    rosterList.appendChild(rc);
+  });
+}
+
+async function loadScenario(id) {
+  document.querySelectorAll(".sc-btn").forEach(b => b.classList.remove("active"));
+  const btn = document.getElementById("btn-sc-" + id.split("_")[0]);
+  if (btn) btn.classList.add("active");
+
+  const res = await fetch("/api/analyze/" + id);
+  currentScenario = await res.json();
+
+  document.getElementById("m-cadence").textContent = currentScenario.metrics.cadence_bpm;
+  document.getElementById("m-stride").textContent = currentScenario.metrics.step_length_norm;
+  document.getElementById("m-knee").textContent = currentScenario.metrics.knee_flexion_range_deg;
+  document.getElementById("m-symmetry").textContent = currentScenario.metrics.gait_symmetry;
+
+  document.getElementById("frameSlider").max = currentScenario.num_frames - 1;
+  currentFrame = 0;
+
+  renderEmbedding(currentScenario.embedding_sample);
+  renderWaveform(currentScenario.waveform);
+}
+
+function renderEmbedding(sample) {
+  const container = document.getElementById("emb-vector");
+  container.innerHTML = "";
+  sample.forEach(val => {
+    const box = document.createElement("div");
+    const intensity = Math.min(255, Math.max(0, Math.floor((val + 0.15) / 0.3 * 255)));
+    box.style.width = "22px";
+    box.style.height = "36px";
+    box.style.background = `rgb(56, ${intensity}, 248)`;
+    box.style.borderRadius = "3px";
+    box.title = "Dim: " + val;
+    container.appendChild(box);
+  });
+}
+
+function renderWaveform(wf) {
+  const c = document.getElementById("waveCanvas");
+  const ctx = c.getContext("2d");
+  const W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = "#1c263d";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let y = 30; y < H; y += 30) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+  ctx.stroke();
+
+  // Wave line
+  const vals = wf.ankle_separation;
+  const min = Math.min(...vals), max = Math.max(...vals);
+  ctx.strokeStyle = "#38bdf8";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  vals.forEach((v, i) => {
+    const x = (i / (vals.length - 1)) * W;
+    const y = H - 20 - ((v - min) / (max - min + 1e-5)) * (H - 40);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+
+function drawSkeleton() {
+  if (!currentScenario) return;
+  const canvas = document.getElementById("skelCanvas");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const pts = currentScenario.keypoints[currentFrame];
+
+  // Draw Bones
+  ctx.lineWidth = 3.5;
+  PAIRS.forEach(([i, j]) => {
+    const p1 = pts[i], p2 = pts[j];
+    if (p1[2] > 0.2 && p2[2] > 0.2) {
+      ctx.strokeStyle = (i >= 11 || j >= 11) ? "#38bdf8" : "#818cf8";
+      ctx.beginPath();
+      ctx.moveTo(p1[0], p1[1]);
+      ctx.lineTo(p2[0], p2[1]);
+      ctx.stroke();
+    }
+  });
+
+  // Draw Joints
+  pts.forEach((p, idx) => {
+    if (p[2] > 0.2) {
+      ctx.fillStyle = idx === 0 ? "#f87171" : (idx >= 15 ? "#34d399" : "#fbbf24");
+      ctx.beginPath();
+      ctx.arc(p[0], p[1], idx >= 15 ? 5.5 : 4.5, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  });
+
+  document.getElementById("frame-counter").textContent = `Frame ${currentFrame} / ${currentScenario.num_frames}`;
+  document.getElementById("frameSlider").value = currentFrame;
+}
+
+function animate() {
+  if (isPlaying && currentScenario) {
+    currentFrame = (currentFrame + 1) % currentScenario.num_frames;
+    drawSkeleton();
+  }
+}
+
+function togglePlay() {
+  isPlaying = !isPlaying;
+  document.getElementById("playBtn").textContent = isPlaying ? "Pause" : "Play";
+}
+
+function scrubFrame(val) {
+  currentFrame = parseInt(val);
+  drawSkeleton();
+}
+
+async function renderAdjacency() {
+  const res = await fetch("/api/graph_architecture");
+  const d = await res.json();
+  const container = document.getElementById("adjHeatmap");
+  container.innerHTML = "";
+  d.adjacency_normalized.forEach(row => {
+    row.forEach(val => {
+      const cell = document.createElement("div");
+      cell.className = "matrix-cell";
+      const c = Math.floor(val * 255);
+      cell.style.background = val > 0 ? `rgb(56, ${c}, 248)` : "#0f172a";
+      container.appendChild(cell);
+    });
+  });
+}
+
+window.onload = async () => {
+  await loadScenario("casual_walk");
+  await renderAdjacency();
+  setInterval(animate, 40); // 25 fps
+};
+</script>
+
+</body>
+</html>

@@ -50,8 +50,12 @@ def attr_bonus(kind, text, p, unit=0.01):
     return b * unit
 
 def _visual(kind, text, k, where, ids=None):
-    vec = iembed.embed_text([text])[0] if kind == "incident" else clip.embed_text([text])[0]
-    return [(h.id, h.score, h.payload) for h in vector_db.search(kind, vec.tolist(), k, where, ids)]
+    try:
+        vec = iembed.embed_text([text])[0] if kind == "incident" else clip.embed_text([text])[0]
+        return [(h.id, h.score, h.payload) for h in vector_db.search(kind, vec.tolist(), k, where, ids)]
+    except Exception as e:
+        print(f"[hybrid] visual search for {kind} unavailable ({type(e).__name__}: {e})", flush=True)
+        return []
 
 def _visual_ft(text, k, where, ids=None):
     from pathlib import Path
