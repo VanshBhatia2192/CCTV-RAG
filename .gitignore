@@ -58,11 +58,14 @@ third_party/
 # Logs & Job Outputs
 outputs/logs/
 outputs/clips/
+outputs/web_videos/
 outputs/jobs/
 outputs/gait_prep/
 outputs/gait_ft/
 outputs/gait_ft_smoke/
 outputs/gait_prep_smoke/
+outputs/reports/vehicle_*.json
+outputs/reports/*.smoke
 outputs/*.log
 outputs/*.txt
 outputs/*.png
