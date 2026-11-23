@@ -10,4 +10,6 @@ dst = sqlite3.connect(os.environ["DEMO_DB"]); src.backup(dst); dst.close()
 print("local index copy:", os.environ["DEMO_DB"])
 PY
 pgrep -f bin/qdrant > /dev/null || { (cd data/indexes/qdrant && QDRANT__SERVICE__HTTP_PORT=6335 QDRANT__SERVICE__GRPC_PORT=6336 QDRANT__TELEMETRY_DISABLED=true nohup ../../../bin/qdrant > ../../../outputs/logs/qdrant_mgmt.log 2>&1 &); sleep 12; }
+pkill -f 'uvicorn app.main:app' 2>/dev/null || true
+sleep 1
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000
