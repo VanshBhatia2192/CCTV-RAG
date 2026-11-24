@@ -574,7 +574,15 @@ def reid_vehicle_api(tid: int, k: int = 12, use_st: bool = True, use_color: bool
 
 
 @app.get("/api/reid/{tid}")
-def reid_api(tid: int, mode: str = "any", k: int = 12, full_body: bool = True, use_st: bool = True, use_color: bool = True):
+def reid_api(
+    tid: int,
+    mode: str = "any",
+    k: int = 12,
+    full_body: bool = True,
+    use_st: bool = True,
+    use_color: bool = True,
+    use_kinematics: bool = True,
+):
     db = _db()
     try:
         t = _track(db, tid)
@@ -590,7 +598,13 @@ def reid_api(tid: int, mode: str = "any", k: int = 12, full_body: bool = True, u
         raise HTTPException(400, f"mode must be one of {list(reid.MODES)}")
     k = min(max(k, 1), 40)
     try:
-        res = reid.rank(tid, k=k * 4 if full_body else k, mode=mode)
+        res = reid.rank(
+            tid,
+            k=k * 4 if full_body else k,
+            mode=mode,
+            use_st=use_st,
+            use_kinematics=use_kinematics,
+        )
     except KeyError as e:
         raise HTTPException(404, str(e))
     db = _db()
@@ -600,12 +614,30 @@ def reid_api(tid: int, mode: str = "any", k: int = 12, full_body: bool = True, u
         for r in rows[:k]:
             t = _track(db, r["track_row"])
             if t:
-                c = _card_track(t, r["score"]); c.update(appearance_z=r["appearance_z"], gait_z=r["gait_z"]); cards.append(c)
+                c = _card_track(t, r["score"])
+                c.update(
+                    appearance_z=r.get("appearance_z"),
+                    gait_z=r.get("gait_z"),
+                    st_score=r.get("st_score"),
+                    kinematic_score=r.get("kinematic_score"),
+                    transition=r.get("transition"),
+                    delta_cadence=r.get("delta_cadence"),
+                )
+                cards.append(c)
         q = _track(db, tid)
         query = _card_track(q) if q else None
     finally:
         db.close()
-    return dict(query=query, mode=mode, w_appearance=res["w_appearance"], note=res["note"], full_body_filter=full_body, results=cards)
+    return dict(
+        query=query,
+        mode=mode,
+        w_appearance=res["w_appearance"],
+        note=res["note"],
+        full_body_filter=full_body,
+        use_st=use_st,
+        use_kinematics=use_kinematics,
+        results=cards,
+    )
 
 
 @app.get("/")
