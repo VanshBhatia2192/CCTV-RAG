@@ -435,13 +435,6 @@ button { cursor: pointer; }
 
 <main class="wrap">
   <section class="console" aria-label="Search">
-    <div class="modes" role="tablist" aria-label="Search mode">
-      <button class="mode" role="tab" data-mode="ask" aria-selected="true"><svg class="icon"><use href="#i-spark"/></svg>Ask AI</button>
-      <button class="mode" role="tab" data-mode="person" aria-selected="false"><svg class="icon"><use href="#i-person"/></svg>People</button>
-      <button class="mode" role="tab" data-mode="vehicle" aria-selected="false"><svg class="icon"><use href="#i-car"/></svg>Vehicles</button>
-      <button class="mode" role="tab" data-mode="incident" aria-selected="false"><svg class="icon"><use href="#i-bolt"/></svg>Events</button>
-    </div>
-
     <form class="searchbar" id="search-form" role="search">
       <svg class="icon"><use href="#i-search"/></svg>
       <label for="q" class="sr-only">Search query</label>
@@ -484,6 +477,7 @@ button { cursor: pointer; }
   <div class="dr-head">
     <h3 id="dr-title"><svg class="icon"><use href="#i-cam"/></svg><span id="dr-title-text">Clip</span></h3>
     <div class="nav-btns">
+      <button class="btn sm ghost" id="dr-back" hidden><svg class="icon"><use href="#i-left"/></svg><span>Back</span></button>
       <button class="btn icon-only ghost" id="dr-prev" title="Previous result (←)" aria-label="Previous result"><svg class="icon"><use href="#i-left"/></svg></button>
       <button class="btn icon-only ghost" id="dr-next" title="Next result (→)" aria-label="Next result"><svg class="icon"><use href="#i-right"/></svg></button>
       <button class="btn icon-only ghost" id="dr-close" title="Close (Esc)" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button>
@@ -569,7 +563,7 @@ const KIND_ICON = { person: "person", vehicle: "car", incident: "bolt", any: "sp
 /* ============================================================ state */
 const S = {
   mode: "ask", results: [], data: null, sort: store.get("sort", "score"), view: store.get("view", "grid"),
-  sel: -1, pinned: store.get("evidence", []), ctrl: null, lastQuery: "", gpu: false,
+  sel: -1, nav: [], reidCache: new Map(), tick: 0, pinned: store.get("evidence", []), ctrl: null, lastQuery: "", gpu: false,
   cams: [], camsByDs: {}, reid: { mode: "any", fullBody: true, st: true, color: true, ctrl: null },
 };
 const EXAMPLES = {
@@ -618,12 +612,6 @@ function renderExamples() {
     [h("span", {}, "Try"), ...groups.flatMap(g => g.slice(1)).slice(0, 6).map(q =>
       h("button", { class: "chip-btn", type: "button", onclick: () => run(q) }, q))]));
 }
-$$(".mode").forEach(b => b.addEventListener("click", () => {
-  if (b.dataset.mode === S.mode) return;
-  const q = $("#q").value.trim();
-  setMode(b.dataset.mode, false);
-  if (q) run(q);
-}));
 
 function renderHome() {
   const area = $("#results-area");
@@ -674,10 +662,13 @@ async function run(q) {
   const ds = $("#f-dataset").value, cam = $("#f-camera").value;
   const verify = S.mode === "ask" && $("#s-verify").checked;
   const area = $("#results-area");
+  const elapsed = h("span", { class: "mono" }, "0 s");
   area.replaceChildren(h("div", { class: "resbar" }, h("h2", {}, "Searching…"),
-    h("span", { class: "sub" }, verify ? "planning, retrieving and verifying with the VLM — this can take ~10 s" : "planning and retrieving")), skeletons());
+    h("span", { class: "sub" }, verify ? "planning, retrieving and checking the top results with the VLM (often 20–45 s) · " : "planning and retrieving · ", elapsed)), skeletons());
   $("#understood-wrap").hidden = true;
   const t0 = performance.now();
+  clearInterval(S.tick);
+  S.tick = setInterval(() => { if (ctrl !== S.ctrl) return clearInterval(S.tick); elapsed.textContent = `${Math.round((performance.now() - t0) / 1000)} s`; }, 1000);
   let url;
   if (S.mode === "ask") {
     url = `/api/ask?q=${encodeURIComponent(q)}&n=36&use_llm=${$("#s-llm").checked}&rerank=${verify}&strict=${$("#s-strict").checked}`;
@@ -688,6 +679,7 @@ async function run(q) {
   if (cam) url += `&camera=${encodeURIComponent(cam)}`;
   try {
     const data = await api(url, ctrl.signal);
+    clearInterval(S.tick);
     if (ctrl !== S.ctrl) return;
     data._ms = Math.round(performance.now() - t0);
     S.data = data; S.results = (data.results || []).map((r, i) => ({ ...r, _i: i }));
@@ -695,6 +687,7 @@ async function run(q) {
     renderUnderstood(); renderResults(); renderExamples();
   } catch (err) {
     if (err.name === "AbortError") return;
+    clearInterval(S.tick);
     area.replaceChildren(h("div", { class: "alert error", style: "margin-top:24px" }, icon("alert"),
       h("div", { style: "flex:1" }, h("b", {}, "Search failed. "), err.message),
       h("button", { class: "btn sm", onclick: () => run(q) }, icon("retry"), "Retry")));
@@ -918,12 +911,19 @@ function timeline() {
 /* ============================================================ inspector */
 const drawer = $("#drawer"), scrim = $("#scrim");
 let player = null, current = null, lastFocus = null;
+function releasePlayer() {
+  if (!player) return;
+  try { player.pause(); player.removeAttribute("src"); player.load(); } catch (e) {}
+  player = null;
+}
 function openDrawer(d) { lastFocus = document.activeElement; d.classList.add("open"); scrim.classList.add("open"); document.body.style.overflow = "hidden"; }
 function closeDrawers() {
   for (const d of [drawer, $("#evdrawer")]) d.classList.remove("open");
   scrim.classList.remove("open"); document.body.style.overflow = "";
-  if (player) { player.pause(); }
+  releasePlayer();
+  cancelAnimationFrame(overlayRAF);
   if (S.reid.ctrl) S.reid.ctrl.abort();
+  S.nav = [];
   $$(".card.selected").forEach(c => c.classList.remove("selected"));
   if (lastFocus && lastFocus.focus) lastFocus.focus();
 }
@@ -931,25 +931,50 @@ scrim.addEventListener("click", closeDrawers);
 $("#dr-close").addEventListener("click", closeDrawers);
 $("#dr-prev").addEventListener("click", () => step(-1));
 $("#dr-next").addEventListener("click", () => step(1));
+$("#dr-back").addEventListener("click", () => back());
+const KIND_NAME = { person: "Person", vehicle: "Vehicle", incident: "Event" };
 function step(d) {
-  if (!S.order || S.sel < 0) return;
-  const n = S.order.length, i = (S.sel + d + n) % n;
-  openInspector(i);
+  const top = S.nav[S.nav.length - 1];
+  if (!top || top.list.length < 2) return;
+  top.i = (top.i + d + top.list.length) % top.list.length; top.tab = "details";
+  showNav();
 }
-
+function back() {
+  if (S.nav.length < 2) return;
+  S.nav.pop(); showNav();
+}
+/* open result i of the main list (search results / timeline), or a standalone item (evidence) */
 function openInspector(i, item) {
-  const r = item || (S.order || S.results)[i];
+  S.nav = item ? [{ list: [item], i: 0, label: "evidence" }] : [{ list: S.order || S.results, i, label: "results" }];
+  showNav();
+}
+/* open match i of a re-ID / vehicle-tracking list found for the result currently shown */
+function openNested(list, i, label) {
+  const top = S.nav[S.nav.length - 1];
+  if (top && top.list === list) { top.i = i; top.tab = "details"; }
+  else { if (top) top.tab = label === "matches" ? "reid" : "vreid"; S.nav.push({ list, i, label, tab: "details" }); }
+  showNav();
+}
+function showNav() {
+  const top = S.nav[S.nav.length - 1];
+  const r = top && top.list[top.i];
   if (!r) return;
-  S.sel = item ? -1 : i; current = r;
+  current = r; S.sel = S.nav.length === 1 && top.label === "results" ? top.i : -1;
   $$(".card.selected").forEach(c => c.classList.remove("selected"));
-  $("#dr-title-text").textContent = `${{ person: "Person", vehicle: "Vehicle", incident: "Event" }[r.kind] || "Clip"} #${r.id} · ${r.camera}`;
-  $("#dr-prev").disabled = $("#dr-next").disabled = item != null || !(S.order && S.order.length > 1);
-  renderInspector(r);
+  const n = top.list.length;
+  $("#dr-title-text").textContent = `${KIND_NAME[r.kind] || "Clip"} #${r.id} · ${r.camera}` + (n > 1 ? `  ·  ${top.i + 1} of ${n} ${top.label}` : "");
+  $("#dr-prev").disabled = $("#dr-next").disabled = n < 2;
+  const parent = S.nav[S.nav.length - 2];
+  const bk = $("#dr-back");
+  bk.hidden = !parent;
+  if (parent) { const pr = parent.list[parent.i]; bk.title = `Back to ${KIND_NAME[pr.kind] || "clip"} #${pr.id} and its matches (Backspace)`; $("span", bk).textContent = `${KIND_NAME[pr.kind] || "Clip"} #${pr.id}`; }
+  renderInspector(r, top.tab || "details");
   if (!drawer.classList.contains("open")) openDrawer(drawer);
 }
 
-function renderInspector(r) {
+function renderInspector(r, tab = "details") {
   const body = $("#dr-body");
+  releasePlayer();
   const v = h("video", { controls: true, playsInline: true, preload: "metadata" });
   player = v;
   const msg = h("div", { class: "player-msg", hidden: true });
@@ -987,7 +1012,7 @@ function renderInspector(r) {
     h("div", { class: "player" }, h("div", { class: "stage" }, v, canvas), msg, h("div", { class: "player-bar" }, speeds, loop, boxSw, h("span", { style: "flex:1" }), jump,
       h("span", { class: "sub mono", style: "font-size:11.5px;color:var(--text-3)" }, r.is_full_video ? "full recording" : "clip"))),
     tabs, panel);
-  showTab("details");
+  showTab(tabDefs.some(([k]) => k === tab) ? tab : "details");
   body.scrollTop = 0;
 }
 
@@ -1086,12 +1111,14 @@ function reidPanel(r) {
     status.textContent = "matching appearance and gait across cameras…"; note.hidden = true;
     grid.replaceChildren(...Array.from({ length: 8 }, () => h("div", { class: "skel" }, h("div", { class: "m shimmer" }), h("div", { class: "l shimmer" }))));
     try {
-      const d = await api(`/api/reid/${r.id}?mode=${st.mode}&k=16&full_body=${st.fullBody}`, ctrl.signal);
+      const key = `p|${r.id}|${st.mode}|${st.fullBody}`;
+      const d = S.reidCache.get(key) || await api(`/api/reid/${r.id}?mode=${st.mode}&k=16&full_body=${st.fullBody}`, ctrl.signal);
       if (ctrl !== st.ctrl) return;
+      S.reidCache.set(key, d);
       const a = Math.round((d.w_appearance ?? 1) * 100);
       status.textContent = `${d.results.length} match${d.results.length === 1 ? "" : "es"} · ${a}% appearance / ${100 - a}% gait`;
       if (d.note) { note.hidden = false; note.textContent = d.note; }
-      grid.replaceChildren(...(d.results.length ? d.results.map(x => card(x, -1, { reid: true, compact: true, onOpen: y => openInspector(-1, y) }))
+      grid.replaceChildren(...(d.results.length ? d.results.map((x, i) => card(x, -1, { reid: true, compact: true, onOpen: () => openNested(d.results, i, "matches") }))
         : [h("div", { class: "tl-note" }, "No matches on other cameras.")]));
     } catch (e) {
       if (e.name === "AbortError") return;
@@ -1116,10 +1143,13 @@ function vreidPanel(r) {
     status.textContent = "matching across cameras and road topology…";
     grid.replaceChildren(...Array.from({ length: 8 }, () => h("div", { class: "skel" }, h("div", { class: "m shimmer" }), h("div", { class: "l shimmer" }))));
     try {
-      const d = await api(`/api/reid/vehicle/${r.id}?use_st=${st.st}&use_color=${st.color}&k=12`, ctrl.signal);
+      const key = `v|${r.id}|${st.st}|${st.color}`;
+      const d = S.reidCache.get(key) || await api(`/api/reid/vehicle/${r.id}?use_st=${st.st}&use_color=${st.color}&k=12`, ctrl.signal);
       if (ctrl !== st.ctrl) return;
+      S.reidCache.set(key, d);
+      d.results.forEach(x => { x.kind = x.kind || "vehicle"; });
       status.textContent = `${d.results.length} match${d.results.length === 1 ? "" : "es"}`;
-      grid.replaceChildren(...(d.results.length ? d.results.map(x => card({ ...x, kind: x.kind || "vehicle" }, -1, { vreid: true, compact: true, onOpen: y => openInspector(-1, y) }))
+      grid.replaceChildren(...(d.results.length ? d.results.map((x, i) => card(x, -1, { vreid: true, compact: true, onOpen: () => openNested(d.results, i, "vehicle matches") }))
         : [h("div", { class: "tl-note" }, "No matching vehicle on other cameras within the constraints.")]));
     } catch (e) {
       if (e.name === "AbortError") return;
@@ -1183,9 +1213,10 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape" && (drawer.classList.contains("open") || $("#evdrawer").classList.contains("open"))) { closeDrawers(); return; }
   if (typing) return;
   if (e.key === "/" || (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey))) { e.preventDefault(); $("#q").focus(); $("#q").select(); }
-  if (drawer.classList.contains("open") && S.sel >= 0) {
+  if (drawer.classList.contains("open") && S.nav.length) {
     if (e.key === "ArrowRight") step(1);
     if (e.key === "ArrowLeft") step(-1);
+    if (e.key === "Backspace" && S.nav.length > 1) { e.preventDefault(); back(); }
   }
 });
 
@@ -1227,7 +1258,7 @@ evCount();
 setMode("ask");
 initStatus();
 const params = new URLSearchParams(location.search);
-if (params.get("q")) { if (params.get("mode") && EXAMPLES[params.get("mode")]) setMode(params.get("mode")); run(params.get("q")); }
+if (params.get("q")) run(params.get("q"));
 </script>
 </body>
 </html>

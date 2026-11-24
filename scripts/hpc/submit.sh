@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# Submit a job script pinned to one node, then watch it for ~40 s and cancel it if PBS keeps
-# retrying (a node that rejects the job makes PBS loop thousands of times on a shared cluster).
-#   bash scripts/hpc/submit.sh scripts/hpc/sr_gpu_test.pbs            # pinned to gpu01 by default
-#   SR_HOST=gpu02 bash scripts/hpc/submit.sh scripts/hpc/sr_train.pbs
-# Note (Nov 2026): gpu02 rejected every job for new accounts ("pbs_mom: System error: No such file or
-# directory"), so gpu01 is the default until that is fixed.
+# Submit a job script, then watch it for ~40 s and cancel it if PBS keeps retrying (a node that
+# rejects the job makes PBS loop thousands of times on a shared cluster).
+#   bash scripts/hpc/submit.sh scripts/hpc/sr_gpu_test.pbs            # any node with a free GPU (default)
+#   SR_HOST=gpu02 bash scripts/hpc/submit.sh scripts/hpc/sr_train.pbs # pin to one node
+# Earlier (Nov 2026) gpu02 rejected jobs for new accounts; it accepts them now. If a node starts
+# rejecting again, the retry guard below cancels the job: pin the other node with SR_HOST.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 P=/opt/pbs/bin
 SCRIPT="$1"; shift || true
-HOST="${SR_HOST:-gpu01}"
+HOST="${SR_HOST:-any}"
 SEL=${SR_SELECT:-$(grep -E '^#PBS -l select=' "$SCRIPT" | head -1 | sed 's/^#PBS -l select=//')}   # SR_SELECT overrides, e.g. 1:ncpus=4:ngpus=1:mem=12gb
-J=$($P/qsub -l "select=${SEL}:host=${HOST}" "$@" "$SCRIPT")
+if [ "$HOST" = any ]; then PIN=""; else PIN=":host=${HOST}"; fi
+J=$($P/qsub -l "select=${SEL}${PIN}" "$@" "$SCRIPT")
 echo "submitted $J to $HOST (select=${SEL})"
 for i in $(seq 1 10); do
   sleep 4

@@ -140,6 +140,9 @@ def drop_closeups(db, rows, min_aspect=1.3):
     return keep
 
 
+RANGE_PIECE = 4 * 1024 * 1024
+
+
 def _range_response(path, request):
     size = path.stat().st_size
     hdr = request.headers.get("range")
@@ -151,6 +154,11 @@ def _range_response(path, request):
     g1, g2 = m.groups()
     start = int(g1) if g1 else max(0, size - int(g2)) if g2 else 0
     end = min(int(g2), size - 1) if g2 else size - 1
+    # Answer open-ended ranges ("bytes=N-") in pieces: the player asks for the next piece as it plays. Streaming a
+    # whole full recording over a slow tunnel held one of the browser's 6 per-host connections for minutes, and a
+    # few opened clips left none for /api/ask, so searches hung on "Searching…" until the page was reloaded.
+    if g1 and not g2:
+        end = min(end, start + RANGE_PIECE - 1)
     if start >= size or start > end:
         raise HTTPException(416, "range not satisfiable")
     chunk_len = end - start + 1
