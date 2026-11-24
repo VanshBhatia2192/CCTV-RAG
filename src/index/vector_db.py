@@ -1,22 +1,25 @@
-import os
+import os, threading
 from pathlib import Path
 from qdrant_client import QdrantClient, models
 from src.common.config import PATHS
 
-DIMS = {"vehicle": 512, "vehicle_ft": 512, "person": 512, "person_ft": 512, "incident": 512, "person_gait": 4096, "text_person": 384, "text_vehicle": 384, "text_incident": 384}
+DIMS = {"vehicle": 512, "vehicle_ft": 512, "person": 512, "person_ft": 512, "incident": 512, "person_gait": 256, "text_person": 384, "text_vehicle": 384, "text_incident": 384}
 _client = None
-EUCLID = {"person_gait"}   # OpenGait embeddings use Euclidean distance (score = distance, lower is better)
+_lock = threading.Lock()
+EUCLID = set()   # Skeleton ST-GCN and CLIP embeddings all use Cosine similarity
 
 def client():
     global _client
     if _client is None:
-        Path(PATHS["qdrant_path"]).mkdir(parents=True, exist_ok=True)
-        _client = QdrantClient(url=os.getenv("QDRANT_URL"), timeout=60.0) if os.getenv("QDRANT_URL") else QdrantClient(path=PATHS["qdrant_path"])
-        have = {c.name for c in _client.get_collections().collections}
-        for name, d in DIMS.items():
-            if name not in have:
-                _client.create_collection(name, vectors_config=models.VectorParams(
-                    size=d, distance=models.Distance.EUCLID if name in EUCLID else models.Distance.COSINE))
+        with _lock:
+            if _client is None:
+                Path(PATHS["qdrant_path"]).mkdir(parents=True, exist_ok=True)
+                _client = QdrantClient(url=os.getenv("QDRANT_URL"), timeout=60.0) if os.getenv("QDRANT_URL") else QdrantClient(path=PATHS["qdrant_path"])
+                have = {c.name for c in _client.get_collections().collections}
+                for name, d in DIMS.items():
+                    if name not in have:
+                        _client.create_collection(name, vectors_config=models.VectorParams(
+                            size=d, distance=models.Distance.EUCLID if name in EUCLID else models.Distance.COSINE))
     return _client
 
 def recreate(name):
