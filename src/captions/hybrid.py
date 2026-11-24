@@ -85,14 +85,8 @@ def query_motion(kind, text):
 
 def _motion_ids(kind, label):
     if (kind, label) not in _MOT:
-        import sqlite3
-        from pathlib import Path
-        from src.common.config import PATHS
-        db = Path(PATHS["qdrant_path"]).parent / "sqlite" / "meta.db"
-        try:
-            con = sqlite3.connect(f"file:{db.resolve()}?mode=ro&nolock=1", uri=True)
-        except Exception:
-            con = sqlite3.connect(str(db))
+        from src.index.sql_db import connect      # PATHS["sqlite"], so the demo's node-local copy (DEMO_DB) is used
+        con = connect()
         _MOT[(kind, label)] = [r[0] for r in con.execute(
             "select id from tracks where kind=? and json_extract(attrs_json,'$.motion')=? and coalesce(json_extract(attrs_json,'$.speed'),0)<=3.0", (kind, label))]
         con.close()
@@ -106,9 +100,16 @@ def rrf(lists, weights=None, k=60):
             s[i] = s.get(i, 0) + w / (k + r + 1)
     return s
 
-def retrieve(kind, text, k=50, mode="hybrid", where=None, pool=100, w=(1.0, 1.0, 1.0), boost=True):
+def retrieve(kind, text, k=50, mode="hybrid", where=None, pool=100, w=(1.0, 1.0, 1.0), boost=True, extra=(),
+             restrict=None):
+    """extra: additional ranked id lists (e.g. captions containing a required term) fused with weight 1.
+    restrict: only these ids are eligible (e.g. a time-of-day filter); applied inside every search."""
     ml = query_motion(kind, text) if boost else None
     ids = (_motion_ids(kind, ml) or None) if ml else None
+    if restrict is not None:
+        ids = [i for i in ids if i in restrict] if ids is not None else list(restrict)
+        if not ids:
+            return []
     aset = set(ids) if ids else None
     vis = []
     if mode in ("visual", "hybrid"):
@@ -123,6 +124,10 @@ def retrieve(kind, text, k=50, mode="hybrid", where=None, pool=100, w=(1.0, 1.0,
         q = T.embed([text], query=True)[0]
         lists.append([h.id for h in vector_db.search(f"text_{kind}", q.tolist(), pool, None, ids)]); ws.append(w[1])
         lists.append([i for i, _ in T.bm25_search(kind, text, pool if aset is None else 20000) if aset is None or i in aset][:pool]); ws.append(w[2])
+    for lst in extra:
+        lst = [i for i in lst if aset is None or i in aset][:pool]
+        if lst:
+            lists.append(lst); ws.append(1.0)
     fused = rrf(lists, ws)
     missing = [i for i in fused if i not in payload]
     if missing:

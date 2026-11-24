@@ -1,0 +1,64 @@
+#!/bin/bash
+# Caption v2 on one GPU.
+#   MODE=bench   caption benchmark v1 vs v2 (eval/captions/bench.py), ARGS passed through
+#   MODE=caption caption one shard: KIND=person|vehicle|window SHARD=i NSHARDS=n [LIMIT=200]
+#   BACKEND=vllm use the vLLM engine (~/envs/vllm, several times faster); default: HuggingFace generate
+#   MODE=crops   save sample re-crops to outputs/captions_v2/debug for a visual check
+#   qsub -v MODE=bench,ARGS="--n 40 --max-windows 60" scripts/hpc/captions_v2.pbs
+#   for s in 0 1 2; do qsub -v MODE=caption,KIND=person,SHARD=$s,NSHARDS=3 scripts/hpc/captions_v2.pbs; done
+#PBS -N captions_v2
+#PBS -q gpu
+#PBS -l select=1:ncpus=8:ngpus=1:mem=64gb
+#PBS -l walltime=12:00:00
+#PBS -j oe
+#PBS -k oed
+cd "$PBS_O_WORKDIR"
+mkdir -p outputs/logs
+LOG=outputs/logs/captions_v2_${MODE:-bench}${KIND:+_${KIND// /+}}${SHARD:+_$SHARD}.log
+exec >> "$LOG" 2>&1
+echo "== job $PBS_JOBID on $(hostname) at $(date) MODE=$MODE KIND=$KIND SHARD=$SHARD/$NSHARDS ARGS=$ARGS"
+source /home/soft/anaconda3/etc/profile.d/conda.sh
+if [ "${BACKEND:-hf}" = vllm ]; then      # separate env with vLLM 0.11 (torch 2.8): ~/envs/vllm
+  conda activate "$HOME/envs/vllm"; export CAPTION_BACKEND=vllm VLLM_GPU_UTIL=${VLLM_GPU_UTIL:-0.30} VLLM_WORKER_MULTIPROC_METHOD=spawn
+else
+  conda activate cctv; export LD_PRELOAD=$CONDA_PREFIX/lib/libstdc++.so.6
+fi
+export PYTHONUNBUFFERED=1 TOKENIZERS_PARALLELISM=false
+export HF_HOME=$PWD/hf_cache HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+# jobs see every GPU on the node: claim the freest GPU with an atomic per-GPU lock, so two jobs starting at the
+# same moment do not pick the same one
+sleep $((RANDOM % 7))
+CUDA_VISIBLE_DEVICES=""
+for g in $(nvidia-smi --query-gpu=index,memory.free --format=csv,noheader,nounits | sort -t, -k2 -nr | awk -F', ' -v need=${NEED_MB:-26000} '$2 > need {print $1}'); do
+  if mkdir "/tmp/gpu_claim_${g}" 2>/dev/null; then CUDA_VISIBLE_DEVICES=$g; trap 'rmdir /tmp/gpu_claim_'$g EXIT; break; fi
+done
+[ -n "$CUDA_VISIBLE_DEVICES" ] || { echo "no GPU with ${NEED_MB:-26000} MB free on $(hostname)"; exit 1; }
+export CUDA_VISIBLE_DEVICES
+nvidia-smi --query-gpu=index,name,memory.used,memory.free --format=csv
+# read-only node-local copy of the index (SQLite WAL is unreliable on the shared filesystem)
+export DEMO_DB=/tmp/meta_cap_${USER}_${PBS_JOBID}.db
+python - <<'PY'
+import os, sqlite3
+src = sqlite3.connect("file:data/indexes/sqlite/meta.db?mode=ro&immutable=1", uri=True)
+dst = sqlite3.connect(os.environ["DEMO_DB"]); src.backup(dst); dst.close()
+PY
+RUN="import os; from src.common.config import PATHS; PATHS['sqlite'] = os.environ['DEMO_DB']"
+case ${MODE:-bench} in
+  bench)   python -c "$RUN; import sys, runpy; sys.argv = ['bench'] + '''$ARGS'''.split(); runpy.run_module('eval.captions.bench', run_name='__main__')" ;;
+  caption) python -c "$RUN; import sys, runpy; sys.argv = ['v2', '--kind'] + '$KIND'.split() + [ '--shard', '${SHARD:-0}', '--nshards', '${NSHARDS:-1}', '--limit', '${LIMIT:-0}'] + (['--retry-failed'] if '${RETRY:-0}' == '1' else []); runpy.run_module('src.captions.v2', run_name='__main__')" ;;
+  crops)   python -c "$RUN
+from pathlib import Path
+from src.captions import v2
+d = Path('outputs/captions_v2/debug'); d.mkdir(parents=True, exist_ok=True)
+for kind in ('person', 'vehicle'):
+    for r in v2.rows_for(kind, 0, 997, 4):
+        for i, im in enumerate(v2.track_images(r)):
+            im.save(d / f'{kind}_{r[\"id\"]}_{i}.jpg')
+for r in v2.rows_for('window', 0, 1999, 2):
+    for i, im in enumerate(v2.window_images(r['chunk_path'], r['rel_start'], r['rel_end'])[::3]):
+        im.save(d / f'window_{r[\"id\"]}_{i}.jpg')
+print('saved', len(list(d.iterdir())))" ;;
+esac
+rm -f "$DEMO_DB"
+echo "== done $(date)"

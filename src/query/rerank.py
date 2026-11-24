@@ -15,17 +15,22 @@ def _images(kind, c):
     return ims
 
 @torch.no_grad()
-def yes_score(ims, text):
-    m, p = caption._load()
-    prompt = f'Does this match the description: "{text}"? Answer yes or no.'
+def ask_yes(ims, question):
+    """Logit margin yes - no for a yes/no question about the images (> 0 means the VLM leans yes)."""
+    from src.captions import v2
+    m, p = v2.load("cuda" if torch.cuda.is_available() else "cpu")   # one shared Qwen2.5-VL instance
+    prompt = f"{question} Answer yes or no."
     msg = [{"role": "user", "content": [{"type": "image"} for _ in ims] + [{"type": "text", "text": prompt}]}]
     t = p.apply_chat_template(msg, tokenize=False, add_generation_prompt=True)
-    inp = p(text=[t], images=ims, return_tensors="pt").to(DEV)
+    inp = p(text=[t], images=ims, return_tensors="pt").to(m.device)
     lg = m(**inp).logits[0, -1].float()
     tok = p.tokenizer
     y = max(lg[tok.encode(w)[0]] for w in ("yes", "Yes"))
     n = max(lg[tok.encode(w)[0]] for w in ("no", "No"))
     return float(y - n)
+
+def yes_score(ims, text):
+    return ask_yes(ims, f'Does this match the description: "{text}"?')
 
 def rerank(kind, text, cands):
     for c in cands:

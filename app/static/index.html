@@ -1,1456 +1,1233 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CCTV-RAG | Multi-Modal Surveillance Intelligence Platform</title>
+<title>CCTV Search</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  // theme before first paint: saved choice, else the OS preference
+  (function () {
+    let t = null;
+    try { t = localStorage.getItem("cctv.theme"); } catch (e) {}
+    if (!t) t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
 <style>
-  :root {
-    --bg-base: #0a0d14;
-    --bg-surface: #111622;
-    --bg-card: #161c2e;
-    --bg-card-hover: #1c243a;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-hover: rgba(255, 255, 255, 0.16);
-    --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
-    --accent: #38bdf8;
-    --accent-glow: rgba(56, 189, 248, 0.25);
-    --accent-dark: #0284c7;
-    --badge-bg: rgba(56, 189, 248, 0.12);
-    --badge-text: #7dd3fc;
-    --success: #10b981;
-    --success-bg: rgba(16, 185, 129, 0.12);
-    --warning: #f59e0b;
-    --warning-bg: rgba(245, 158, 11, 0.12);
-    --danger: #ef4444;
-    --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 14px;
-    --radius-xl: 18px;
-    --shadow-sm: 0 2px 4px rgba(0,0,0,0.25);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.35);
-    --shadow-lg: 0 10px 28px rgba(0,0,0,0.45);
-    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
-  }
+:root {
+  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 20px;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --nav-h: 60px;
+}
+:root[data-theme="dark"] {
+  --bg: #08090c; --bg-grad: radial-gradient(1200px 600px at 70% -10%, rgba(255,176,32,.07), transparent 60%),
+                            radial-gradient(900px 500px at -10% 10%, rgba(56,189,248,.05), transparent 60%);
+  --surface: #0f1116; --surface-2: #151821; --surface-3: #1c2030; --hover: rgba(255,255,255,.045);
+  --border: rgba(255,255,255,.075); --border-strong: rgba(255,255,255,.14);
+  --text: #eef0f4; --text-2: #a8afbd; --text-3: #6c7385;
+  --accent: #ffb020; --accent-ink: #1a1203; --accent-soft: rgba(255,176,32,.13); --accent-line: rgba(255,176,32,.45);
+  --info: #5cc8ff; --info-soft: rgba(92,200,255,.12);
+  --ok: #34d399; --ok-soft: rgba(52,211,153,.12); --ok-line: rgba(52,211,153,.35);
+  --miss: #fb7185; --miss-soft: rgba(251,113,133,.11); --miss-line: rgba(251,113,133,.35);
+  --warn: #fbbf24; --warn-soft: rgba(251,191,36,.10);
+  --media-bg: #050608; --shadow: 0 20px 60px rgba(0,0,0,.55); --shadow-sm: 0 4px 16px rgba(0,0,0,.35);
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #f4f5f8; --bg-grad: radial-gradient(1200px 600px at 70% -10%, rgba(255,160,0,.09), transparent 60%),
+                            radial-gradient(900px 500px at -10% 10%, rgba(14,165,233,.06), transparent 60%);
+  --surface: #ffffff; --surface-2: #f7f8fb; --surface-3: #eef0f5; --hover: rgba(15,23,42,.04);
+  --border: rgba(15,23,42,.09); --border-strong: rgba(15,23,42,.18);
+  --text: #10131a; --text-2: #4b5466; --text-3: #8a92a3;
+  --accent: #d97706; --accent-ink: #ffffff; --accent-soft: rgba(217,119,6,.10); --accent-line: rgba(217,119,6,.45);
+  --info: #0284c7; --info-soft: rgba(2,132,199,.09);
+  --ok: #059669; --ok-soft: rgba(5,150,105,.09); --ok-line: rgba(5,150,105,.35);
+  --miss: #e11d48; --miss-soft: rgba(225,29,72,.08); --miss-line: rgba(225,29,72,.3);
+  --warn: #b45309; --warn-soft: rgba(217,119,6,.10);
+  --media-bg: #16181d; --shadow: 0 20px 60px rgba(15,23,42,.18); --shadow-sm: 0 4px 16px rgba(15,23,42,.08);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: var(--font); background: var(--bg); background-image: var(--bg-grad); background-attachment: fixed;
+  color: var(--text); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; min-height: 100vh;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm); }
+.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.icon.lg { width: 20px; height: 20px; }
+.mono { font-family: var(--mono); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+[hidden] { display: none !important; }
 
-  [data-theme="light"] {
-    --bg-base: #f8fafc;
-    --bg-surface: #ffffff;
-    --bg-card: #ffffff;
-    --bg-card-hover: #f1f5f9;
-    --border: #e2e8f0;
-    --border-hover: #cbd5e1;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #94a3b8;
-    --accent: #0284c7;
-    --accent-glow: rgba(2, 132, 199, 0.18);
-    --accent-dark: #0369a1;
-    --badge-bg: #e0f2fe;
-    --badge-text: #0369a1;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
-    --shadow-md: 0 4px 10px rgba(0,0,0,0.07);
-    --shadow-lg: 0 10px 25px rgba(0,0,0,0.09);
-  }
+/* ------------------------------------------------------------- top bar */
+.nav {
+  position: sticky; top: 0; z-index: 40; height: var(--nav-h);
+  display: flex; align-items: center; gap: 16px; padding: 0 24px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(14px) saturate(140%);
+  border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.02em; font-size: 15px; white-space: nowrap; }
+.brand-mark {
+  width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+  background: linear-gradient(140deg, var(--accent), #ff7a18); color: #160d00; box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset, 0 6px 18px rgba(255,140,0,.25);
+}
+.brand-mark .icon { stroke-width: 2.2; }
+.brand small { display: block; font-weight: 500; font-size: 11px; color: var(--text-3); letter-spacing: 0; margin-top: -2px; }
+.nav-spacer { flex: 1; }
+.sys {
+  display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--text-2);
+  padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface);
+}
+.sys b { color: var(--text); font-weight: 600; font-family: var(--mono); font-size: 11.5px; }
+.sys .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
+.sys .dot.ready { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+.sys .sep { width: 1px; height: 14px; background: var(--border-strong); }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 34px; padding: 0 13px;
+  border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); font-weight: 600; font-size: 13px;
+  transition: background .15s, border-color .15s, transform .1s; white-space: nowrap;
+}
+.btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
+.btn:active { transform: translateY(1px); }
+.btn.icon-only { width: 34px; padding: 0; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn.primary:hover { filter: brightness(1.07); background: var(--accent); }
+.btn.ghost { background: transparent; border-color: transparent; }
+.btn.ghost:hover { background: var(--hover); }
+.btn.sm { height: 28px; padding: 0 10px; font-size: 12px; border-radius: 8px; }
+.count-badge {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--accent); color: var(--accent-ink);
+  font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; font-family: var(--mono);
+}
+.count-badge.zero { background: var(--surface-3); color: var(--text-3); }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg-base);
-    color: var(--text-primary);
-    font-family: var(--font-sans);
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    min-height: 100vh;
-  }
+/* ------------------------------------------------------------- layout */
+.wrap { max-width: 1480px; margin: 0 auto; padding: 26px 24px 80px; }
 
-  /* Navigation Bar */
-  nav {
-    background: var(--bg-surface);
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    backdrop-filter: blur(16px);
-  }
-  .nav-inner {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 12px 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-  }
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    text-decoration: none;
-    color: inherit;
-  }
-  .brand-icon {
-    width: 34px;
-    height: 34px;
-    background: linear-gradient(135deg, #0284c7, #38bdf8);
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: 800;
-    font-size: 16px;
-    box-shadow: 0 0 12px var(--accent-glow);
-  }
-  .brand-title {
-    font-size: 17px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11.5px;
-    font-weight: 600;
-    padding: 3px 9px;
-    border-radius: 999px;
-    background: var(--success-bg);
-    color: var(--success);
-    border: 1px solid rgba(16, 185, 129, 0.2);
-  }
-  .status-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--success);
-    box-shadow: 0 0 8px var(--success);
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+/* ------------------------------------------------------------- search console */
+.console {
+  background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 92%, var(--bg)));
+  border: 1px solid var(--border); border-radius: var(--r-xl); padding: 18px; box-shadow: var(--shadow-sm);
+}
+.modes { display: flex; gap: 4px; padding: 4px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; width: max-content; max-width: 100%; overflow-x: auto; }
+.mode {
+  display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 14px; border-radius: 9px; border: 0;
+  background: transparent; color: var(--text-2); font-weight: 600; font-size: 13px; white-space: nowrap; transition: all .15s;
+}
+.mode:hover { color: var(--text); }
+.mode[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm), 0 0 0 1px var(--border); }
+.mode[aria-selected="true"] .icon { color: var(--accent); }
+.searchbar {
+  margin-top: 14px; display: flex; align-items: center; gap: 10px; height: 58px; padding: 0 8px 0 18px;
+  background: var(--bg); border: 1px solid var(--border-strong); border-radius: 14px; transition: border-color .15s, box-shadow .15s;
+}
+.searchbar:focus-within { border-color: var(--accent-line); box-shadow: 0 0 0 4px var(--accent-soft); }
+.searchbar > .icon { color: var(--text-3); width: 20px; height: 20px; }
+.searchbar input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; font-size: 16.5px; font-weight: 500; letter-spacing: -.01em; }
+.searchbar input::placeholder { color: var(--text-3); font-weight: 400; }
+.kbd { font-family: var(--mono); font-size: 11px; color: var(--text-3); border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; }
+.searchbar .btn.primary { height: 42px; padding: 0 18px; border-radius: 10px; font-size: 14px; }
+.controls { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.field { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); }
+.select {
+  appearance: none; height: 32px; padding: 0 30px 0 11px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface-2);
+  font-size: 12.5px; font-weight: 500; max-width: 210px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+.select:hover { border-color: var(--border-strong); }
+.controls .grow { flex: 1; }
+.switch { display: inline-flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--text-2); font-weight: 500; user-select: none; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; pointer-events: none; }
+.switch .track { width: 32px; height: 18px; border-radius: 999px; background: var(--surface-3); border: 1px solid var(--border-strong); position: relative; transition: background .2s; flex: none; }
+.switch .track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-3); transition: transform .2s var(--ease), background .2s; }
+.switch input:checked + .track { background: var(--accent); border-color: transparent; }
+.switch input:checked + .track::after { transform: translateX(14px); background: var(--accent-ink); }
+.switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switch .hint { color: var(--text-3); font-size: 11px; }
+.examples { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.examples > span { font-size: 12px; color: var(--text-3); margin-right: 4px; }
+.chip-btn {
+  height: 28px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text-2);
+  font-size: 12.5px; font-weight: 500; transition: all .15s; white-space: nowrap;
+}
+.chip-btn:hover { color: var(--text); border-color: var(--accent-line); background: var(--accent-soft); }
 
-  .nav-stats {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    font-size: 12.5px;
-    color: var(--text-secondary);
-  }
-  .nav-stat-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .nav-stat-val {
-    font-family: var(--font-mono);
-    font-weight: 600;
-    color: var(--text-primary);
-  }
+/* ------------------------------------------------------------- understood strip */
+.understood {
+  margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 14px;
+  border-radius: var(--r-lg); border: 1px solid var(--border); background: var(--surface);
+}
+.understood .label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); margin-right: 4px; }
+.token {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.token .k { font-weight: 500; color: var(--text-3); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.token.soft { opacity: .78; border-style: dashed; }
+.token.neg { background: var(--miss-soft); border-color: var(--miss-line); color: var(--miss); }
+.token.text { background: var(--info-soft); border-color: transparent; color: var(--info); font-family: var(--mono); font-weight: 500; }
+.token.time, .token.cam { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.swatch { width: 11px; height: 11px; border-radius: 3px; border: 1px solid rgba(127,127,127,.45); flex: none; }
+.understood .meta { margin-left: auto; font-size: 12px; color: var(--text-3); font-family: var(--mono); }
+.alert {
+  margin-top: 10px; display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px; border-radius: var(--r-md);
+  background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); color: var(--text); font-size: 13px;
+}
+.alert .icon { color: var(--warn); margin-top: 2px; }
+.alert.error { background: var(--miss-soft); border-color: var(--miss-line); }
+.alert.error .icon { color: var(--miss); }
 
-  .nav-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .btn-icon {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 15px;
-  }
-  .btn-icon:hover {
-    background: var(--bg-card-hover);
-    border-color: var(--border-hover);
-  }
-  .btn-evidence {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    padding: 7px 13px;
-    border-radius: var(--radius-md);
-    font-size: 13px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .btn-evidence:hover { border-color: var(--accent); }
-  .badge-count {
-    background: var(--accent);
-    color: #0b0f17;
-    font-size: 11px;
-    font-weight: 800;
-    border-radius: 999px;
-    padding: 1px 6px;
-  }
+/* ------------------------------------------------------------- results bar */
+.resbar { margin: 26px 0 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.resbar h2 { margin: 0; font-size: 18px; letter-spacing: -.02em; font-weight: 700; }
+.resbar .sub { color: var(--text-3); font-size: 12.5px; font-family: var(--mono); }
+.seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
+.seg button { height: 28px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; color: var(--text-2); font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--border); }
+.section-title { display: flex; align-items: center; gap: 10px; margin: 26px 0 12px; font-size: 13px; font-weight: 700; color: var(--text-2); }
+.section-title .pill { font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--surface-3); color: var(--text-2); }
+.section-title .line { flex: 1; height: 1px; background: var(--border); }
+.section-title .why { font-weight: 500; color: var(--text-3); font-size: 12px; }
 
-  /* Main Container */
-  main {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 24px;
-  }
+/* ------------------------------------------------------------- cards */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 14px; }
+.grid.wide { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.card {
+  position: relative; display: flex; flex-direction: column; border-radius: var(--r-lg); overflow: hidden; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); transition: transform .18s var(--ease), border-color .18s, box-shadow .18s;
+  animation: rise .35s var(--ease) both;
+}
+.card:hover { transform: translateY(-2px); border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+.card.selected { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+.card.partial .media img, .card.partial .media video { filter: saturate(.75); }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.media { position: relative; aspect-ratio: 4 / 5; background: var(--media-bg); overflow: hidden; }
+.grid.wide .media { aspect-ratio: 16 / 9; }
+.grid.wide .media img { object-fit: cover; }
+.media img, .media video { width: 100%; height: 100%; object-fit: contain; display: block; transition: transform .35s var(--ease); }
+.card:hover .media img { transform: scale(1.035); }
+.media .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.45) 0%, transparent 28%, transparent 62%, rgba(0,0,0,.65) 100%); pointer-events: none; }
+.media .tl, .media .bl, .media .br, .media .tr { position: absolute; display: flex; gap: 5px; align-items: center; }
+.media .tl { top: 8px; left: 8px; } .media .tr { top: 8px; right: 8px; } .media .bl { bottom: 8px; left: 8px; } .media .br { bottom: 8px; right: 8px; }
+.ov {
+  display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  color: #fff; background: rgba(8,9,12,.62); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.1); font-family: var(--mono);
+}
+.ov .icon { width: 12px; height: 12px; }
+.ov.ok { background: rgba(5,150,105,.85); border-color: transparent; }
+.ov.part { background: rgba(190,24,93,.8); border-color: transparent; }
+.play-hint {
+  position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transition: opacity .2s;
+}
+.card:hover .play-hint { opacity: 1; }
+.play-hint span { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: rgba(8,9,12,.6); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.18); color: #fff; }
+.play-hint .icon { width: 20px; height: 20px; fill: #fff; stroke: none; margin-left: 2px; }
+.body { padding: 11px 12px 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.row { display: flex; align-items: center; gap: 8px; }
+.score { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.bar { flex: 1; height: 4px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), #ff7a18); }
+.card.partial .bar i { background: var(--text-3); }
+.score b { font-family: var(--mono); font-size: 11.5px; font-weight: 600; color: var(--text-2); min-width: 32px; text-align: right; }
+.cap { font-size: 12.8px; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; height: 21px; padding: 0 7px; border-radius: 6px; font-size: 11px; font-weight: 600; background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.chip.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+.chip.miss { background: var(--miss-soft); color: var(--miss); border-color: transparent; }
+.chip.vlm { background: var(--info-soft); color: var(--info); border-color: transparent; }
+.chip .icon { width: 11px; height: 11px; stroke-width: 2.4; }
+.foot { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 2px; }
+.foot .when { font-size: 11.5px; color: var(--text-3); font-family: var(--mono); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.iconbtn { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--text-3); transition: all .15s; }
+.iconbtn:hover { color: var(--text); background: var(--hover); border-color: var(--border); }
+.iconbtn.on { color: var(--accent); }
+.iconbtn.on .icon { fill: var(--accent); }
 
-  /* Search Hero Panel */
-  .search-hero {
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xl);
-    padding: 22px 26px;
-    box-shadow: var(--shadow-md);
-    margin-bottom: 24px;
-  }
-  .search-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-  .tab-btn {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    padding: 8px 16px;
-    border-radius: var(--radius-md);
-    font-size: 13.5px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    transition: all 0.15s ease;
-  }
-  .tab-btn:hover {
-    color: var(--text-primary);
-    border-color: var(--border-hover);
-    background: var(--bg-card);
-  }
-  .tab-btn.active {
-    background: var(--accent);
-    color: #0b0f17;
-    border-color: var(--accent);
-    font-weight: 700;
-    box-shadow: 0 0 16px var(--accent-glow);
-  }
+/* skeletons */
+.skel { border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--border); background: var(--surface); }
+.skel .m { aspect-ratio: 4/5; }
+.skel .l { height: 10px; margin: 12px; border-radius: 6px; }
+.skel .l.s { width: 55%; }
+.shimmer { background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 50%, var(--surface-2) 100%); background-size: 200% 100%; animation: sh 1.3s linear infinite; }
+@keyframes sh { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
-  .search-input-wrap {
-    display: flex;
-    gap: 10px;
-  }
-  .search-input {
-    flex: 1;
-    background: var(--bg-base);
-    border: 1.5px solid var(--border);
-    color: var(--text-primary);
-    font-size: 15px;
-    padding: 13px 18px;
-    border-radius: var(--radius-lg);
-    font-family: inherit;
-    transition: all 0.2s ease;
-  }
-  .search-input:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 4px var(--accent-glow);
-  }
-  .btn-submit {
-    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-    color: #0b0f17;
-    border: none;
-    font-weight: 700;
-    font-size: 14.5px;
-    padding: 0 26px;
-    border-radius: var(--radius-lg);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .btn-submit:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 14px var(--accent-glow);
-  }
+/* empty / hero */
+.hero { text-align: center; padding: 56px 20px 30px; }
+.hero .glyph { width: 64px; height: 64px; margin: 0 auto 18px; border-radius: 18px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-line); }
+.hero .glyph .icon { width: 28px; height: 28px; }
+.hero h3 { margin: 0 0 6px; font-size: 22px; letter-spacing: -.02em; }
+.hero p { margin: 0 auto; max-width: 560px; color: var(--text-2); }
+.how { margin: 30px auto 0; max-width: 1040px; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; text-align: left; }
+.how .tile { padding: 16px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--border); }
+.how .tile h4 { margin: 0 0 4px; font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
+.how .tile h4 .icon { color: var(--accent); }
+.how .tile p { margin: 0 0 10px; font-size: 12.5px; color: var(--text-3); }
+.how .tile .chip-btn { margin: 0 4px 4px 0; }
 
-  /* Filters & Controls Toolbar */
-  .toolbar {
-    margin-top: 14px;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
-    font-size: 13px;
-  }
-  .toolbar-left, .toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .toolbar-label {
-    color: var(--text-muted);
-    font-weight: 600;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .select-filter {
-    background: var(--bg-base);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    padding: 6px 12px;
-    border-radius: var(--radius-md);
-    font-size: 13px;
-    font-family: inherit;
-    cursor: pointer;
-  }
-  .select-filter:focus { outline: none; border-color: var(--accent); }
-  .toggle-label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    user-select: none;
-  }
-  .toggle-label input { accent-color: var(--accent); }
+/* timeline */
+.tl-wrap { border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); padding: 14px 16px 10px; overflow-x: auto; }
+.tl-axis { position: relative; height: 22px; margin-left: 140px; border-bottom: 1px solid var(--border); min-width: 520px; }
+.tl-axis span { position: absolute; transform: translateX(-50%); font-size: 11px; color: var(--text-3); font-family: var(--mono); }
+.tl-lane { display: flex; align-items: center; min-width: 660px; height: 40px; border-bottom: 1px dashed var(--border); }
+.tl-lane:last-child { border-bottom: 0; }
+.tl-name { width: 140px; flex: none; font-size: 12px; font-weight: 600; color: var(--text-2); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px; }
+.tl-track { position: relative; flex: 1; height: 100%; }
+.tl-dot {
+  position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid var(--surface);
+  background: var(--accent); box-shadow: 0 0 0 1px var(--accent-line); cursor: pointer; transition: transform .15s;
+}
+.tl-dot.partial { background: var(--text-3); box-shadow: none; }
+.tl-dot:hover, .tl-dot.selected { transform: scale(1.45); z-index: 2; }
+.tl-note { margin-top: 10px; font-size: 12px; color: var(--text-3); }
 
-  .query-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
-    margin-top: 12px;
-    font-size: 12.5px;
-  }
-  .chip-sample {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    padding: 4px 10px;
-    border-radius: 999px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .chip-sample:hover {
-    color: var(--accent);
-    border-color: var(--accent);
-    background: var(--badge-bg);
-  }
+/* ------------------------------------------------------------- inspector */
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); backdrop-filter: blur(2px); z-index: 60; opacity: 0; pointer-events: none; transition: opacity .25s; }
+.scrim.open { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 70; width: min(760px, 100vw); display: flex; flex-direction: column;
+  background: var(--surface); border-left: 1px solid var(--border); box-shadow: var(--shadow);
+  transform: translateX(102%); transition: transform .32s var(--ease);
+}
+.drawer.open { transform: none; }
+.dr-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.dr-head h3 { margin: 0; font-size: 15px; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dr-head h3 span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dr-head .nav-btns { margin-left: auto; display: flex; gap: 4px; }
+.dr-body { overflow-y: auto; flex: 1; padding: 16px; }
+.player { border-radius: var(--r-lg); overflow: hidden; background: #000; border: 1px solid var(--border); }
+.player video { width: 100%; display: block; max-height: 52vh; background: #000; }
+.stage { position: relative; }
+.stage canvas { position: absolute; left: 0; top: 0; pointer-events: none; }
+.player-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface-2); border-top: 1px solid var(--border); }
+.player-bar .seg button { height: 24px; font-family: var(--mono); font-size: 11.5px; }
+.player-msg { padding: 10px 12px; font-size: 12.5px; color: var(--miss); background: var(--miss-soft); }
+.tabs { display: flex; gap: 2px; margin: 16px 0 12px; border-bottom: 1px solid var(--border); }
+.tab { height: 36px; padding: 0 12px; border: 0; background: transparent; color: var(--text-2); font-weight: 600; font-size: 13px; border-bottom: 2px solid transparent; margin-bottom: -1px; display: inline-flex; align-items: center; gap: 7px; }
+.tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.kv { display: grid; grid-template-columns: 130px 1fr; gap: 0; border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; font-size: 13px; }
+.kv > div { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.kv > div:nth-last-child(-n+2) { border-bottom: 0; }
+.kv .k { color: var(--text-3); background: var(--surface-2); font-size: 12px; }
+.kv .v { font-family: var(--mono); font-size: 12.5px; word-break: break-word; }
+.desc { font-size: 14px; line-height: 1.6; color: var(--text); padding: 12px 14px; border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--border); }
+.block-title { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); margin: 18px 0 8px; }
+.verify-list { display: grid; gap: 6px; }
+.verify-item { display: flex; align-items: center; gap: 10px; font-size: 12.5px; padding: 7px 10px; border-radius: 8px; background: var(--surface-2); }
+.verify-item .m { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--text-3); }
+.dr-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.reid-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 12px; }
+.reid-status { font-size: 12px; color: var(--text-3); font-family: var(--mono); }
+.note { font-size: 12.5px; padding: 9px 12px; border-radius: 8px; background: var(--info-soft); color: var(--text-2); margin-bottom: 12px; }
+.grid.compact { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.grid.compact .cap { -webkit-line-clamp: 2; font-size: 12px; }
+.grid.compact .body { padding: 9px 10px 10px; gap: 6px; }
 
-  /* Results Meta Header */
-  .results-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-  .results-count {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-secondary);
-  }
-  .results-count strong {
-    color: var(--text-primary);
-    font-family: var(--font-mono);
-  }
-  .btn-export {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    padding: 5px 12px;
-    border-radius: var(--radius-md);
-    font-size: 12.5px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .btn-export:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+/* evidence tray */
+.ev-item { display: flex; gap: 12px; padding: 10px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); margin-bottom: 8px; cursor: pointer; }
+.ev-item:hover { border-color: var(--border-strong); }
+.ev-item .th { width: 64px; height: 80px; border-radius: 8px; background: var(--media-bg); flex: none; overflow: hidden; display: grid; place-items: center; color: var(--text-3); }
+.ev-item .th img { width: 100%; height: 100%; object-fit: contain; }
+.ev-item .tx { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-2); }
+.ev-item .tx b { color: var(--text); font-size: 13px; display: block; margin-bottom: 2px; }
+.ev-item .tx .cap { -webkit-line-clamp: 2; }
+.ev-item textarea { width: 100%; margin-top: 6px; min-height: 34px; resize: vertical; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-size: 12px; padding: 6px 8px; }
 
-  /* Cards Grid */
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 16px;
-  }
-  .grid.wide {
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  }
+/* toast */
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); opacity: 0; z-index: 90; transition: all .25s var(--ease);
+  padding: 10px 16px; border-radius: 10px; background: var(--text); color: var(--bg); font-size: 13px; font-weight: 600; box-shadow: var(--shadow); pointer-events: none; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
 
-  /* Card Item */
-  .card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    position: relative;
-    box-shadow: var(--shadow-sm);
-  }
-  .card:hover {
-    transform: translateY(-3px);
-    border-color: var(--border-hover);
-    box-shadow: var(--shadow-md);
-    background: var(--bg-card-hover);
-  }
-  .card-media {
-    position: relative;
-    width: 100%;
-    height: 220px;
-    background: #000;
-    overflow: hidden;
-    cursor: pointer;
-  }
-  .grid.wide .card-media { height: 210px; }
-  .card-media img, .card-media video {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    display: block;
-    transition: transform 0.3s ease;
-  }
-  .card:hover .card-media img { transform: scale(1.03); }
-
-  .overlay-badge {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: rgba(11, 15, 23, 0.85);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: var(--radius-sm);
-    padding: 3px 8px;
-    font-size: 11px;
-    font-weight: 600;
-    font-family: var(--font-mono);
-    color: var(--text-primary);
-  }
-  .overlay-time {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    background: rgba(11, 15, 23, 0.85);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: var(--radius-sm);
-    padding: 3px 7px;
-    font-size: 11px;
-    font-weight: 600;
-    font-family: var(--font-mono);
-    color: #e2e8f0;
-  }
-
-  .card-body {
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    flex: 1;
-  }
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 12px;
-    color: var(--text-muted);
-  }
-  .card-title {
-    font-weight: 700;
-    color: var(--text-primary);
-    font-size: 13.5px;
-  }
-  .match-score {
-    font-family: var(--font-mono);
-    font-weight: 700;
-    font-size: 12px;
-    color: var(--accent);
-  }
-  .score-bar-bg {
-    width: 100%;
-    height: 4px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 999px;
-    overflow: hidden;
-    margin-top: -2px;
-  }
-  .score-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent-dark), var(--accent));
-    border-radius: 999px;
-  }
-
-  .card-caption {
-    font-size: 13px;
-    color: var(--text-secondary);
-    line-height: 1.45;
-  }
-
-  .card-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-top: 4px;
-  }
-  .tag {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border);
-    padding: 2px 7px;
-    border-radius: var(--radius-sm);
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text-secondary);
-  }
-  .tag.top { border-color: rgba(56, 189, 248, 0.3); color: #7dd3fc; }
-  .tag.bot { border-color: rgba(16, 185, 129, 0.3); color: #6ee7b7; }
-  .tag.mot { border-color: rgba(245, 158, 11, 0.3); color: #fcd34d; }
-
-  .card-actions {
-    margin-top: auto;
-    padding-top: 10px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    gap: 8px;
-  }
-  .btn-card {
-    flex: 1;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    padding: 6px 10px;
-    border-radius: var(--radius-md);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    transition: all 0.15s;
-  }
-  .btn-card:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: var(--badge-bg);
-  }
-  .btn-card.pin:hover {
-    border-color: var(--warning);
-    color: var(--warning);
-    background: var(--warning-bg);
-  }
-
-  /* Modals */
-  dialog {
-    border: 1px solid var(--border-hover);
-    border-radius: var(--radius-xl);
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    padding: 0;
-    width: min(1050px, 94vw);
-    max-height: 90vh;
-    box-shadow: var(--shadow-lg);
-    margin: auto;
-  }
-  dialog::backdrop {
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(6px);
-  }
-  .modal-head {
-    padding: 16px 22px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-  }
-  .modal-title {
-    font-size: 16px;
-    font-weight: 800;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .btn-close {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    font-size: 20px;
-    cursor: pointer;
-    padding: 4px;
-    line-height: 1;
-  }
-  .btn-close:hover { color: var(--text-primary); }
-  .modal-body {
-    padding: 20px 22px;
-    overflow-y: auto;
-    max-height: calc(90vh - 75px);
-  }
-
-  /* Video Modal Extras */
-  video.cinema-player {
-    width: 100%;
-    max-height: 65vh;
-    background: #000;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border);
-  }
-  .video-controls-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 12px;
-    gap: 12px;
-    flex-wrap: wrap;
-    font-size: 13px;
-    color: var(--text-secondary);
-  }
-  .speed-pills {
-    display: flex;
-    gap: 4px;
-  }
-  .speed-pill {
-    padding: 3px 8px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
-    background: var(--bg-base);
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-family: var(--font-mono);
-    font-size: 11px;
-  }
-  .speed-pill.active {
-    background: var(--accent);
-    color: #0b0f17;
-    border-color: var(--accent);
-    font-weight: 700;
-  }
-
-  /* Re-ID Modal Extras */
-  .reid-query-panel {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 14px;
-    display: flex;
-    gap: 16px;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-  .reid-query-img {
-    height: 130px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border);
-    background: #000;
-  }
-  .reid-selector {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 18px;
-  }
-  .reid-mode-btn {
-    flex: 1;
-    background: var(--bg-card);
-    border: 1.5px solid var(--border);
-    color: var(--text-secondary);
-    padding: 12px 16px;
-    border-radius: var(--radius-lg);
-    cursor: pointer;
-    text-align: left;
-    transition: all 0.2s;
-  }
-  .reid-mode-btn:hover { border-color: var(--border-hover); }
-  .reid-mode-btn.active {
-    border-color: var(--accent);
-    background: var(--badge-bg);
-    color: var(--text-primary);
-  }
-  .reid-mode-title { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
-  .reid-mode-desc { font-size: 12px; color: var(--text-muted); }
-
-  /* Empty state */
-  .empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--text-muted);
-  }
-  .empty-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.6; }
+/* ------------------------------------------------------------- responsive */
+@media (max-width: 900px) {
+  .sys .opt { display: none; }
+}
+@media (max-width: 640px) {
+  .nav { padding: 0 16px; gap: 10px; }
+  .sys { display: none; }
+  .brand small { display: none; }
+  .wrap { padding: 16px 16px 60px; }
+  .console { padding: 12px; border-radius: var(--r-lg); }
+  .searchbar { height: 52px; padding-left: 12px; }
+  .searchbar input { font-size: 15.5px; }
+  .searchbar .kbd { display: none; }
+  .searchbar .btn.primary span { display: none; }
+  .searchbar .btn.primary { width: 42px; padding: 0; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .grid.wide { grid-template-columns: 1fr; }
+  .cap { -webkit-line-clamp: 2; }
+  .kv { grid-template-columns: 100px 1fr; }
+  .controls .grow { display: none; }
+  .select { max-width: 150px; }
+  .modes { width: 100%; scrollbar-width: none; }
+  .modes::-webkit-scrollbar { display: none; }
+  .mode { flex: 1; justify-content: center; padding: 0 6px; gap: 5px; font-size: 12.5px; }
+  #ev-open > span:not(.count-badge) { display: none; }
+  .examples .chip-btn:nth-of-type(n+5) { display: none; }
+  .resbar h2 { font-size: 16px; }
+}
+@media (max-width: 420px) { .mode .icon { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
-<body data-theme="dark">
+<body>
 
-<nav>
-  <div class="nav-inner">
-    <div class="brand">
-      <div class="brand-icon">⚡</div>
-      <div>
-        <div class="brand-title">CCTV-RAG <span class="status-pill"><span class="status-dot"></span> <span id="status-text">Operational</span></span></div>
-      </div>
-    </div>
-    
-    <div class="nav-stats">
-      <div class="nav-stat-item">📹 <span class="nav-stat-val" id="stat-cams">24</span> Cams</div>
-      <div class="nav-stat-item">🏃 <span class="nav-stat-val" id="stat-tracks">13,686</span> Tracks</div>
-      <div class="nav-stat-item">🧬 <span class="nav-stat-val">Gait3D + CLIP-FT</span></div>
-      <div class="nav-stat-item">⚡ <span class="nav-stat-val" id="stat-latency">&lt;100ms</span></div>
-    </div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="i-lens" viewBox="0 0 24 24"><path d="M3 7.5l9-4.5 9 4.5v3L12 15 3 10.5z"/><circle cx="12" cy="9" r="2.2"/><path d="M12 15v6M8 21h8"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></symbol>
+  <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="6" r="3"/><path d="M12 10c-3 0-5 2-5 5v2h3v4h4v-4h3v-2c0-3-2-5-5-5z"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M4 16v-4l2-5h12l2 5v4z"/><path d="M4 12h16"/><circle cx="7.5" cy="16.5" r="1.8"/><circle cx="16.5" cy="16.5" r="1.8"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><path d="M3 7h11v10H3z"/><path d="M14 10l7-3v10l-7-3"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 3h6l-1 6 4 4H6l4-4z"/><path d="M12 13v8"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4 8 8 0 1020 14.5z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M6 12h12"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17.5v.5"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-timeline" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/><circle cx="8" cy="6" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="11" cy="18" r="1.6"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+  <symbol id="i-loop" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0113.7-5.7L20 8.5M20 4v4.5h-4.5M20 12a8 8 0 01-13.7 5.7L4 15.5M4 20v-4.5h4.5"/></symbol>
+  <symbol id="i-dna" viewBox="0 0 24 24"><path d="M7 3c0 6 10 6 10 12M17 3c0 6-10 6-10 12M7 21c0-2 1-3.5 2.5-4.5M17 21c0-2-1-3.5-2.5-4.5M8 7h8M8 13h8"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 000-6H9a3 3 0 010-6h6.5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.6L4 8.7M4 4v4.7h4.7"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+</svg>
 
-    <div class="nav-actions">
-      <button class="btn-evidence" onclick="openEvidenceDrawer()">
-        📌 Evidence <span class="badge-count" id="evidence-count">0</span>
-      </button>
-      <button class="btn-icon" id="theme-btn" onclick="toggleTheme()" title="Toggle Theme">🌓</button>
-    </div>
+<header class="nav">
+  <div class="brand">
+    <div class="brand-mark"><svg class="icon"><use href="#i-lens"/></svg></div>
+    <div>CCTV Search<small>Natural-language video investigation</small></div>
   </div>
-</nav>
+  <div class="nav-spacer"></div>
+  <div class="sys" id="sys" title="Index and server status">
+    <span class="dot" id="sys-dot"></span><span id="sys-state">Warming up…</span>
+    <span class="sep opt"></span><span class="opt"><b id="sys-cams">–</b> cameras</span>
+    <span class="sep opt"></span><span class="opt"><b id="sys-tracks">–</b> tracks</span>
+    <span class="sep opt"></span><span class="opt"><b id="sys-events">–</b> scenes</span>
+    <span class="sep opt"></span><span class="opt"><b id="sys-hw">–</b></span>
+  </div>
+  <button class="btn" id="ev-open" title="Pinned evidence">
+    <svg class="icon"><use href="#i-pin"/></svg><span>Evidence</span><span class="count-badge zero" id="ev-count">0</span>
+  </button>
+  <button class="btn icon-only ghost" id="theme" title="Toggle light / dark" aria-label="Toggle light or dark theme">
+    <svg class="icon"><use href="#i-sun"/></svg>
+  </button>
+</header>
 
-<main>
-  <div class="search-hero">
-    <div class="search-tabs" role="tablist">
-      <button class="tab-btn active" data-kind="ask" onclick="setKind('ask')">✨ AI Query Agent</button>
-      <button class="tab-btn" data-kind="person" onclick="setKind('person')">🏃 People</button>
-      <button class="tab-btn" data-kind="vehicle" onclick="setKind('vehicle')">🚗 Vehicles</button>
-      <button class="tab-btn" data-kind="incident" onclick="setKind('incident')">🚨 Incidents</button>
+<main class="wrap">
+  <section class="console" aria-label="Search">
+    <div class="modes" role="tablist" aria-label="Search mode">
+      <button class="mode" role="tab" data-mode="ask" aria-selected="true"><svg class="icon"><use href="#i-spark"/></svg>Ask AI</button>
+      <button class="mode" role="tab" data-mode="person" aria-selected="false"><svg class="icon"><use href="#i-person"/></svg>People</button>
+      <button class="mode" role="tab" data-mode="vehicle" aria-selected="false"><svg class="icon"><use href="#i-car"/></svg>Vehicles</button>
+      <button class="mode" role="tab" data-mode="incident" aria-selected="false"><svg class="icon"><use href="#i-bolt"/></svg>Events</button>
     </div>
 
-    <form id="search-form" onsubmit="event.preventDefault(); executeSearch();">
-      <div class="search-input-wrap">
-        <input type="text" id="query-input" class="search-input" placeholder="Describe a person, vehicle, or activity (e.g. 'person in red jacket walking left', 'black SUV')" autocomplete="off" autofocus>
-        <button type="submit" class="btn-submit">
-          <span>Search</span> ➔
-        </button>
-      </div>
+    <form class="searchbar" id="search-form" role="search">
+      <svg class="icon"><use href="#i-search"/></svg>
+      <label for="q" class="sr-only">Search query</label>
+      <input id="q" type="text" autocomplete="off" spellcheck="false" placeholder="Describe who or what you are looking for…">
+      <span class="kbd" title="Press / to focus">/</span>
+      <button class="btn primary" type="submit"><svg class="icon"><use href="#i-search"/></svg><span>Search</span></button>
     </form>
 
-    <div class="query-chips" id="sample-chips"></div>
-
-    <div class="toolbar">
-      <div class="toolbar-left">
-        <span class="toolbar-label">Dataset:</span>
-        <select id="dataset-filter" class="select-filter" onchange="onDatasetChange()">
-          <option value="">All Datasets</option>
-        </select>
-
-        <span class="toolbar-label">Camera:</span>
-        <select id="cam-filter" class="select-filter" onchange="executeSearch()">
-          <option value="">All Cameras</option>
-        </select>
-
-        <span class="toolbar-label">Sort:</span>
-        <select id="sort-filter" class="select-filter" onchange="renderCurrentResults()">
-          <option value="score">Highest Match Score</option>
-          <option value="time-asc">Time (Earliest First)</option>
-          <option value="time-desc">Time (Latest First)</option>
-        </select>
-      </div>
-
-      <div class="toolbar-right" id="ask-toggles">
-        <label class="toggle-label"><input type="checkbox" id="llm-toggle"> LLM Query Decomposer</label>
-        <label class="toggle-label"><input type="checkbox" id="rerank-toggle"> Cross-Modal Re-rank</label>
-      </div>
+    <div class="controls">
+      <label class="field">Dataset <select class="select" id="f-dataset"><option value="">All datasets</option></select></label>
+      <label class="field">Camera <select class="select" id="f-camera"><option value="">All cameras</option></select></label>
+      <span class="grow"></span>
+      <span id="ask-switches" style="display:contents">
+        <label class="switch" title="Use the LLM to split the query into requirements. Without it a fast rules planner is used.">
+          <input type="checkbox" id="s-llm"><span class="track"></span>LLM planner
+        </label>
+        <label class="switch" title="Ask the vision model about every requirement for the top results.">
+          <input type="checkbox" id="s-verify"><span class="track"></span>VLM verify <span class="hint" id="verify-hint"></span>
+        </label>
+        <label class="switch" title="Only show results that satisfy every part of the query.">
+          <input type="checkbox" id="s-strict"><span class="track"></span>Exact only
+        </label>
+      </span>
     </div>
-  </div>
 
-  <div class="results-meta">
-    <div class="results-count" id="results-count">Ready to search across 400 ingested surveillance archives.</div>
-    <button class="btn-export" onclick="exportFindingsJSON()">📥 Export Findings (JSON)</button>
-  </div>
+    <div class="examples" id="examples"></div>
+  </section>
 
-  <div id="results-grid" class="grid">
-    <div class="empty-state" style="grid-column: 1/-1;">
-      <div class="empty-icon">🔍</div>
-      <p>Type a query or click any sample prompt above to retrieve surveillance tracklets.</p>
-    </div>
-  </div>
+  <section id="understood-wrap" hidden>
+    <div class="understood" id="understood"></div>
+    <div id="notice"></div>
+  </section>
+
+  <section id="results-area" aria-live="polite"></section>
 </main>
 
-<!-- Video Playback Modal -->
-<dialog id="video-modal">
-  <div class="modal-head">
-    <div class="modal-title" id="video-modal-title">📹 CCTV Clip Playback</div>
-    <button class="btn-close" onclick="closeVideoModal()">✕</button>
-  </div>
-  <div class="modal-body">
-    <video id="cinema-player" class="cinema-player" controls preload="metadata"></video>
-    <div class="video-controls-bar">
-      <div>
-        <span>Playback Speed:</span>
-        <span class="speed-pills">
-          <button class="speed-pill" onclick="setSpeed(0.5)">0.5x</button>
-          <button class="speed-pill active" onclick="setSpeed(1.0)">1.0x</button>
-          <button class="speed-pill" onclick="setSpeed(1.5)">1.5x</button>
-          <button class="speed-pill" onclick="setSpeed(2.0)">2.0x</button>
-        </span>
-      </div>
-      <div style="display:flex; align-items:center; gap:12px;">
-        <button id="btn-jump-event" class="btn-card" style="display:none; font-size:12px; padding:4px 10px;" onclick="jumpToEvent()">🎯 Jump to Detection</button>
-        <label class="toggle-label"><input type="checkbox" id="loop-toggle" onchange="cinemaPlayer.loop = this.checked"> Loop Clip</label>
-      </div>
-    </div>
-    <div id="video-metadata" style="margin-top:14px; font-size:13px; color:var(--text-secondary);"></div>
-  </div>
-</dialog>
-
-<!-- Cross-Camera Re-ID Modal -->
-<dialog id="reid-modal">
-  <div class="modal-head">
-    <div class="modal-title">🧬 Cross-Camera Re-ID (Appearance + Gait Biometrics)</div>
-    <button class="btn-close" onclick="reidModal.close()">✕</button>
-  </div>
-  <div class="modal-body">
-    <div class="reid-query-panel" id="reid-query-box"></div>
-    
-    <div class="reid-selector">
-      <button class="reid-mode-btn active" id="btn-mode-any" onclick="setReidMode('any')">
-        <div class="reid-mode-title">🌟 Fused (Appearance + Gait)</div>
-        <div class="reid-mode-desc">Best for general tracking across camera viewpoints.</div>
-      </button>
-      <button class="reid-mode-btn" id="btn-mode-cloth" onclick="setReidMode('cloth_change')">
-        <div class="reid-mode-title">🥋 Clothing Changed (Gait Only)</div>
-        <div class="reid-mode-desc">Silhouette biometrics when suspect has changed clothes.</div>
-      </button>
-    </div>
-
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:13px;">
-      <label class="toggle-label"><input type="checkbox" id="fb-filter" checked onchange="loadReidMatches()"> Full-body tracklets only</label>
-      <span id="reid-status" style="color:var(--text-muted); font-size:12.5px;"></span>
-    </div>
-
-    <div id="reid-note-box" style="display:none; margin-bottom:14px; padding:10px 14px; border-radius:var(--radius-md); font-size:12.5px; background:rgba(234, 179, 8, 0.12); border:1px solid rgba(234, 179, 8, 0.3); color:#facc15;"></div>
-
-    <div id="reid-grid" class="grid"></div>
-  </div>
-</dialog>
-
-<!-- Evidence Dossier Modal -->
-<dialog id="evidence-modal">
-  <div class="modal-head">
-    <div class="modal-title">📌 Pinned Evidence Dossier</div>
-    <button class="btn-close" onclick="evidenceModal.close()">✕</button>
-  </div>
-  <div class="modal-body">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-      <span style="font-size:13px; color:var(--text-secondary);" id="evidence-stats-label">0 items saved.</span>
-      <button class="btn-export" onclick="clearEvidence()">Clear All</button>
-    </div>
-    <div id="evidence-grid" class="grid"></div>
-  </div>
-</dialog>
-
-<!-- Cross-Camera Vehicle Tracking Modal -->
-<dialog id="vreid">
-  <div class="modal-head">
-    <div class="modal-title">🚗 Multi-Camera Vehicle Re-ID & Route Tracking</div>
-    <button class="btn-close" onclick="vreid.close()">✕</button>
-  </div>
-  <div class="modal-body">
-    <div class="reid-query-panel" id="vrq"></div>
-    
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:13px; flex-wrap:wrap; gap:8px;">
-      <div style="display:flex; gap:16px;">
-        <label class="toggle-label"><input type="checkbox" id="v_st" checked onchange="loadVehicleReid()"> Spatio-temporal road topology</label>
-        <label class="toggle-label"><input type="checkbox" id="v_color" checked onchange="loadVehicleReid()"> Strict color consistency</label>
-      </div>
-      <span id="vrstatus" style="color:var(--text-muted); font-size:12.5px;"></span>
-    </div>
-
-    <div id="vrgrid" class="grid"></div>
-    <div style="margin-top:14px; font-size:12px; color:var(--text-muted); border-top:1px solid var(--border-color); padding-top:8px;">
-      Multi-camera vehicle tracking matches vehicle identity across cameras using fine-tuned visual features, color attribute gating, and spatio-temporal road physics.
+<!-- inspector -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-title">
+  <div class="dr-head">
+    <h3 id="dr-title"><svg class="icon"><use href="#i-cam"/></svg><span id="dr-title-text">Clip</span></h3>
+    <div class="nav-btns">
+      <button class="btn icon-only ghost" id="dr-prev" title="Previous result (←)" aria-label="Previous result"><svg class="icon"><use href="#i-left"/></svg></button>
+      <button class="btn icon-only ghost" id="dr-next" title="Next result (→)" aria-label="Next result"><svg class="icon"><use href="#i-right"/></svg></button>
+      <button class="btn icon-only ghost" id="dr-close" title="Close (Esc)" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button>
     </div>
   </div>
-</dialog>
+  <div class="dr-body" id="dr-body"></div>
+</aside>
+
+<!-- evidence tray -->
+<aside class="drawer" id="evdrawer" role="dialog" aria-modal="true" aria-labelledby="ev-title" style="width:min(520px,100vw)">
+  <div class="dr-head">
+    <h3 id="ev-title"><svg class="icon"><use href="#i-pin"/></svg><span>Evidence</span></h3>
+    <div class="nav-btns">
+      <button class="btn sm" id="ev-export"><svg class="icon"><use href="#i-download"/></svg>Export</button>
+      <button class="btn sm" id="ev-clear"><svg class="icon"><use href="#i-trash"/></svg>Clear</button>
+      <button class="btn icon-only ghost" id="ev-close" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button>
+    </div>
+  </div>
+  <div class="dr-body" id="ev-body"></div>
+</aside>
+
+<div class="toast" id="toast" role="status"></div>
 
 <script>
-const $ = s => document.querySelector(s);
-const el = (tag, props = {}, ...kids) => {
+"use strict";
+/* ============================================================ helpers */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+function h(tag, props, ...kids) {
   const e = document.createElement(tag);
-  Object.assign(e, props);
-  e.append(...kids.filter(k => k != null));
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k === "style") e.style.cssText = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k in e && k !== "list") e[k] = v;
+    else e.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) e.append(c.nodeType ? c : String(c));
   return e;
+}
+function icon(name, cls = "") {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("class", `icon ${cls}`);
+  const u = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  u.setAttribute("href", `#i-${name}`);
+  s.append(u);
+  return s;
+}
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("cctv." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("cctv." + k, JSON.stringify(v)); } catch (e) {} },
 };
+let toastTimer;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+async function api(url, signal) {
+  const res = await fetch(url, { signal });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { detail = (await res.json()).detail || detail; } catch (e) {}
+    throw new Error(`${res.status}: ${detail}`);
+  }
+  return res.json();
+}
+const fmtDur = s => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtWhen(item, withDate = true) {
+  if (item.recorded_at) {
+    const [d, t] = item.recorded_at.split("T");
+    const [, mo, da] = d.split("-").map(Number);
+    return withDate ? `${MONTHS[mo - 1]} ${da} · ${t}` : t;
+  }
+  return `${fmtDur(item.start_s)}–${fmtDur(item.end_s)} in clip`;
+}
+const SWATCH = { black: "#111", white: "#f5f5f5", gray: "#8c8c8c", silver: "#c0c0c0", red: "#e53935", blue: "#1e66f5",
+  navy: "#1f2a6b", green: "#2e9d4f", yellow: "#f4c20d", brown: "#8d5a2b", orange: "#fb8c00", pink: "#f06292",
+  purple: "#8e44ad", beige: "#d8c3a5", dark: "#2b2b2b", light: "#e8e8e8" };
+const KIND_ICON = { person: "person", vehicle: "car", incident: "bolt", any: "spark" };
 
-const SAMPLE_PROMPTS = {
+/* ============================================================ state */
+const S = {
+  mode: "ask", results: [], data: null, sort: store.get("sort", "score"), view: store.get("view", "grid"),
+  sel: -1, pinned: store.get("evidence", []), ctrl: null, lastQuery: "", gpu: false,
+  cams: [], camsByDs: {}, reid: { mode: "any", fullBody: true, st: true, color: true, ctrl: null },
+};
+const EXAMPLES = {
   ask: [
-    "person wearing a red jacket walking left",
-    "white SUV parked near entrance",
-    "someone running on camera bus.G507",
-    "person carrying a heavy backpack"
+    ["Appearance", "man in a red jacket with a backpack", "woman in a black coat without a bag", "kid in a blue hoodie"],
+    ["Vehicles", "white truck turning right", "black suv parked", "red car after 5pm"],
+    ["Text & logos", "budget truck", 'bag with "catalyst" written on it', "red bluewhale"],
+    ["Context", "cop", "delivery guy carrying a box", "someone running in the morning"],
   ],
-  person: [
-    "person in red shirt walking",
-    "woman with a backpack",
-    "person wearing a dark hoodie and blue jeans",
-    "someone sprinting across camera"
-  ],
-  vehicle: [
-    "white SUV parked",
-    "silver minivan turning right",
-    "black sedan driving fast",
-    "pickup truck stopped"
-  ],
-  incident: [
-    "person loading vehicle",
-    "vehicle dropping off person",
-    "heavy carry package",
-    "person entering vehicle"
-  ]
+  person: [["Try", "person in red shirt walking", "woman with a backpack", "dark hoodie and blue jeans", "someone running"]],
+  vehicle: [["Try", "white SUV parked", "silver minivan turning right", "black sedan", "pickup truck stopped"]],
+  incident: [["Try", "a person gets into a car", "two people talking", "someone opens a car trunk", "people walking past a bus"]],
+};
+const PLACEHOLDER = {
+  ask: "Describe who or what you are looking for — e.g. “man in a red jacket with a backpack after 5pm”",
+  person: "Describe a person: clothing, colors, bags, posture…",
+  vehicle: "Describe a vehicle: type, color, make, what it is doing…",
+  incident: "Describe an event: what happens, who is involved…",
 };
 
-let currentKind = "ask";
-let currentResults = [];
-let pinnedEvidence = [];
-let activeReidTrack = null;
-let activeReidMode = "any";
-
-const videoModal = $("#video-modal");
-const reidModal = $("#reid-modal");
-const evidenceModal = $("#evidence-modal");
-const cinemaPlayer = $("#cinema-player");
-
-// Theme Toggle
-function toggleTheme() {
-  const current = document.body.dataset.theme;
-  const next = current === "dark" ? "light" : "dark";
-  document.body.dataset.theme = next;
-  $("#theme-btn").textContent = next === "dark" ? "🌓" : "🌞";
+/* ============================================================ theme */
+function applyThemeIcon() {
+  const dark = document.documentElement.dataset.theme === "dark";
+  $("#theme").replaceChildren(icon(dark ? "sun" : "moon"));
 }
+$("#theme").addEventListener("click", () => {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next; store.set("theme", next);
+  try { localStorage.setItem("cctv.theme", next); } catch (e) {}
+  applyThemeIcon();
+});
+applyThemeIcon();
 
-// Kind Switching
-function setKind(k) {
-  currentKind = k;
-  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.kind === k));
-  $("#ask-toggles").style.display = k === "ask" ? "flex" : "none";
-  
-  // Render sample chips
-  const chips = $("#sample-chips");
-  chips.replaceChildren(
-    el("span", {className: "toolbar-label", textContent: "Try:"}),
-    ...SAMPLE_PROMPTS[k].map(prompt => el("button", {
-      type: "button",
-      className: "chip-sample",
-      textContent: prompt,
-      onclick: () => { $("#query-input").value = prompt; executeSearch(); }
-    }))
-  );
-
-  // Set placeholder and status
-  currentResults = [];
-  const friendlyNames = { ask: "AI Query Agent", person: "People", vehicle: "Vehicles", incident: "Incidents" };
-  $("#query-input").placeholder = `Search ${friendlyNames[k] || k} across 24 cameras...`;
-  $("#results-grid").replaceChildren(el("div", {className: "empty-state", style: "grid-column: 1/-1;"},
-    el("div", {className: "empty-icon", textContent: "🔍"}),
-    el("p", {textContent: `Switched to ${friendlyNames[k] || k} search. Enter a description or click a sample query above.`})
-  ));
-  $("#results-count").textContent = `Ready to search in ${friendlyNames[k] || k} mode.`;
+/* ============================================================ modes + examples */
+function setMode(m, keepResults = false) {
+  S.mode = m;
+  $$(".mode").forEach(b => b.setAttribute("aria-selected", String(b.dataset.mode === m)));
+  $("#ask-switches").style.display = m === "ask" ? "contents" : "none";
+  $("#q").placeholder = PLACEHOLDER[m];
+  renderExamples();
+  if (!keepResults) { S.results = []; S.data = null; $("#understood-wrap").hidden = true; renderHome(); }
 }
-
-// Vehicle Re-ID Modal Control
-let activeVehicleTrack = null;
-const vreidModal = $("#vreid");
-
-async function openVehicleReid(item) {
-  activeVehicleTrack = item;
-  vreidModal.showModal();
-
-  const qBox = $("#vrq");
-  qBox.replaceChildren(
-    item.thumb ? el("img", {src: item.thumb, className: "reid-query-img"}) : el("div", {className: "tag", textContent: "🚗 Vehicle"}),
-    el("div", {},
-      el("div", {style: "font-weight:800; font-size:15px; margin-bottom:4px;", textContent: `Query Vehicle #${item.id || item.chunk_id}`}),
-      el("div", {style: "font-size:13px; color:var(--text-secondary);", textContent: `Captured on Camera: ${item.camera}`}),
-      el("div", {style: "font-size:12.5px; color:var(--text-muted); font-family:var(--font-mono);", textContent: `Timestamp: ${fmtTime(item.start_s)} – ${fmtTime(item.end_s)}${item.attrs && item.attrs.color ? " · " + item.attrs.color : ""}`}),
-      el("div", {style: "margin-top:6px; font-size:13px;", textContent: item.caption || ""})
-    )
-  );
-
-  loadVehicleReid();
+function renderExamples() {
+  const groups = EXAMPLES[S.mode];
+  $("#examples").replaceChildren(...(S.mode === "ask" && !S.results.length && !S.data ? [] :
+    [h("span", {}, "Try"), ...groups.flatMap(g => g.slice(1)).slice(0, 6).map(q =>
+      h("button", { class: "chip-btn", type: "button", onclick: () => run(q) }, q))]));
 }
+$$(".mode").forEach(b => b.addEventListener("click", () => {
+  if (b.dataset.mode === S.mode) return;
+  const q = $("#q").value.trim();
+  setMode(b.dataset.mode, false);
+  if (q) run(q);
+}));
 
-async function loadVehicleReid() {
-  if (!activeVehicleTrack) return;
-  const use_st = $("#v_st").checked;
-  const use_color = $("#v_color").checked;
-  const status = $("#vrstatus");
-  const grid = $("#vrgrid");
-
-  status.textContent = "Tracking vehicle across cameras…";
-  grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "Computing visual embeddings & spatio-temporal road physics…"})));
-
-  try {
-    const res = await fetch(`/api/reid/vehicle/${activeVehicleTrack.id}?use_st=${use_st}&use_color=${use_color}&k=12`);
-    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-    const data = await res.json();
-
-    const matches = data.results || [];
-    status.textContent = matches.length
-      ? `Found ${matches.length} cross-camera match(es) for this vehicle`
-      : "No matching vehicle found on other cameras within spatio-temporal constraints.";
-    
-    if (!matches.length) {
-      grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "No matching vehicle found on other cameras within constraints."})));
-    } else {
-      grid.replaceChildren(...matches.map(c => createCard(c, {vehicle_reid: true})));
-    }
-  } catch (err) {
-    status.textContent = "Tracking failed: " + err.message;
-    grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1; color:var(--danger);"}, el("p", {textContent: err.message})));
-  }
-}
-
-// Format seconds into MM:SS
-function fmtTime(s) {
-  s = Math.round(s);
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-}
-
-// Build Attribute Badges
-function buildTags(attrs) {
-  if (!attrs) return [];
-  const tags = [];
-  if (attrs.upper_color || attrs.upper_type) {
-    tags.push(el("span", {className: "tag top", textContent: `top: ${[attrs.upper_color, attrs.upper_type].filter(Boolean).join(" ")}`}));
-  }
-  if (attrs.lower_color) {
-    tags.push(el("span", {className: "tag bot", textContent: `bot: ${attrs.lower_color}`}));
-  }
-  if (attrs.motion) {
-    tags.push(el("span", {className: "tag mot", textContent: attrs.motion}));
-  }
-  if (attrs.bag && attrs.bag !== "none") {
-    tags.push(el("span", {className: "tag", textContent: `bag: ${attrs.bag}`}));
-  }
-  if (attrs.type || attrs.color) {
-    tags.push(el("span", {className: "tag", textContent: [attrs.color, attrs.type].filter(Boolean).join(" ")}));
-  }
-  if (attrs.turn && attrs.turn !== "straight" && attrs.turn !== "none") {
-    tags.push(el("span", {className: "tag", textContent: `turning ${attrs.turn}`}));
-  }
-  return tags;
-}
-
-// Render Card Component
-function createCard(item, opts = {}) {
-  const isIncident = item.kind === "incident";
-  
-  const mediaContainer = el("div", {
-    className: "card-media",
-    onclick: () => openVideoModal(item)
-  });
-
-  if (isIncident) {
-    mediaContainer.append(el("video", {
-      src: `${item.clip}#t=${item.clip_t0},${item.clip_t1}`,
-      preload: "metadata",
-      muted: true
-    }));
-  } else {
-    mediaContainer.append(el("img", {
-      src: item.thumb,
-      alt: item.caption || "Track",
-      loading: "lazy"
-    }));
-  }
-
-  mediaContainer.append(
-    el("div", {className: "overlay-badge", textContent: `${item.camera || "CAM"}${item.dataset ? " · " + item.dataset : ""}`}),
-    el("div", {className: "overlay-time", textContent: `${fmtTime(item.start_s)} – ${fmtTime(item.end_s)}`}
-  ));
-
-  let scorePct = null;
-  if (opts.reid) {
-    // Person Re-ID: fused Z-score (-1.0 to +4.0). Convert to sigmoid percentage:
-    // z = +3.0 -> 94%, z = +2.0 -> 86%, z = +1.0 -> 75%, z = 0.0 -> 50%
-    const z = item.score != null ? item.score : 0;
-    scorePct = Math.round(100 / (1 + Math.exp(-0.85 * z)));
-    scorePct = Math.min(99, Math.max(10, scorePct));
-  } else if (item.score != null) {
-    scorePct = Math.round(Math.min(Math.max(item.score, 0), 1) * 100);
-  }
-  const scoreLabel = scorePct != null ? `${scorePct}% match` : "";
-
-  const cardBody = el("div", {className: "card-body"});
-  cardBody.append(
-    el("div", {className: "card-header"},
-      el("span", {className: "card-title", textContent: `#${item.id || item.chunk_id}`}),
-      el("span", {className: "match-score", textContent: scoreLabel})
-    )
-  );
-
-  if (scorePct != null) {
-    cardBody.append(
-      el("div", {className: "score-bar-bg"}, el("div", {className: "score-bar-fill", style: `width: ${scorePct}%;`}))
-    );
-  }
-
-  if (item.caption) {
-    cardBody.append(el("div", {className: "card-caption", textContent: item.caption}));
-  }
-
-  const tags = buildTags(item.attrs);
-  if (tags.length) {
-    cardBody.append(el("div", {className: "card-chips"}, ...tags));
-  }
-
-  if (opts.reid) {
-    const appZ = item.appearance_z != null ? (item.appearance_z > 0 ? `+${item.appearance_z}` : `${item.appearance_z}`) : "–";
-    const gaitZ = item.gait_z != null ? (item.gait_z > 0 ? `+${item.gait_z}` : `${item.gait_z}`) : "none";
-    const gaitColor = item.gait_z != null ? (item.gait_z > 0.5 ? "var(--success, #22c55e)" : "var(--text-secondary)") : "var(--text-muted)";
-    cardBody.append(el("div", {
-      style: "font-size:11.5px; font-family:var(--font-mono); margin-top:3px; display:flex; gap:8px; color:var(--text-secondary);"
-    },
-      el("span", {}, "App z: ", el("b", {textContent: appZ})),
-      el("span", {style: `color:${gaitColor};`}, "Gait z: ", el("b", {textContent: gaitZ}))
-    ));
-  } else if (opts.vehicle_reid) {
-    cardBody.append(el("div", {
-      style: "font-size:11.5px; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;",
-      textContent: `score: ${item.score ?? "–"} · visual: ${item.appearance_sim ?? "–"}${item.st_valid ? " · road topology verified" : ""}`
-    }));
-  }
-
-  const actions = el("div", {className: "card-actions"});
-  actions.append(
-    el("button", {
-      className: "btn-card",
-      textContent: "▶ Play",
-      onclick: () => openVideoModal(item)
-    })
-  );
-
-  if (item.kind === "person" && !opts.reid) {
-    actions.append(
-      el("button", {
-        className: "btn-card",
-        textContent: "🧬 Re-ID",
-        onclick: (e) => { e.stopPropagation(); openReidModal(item); }
-      })
-    );
-  }
-
-  if (item.kind === "vehicle" && !opts.vehicle_reid) {
-    actions.append(
-      el("button", {
-        className: "btn-card",
-        textContent: "🚗 Track",
-        onclick: (e) => { e.stopPropagation(); openVehicleReid(item); }
-      })
-    );
-  }
-
-  actions.append(
-    el("button", {
-      className: "btn-card pin",
-      textContent: "📌 Pin",
-      onclick: (e) => { e.stopPropagation(); togglePinEvidence(item); }
-    })
-  );
-
-  cardBody.append(actions);
-  return el("div", {className: "card"}, mediaContainer, cardBody);
-}
-
-// Search Execution
-async function executeSearch() {
-  const query = $("#query-input").value.trim();
-  if (!query) return;
-
-  const resultsGrid = $("#results-grid");
-  const countLabel = $("#results-count");
-  const camFilter = $("#cam-filter").value;
-
-  countLabel.textContent = "Searching vector embeddings & lexical index…";
-  resultsGrid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "Retrieving surveillance tracks…"})));
-
-  const t0 = performance.now();
-  try {
-    let data;
-    const datasetFilter = $("#dataset-filter").value;
-    if (currentKind === "ask") {
-      const useLlm = $("#llm-toggle").checked;
-      const rerank = $("#rerank-toggle").checked;
-      let url = `/api/ask?q=${encodeURIComponent(query)}&n=24&use_llm=${useLlm}&rerank=${rerank}`;
-      if (datasetFilter) url += `&dataset=${encodeURIComponent(datasetFilter)}`;
-      if (camFilter) url += `&camera=${encodeURIComponent(camFilter)}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-      data = await res.json();
-    } else {
-      let url = `/api/search?kind=${currentKind}&q=${encodeURIComponent(query)}&k=24`;
-      if (datasetFilter) url += `&dataset=${encodeURIComponent(datasetFilter)}`;
-      if (camFilter) url += `&camera=${encodeURIComponent(camFilter)}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-      data = await res.json();
-    }
-
-    currentResults = data.results || [];
-    const elapsed = Math.round(performance.now() - t0);
-    $("#stat-latency").textContent = `${elapsed}ms`;
-
-    countLabel.innerHTML = `Found <strong>${currentResults.length}</strong> results in <strong>${elapsed}ms</strong>`;
-    renderCurrentResults();
-  } catch (err) {
-    countLabel.textContent = `Search error: ${err.message}`;
-    resultsGrid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1; color:var(--danger);"}, el("p", {textContent: `Error: ${err.message}`})));
-  }
-}
-
-// Render Results with Sorting
-function renderCurrentResults() {
-  const grid = $("#results-grid");
-  if (!currentResults.length) {
-    grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "No matching tracklets found."})));
+function renderHome() {
+  const area = $("#results-area");
+  if (S.mode !== "ask") {
+    area.replaceChildren(h("div", { class: "hero" },
+      h("div", { class: "glyph" }, icon(KIND_ICON[S.mode])),
+      h("h3", {}, { person: "Search people", vehicle: "Search vehicles", incident: "Search events" }[S.mode]),
+      h("p", {}, "Direct search over one index, without query planning. Use Ask AI for queries that combine several requirements, time windows or text.")));
     return;
   }
-
-  const sortMode = $("#sort-filter").value;
-  const sorted = [...currentResults].sort((a, b) => {
-    if (sortMode === "score") return (b.score || 0) - (a.score || 0);
-    if (sortMode === "time-asc") return (a.start_s || 0) - (b.start_s || 0);
-    if (sortMode === "time-desc") return (b.start_s || 0) - (a.start_s || 0);
-    return 0;
-  });
-
-  grid.className = (currentKind === "incident") ? "grid wide" : "grid";
-  grid.replaceChildren(...sorted.map(item => createCard(item)));
+  const tiles = [
+    ["person", "Appearance", "Garment-by-garment colors, bags, carried items. Colors stay on the item you name.", EXAMPLES.ask[0].slice(1)],
+    ["car", "Vehicles", "Type, color, make and what it is doing, from the tracker.", EXAMPLES.ask[1].slice(1)],
+    ["info", "Text, logos & names", "Unknown words are treated as brands or visible text — and reported if no footage shows them.", EXAMPLES.ask[2].slice(1)],
+    ["clock", "Context & time", "“cop” means uniform, “cyclist” means a bicycle; “after 5pm” filters by recording time.", EXAMPLES.ask[3].slice(1)],
+  ];
+  area.replaceChildren(h("div", { class: "hero" },
+    h("div", { class: "glyph" }, icon("spark")),
+    h("h3", {}, "Ask the footage anything"),
+    h("p", {}, "Queries are understood first — split into separate requirements, filtered by time and camera — and every result shows which requirements it meets."),
+    h("div", { class: "how" }, ...tiles.map(([ic, t, d, qs]) => h("div", { class: "tile" },
+      h("h4", {}, icon(ic), t), h("p", {}, d),
+      ...qs.map(q => h("button", { class: "chip-btn", type: "button", onclick: () => run(q) }, q)))))));
 }
 
-// Video Modal Control
-let activeModalItem = null;
+/* ============================================================ search */
+$("#search-form").addEventListener("submit", e => { e.preventDefault(); run($("#q").value); });
+$("#f-dataset").addEventListener("change", () => { fillCameras(); if (S.lastQuery) run(S.lastQuery); });
+$("#f-camera").addEventListener("change", () => { if (S.lastQuery) run(S.lastQuery); });
+for (const id of ["s-llm", "s-verify", "s-strict"]) {
+  $("#" + id).checked = store.get(id, $("#" + id).checked);
+  $("#" + id).addEventListener("change", e => { store.set(id, e.target.checked); if (S.lastQuery && S.mode === "ask") run(S.lastQuery); });
+}
 
-function openVideoModal(item) {
-  activeModalItem = item;
-  const title = $("#video-modal-title");
-  title.textContent = `📹 ${item.camera} · ${fmtTime(item.start_s)}–${fmtTime(item.end_s)} (#${item.id || item.chunk_id})`;
-  
-  const seekTime = (item.clip_t0 && item.clip_t0 > 0) ? item.clip_t0 : 0;
+function skeletons(n = 12) {
+  return h("div", { class: "grid" }, ...Array.from({ length: n }, (_, i) =>
+    h("div", { class: "skel", style: `animation-delay:${i * 30}ms` }, h("div", { class: "m shimmer" }),
+      h("div", { class: "l shimmer" }), h("div", { class: "l s shimmer" }))));
+}
 
-  // Reset player before loading new clip
-  cinemaPlayer.pause();
-  cinemaPlayer.src = item.clip;
-
-  // Seek and play after metadata is loaded to prevent browser race conditions
-  cinemaPlayer.onloadedmetadata = () => {
-    if (seekTime > 0 && seekTime < (cinemaPlayer.duration || Infinity)) {
-      cinemaPlayer.currentTime = seekTime;
-    }
-    cinemaPlayer.play().catch(err => {
-      console.warn("Autoplay notice (user can click play):", err);
-    });
-  };
-
-  cinemaPlayer.onerror = () => {
-    console.error("Playback error:", cinemaPlayer.error);
-    const meta = $("#video-metadata");
-    if (meta) meta.textContent = "⚠️ Video decoding failed or format unsupported.";
-  };
-  
-  const jumpBtn = $("#btn-jump-event");
-  if (jumpBtn) {
-    jumpBtn.style.display = (item.is_full_video && seekTime > 0) ? "inline-block" : "none";
-    jumpBtn.textContent = `🎯 Jump to Detection (${fmtTime(item.start_s)})`;
+async function run(q) {
+  q = (q || "").trim();
+  if (!q) { $("#q").focus(); return; }
+  $("#q").value = q; S.lastQuery = q;
+  try { history.replaceState(null, "", `?${new URLSearchParams({ q, ...(S.mode !== "ask" ? { mode: S.mode } : {}) })}`); } catch (e) {}
+  if (S.ctrl) S.ctrl.abort();
+  const ctrl = S.ctrl = new AbortController();
+  const ds = $("#f-dataset").value, cam = $("#f-camera").value;
+  const verify = S.mode === "ask" && $("#s-verify").checked;
+  const area = $("#results-area");
+  area.replaceChildren(h("div", { class: "resbar" }, h("h2", {}, "Searching…"),
+    h("span", { class: "sub" }, verify ? "planning, retrieving and verifying with the VLM — this can take ~10 s" : "planning and retrieving")), skeletons());
+  $("#understood-wrap").hidden = true;
+  const t0 = performance.now();
+  let url;
+  if (S.mode === "ask") {
+    url = `/api/ask?q=${encodeURIComponent(q)}&n=36&use_llm=${$("#s-llm").checked}&rerank=${verify}&strict=${$("#s-strict").checked}`;
+  } else {
+    url = `/api/search?kind=${S.mode}&q=${encodeURIComponent(q)}&k=36`;
   }
-
-  const streamBadge = item.is_full_video ? " · 🎥 Full CCTV Recording (free scrubbing across timeline)" : " · ⏱️ CCTV Clip";
-  $("#video-metadata").textContent = `${item.caption ? `Description: "${item.caption}" ` : ""}${streamBadge}`;
-  videoModal.showModal();
-}
-
-function jumpToEvent() {
-  if (activeModalItem && cinemaPlayer) {
-    const t = activeModalItem.clip_t0 || 0;
-    cinemaPlayer.currentTime = t;
-    cinemaPlayer.play().catch(() => {});
-  }
-}
-
-function closeVideoModal() {
-  cinemaPlayer.pause();
-  videoModal.close();
-}
-
-function setSpeed(rate) {
-  cinemaPlayer.playbackRate = rate;
-  document.querySelectorAll(".speed-pill").forEach(p => p.classList.toggle("active", parseFloat(p.textContent) === rate));
-}
-
-// Cross-Camera Re-ID Modal
-function openReidModal(item) {
-  activeReidTrack = item;
-  activeReidMode = "any";
-  reidModal.showModal();
-  
-  const queryBox = $("#reid-query-box");
-  queryBox.replaceChildren(
-    el("img", {src: item.thumb, className: "reid-query-img"}),
-    el("div", {},
-      el("div", {style: "font-weight:800; font-size:15px; margin-bottom:4px;", textContent: `Query Subject #${item.id}`}),
-      el("div", {style: "font-size:13px; color:var(--text-secondary);", textContent: `Captured on Camera: ${item.camera}`}),
-      el("div", {style: "font-size:12.5px; color:var(--text-muted); font-family:var(--font-mono);", textContent: `Timestamp: ${fmtTime(item.start_s)} – ${fmtTime(item.end_s)}`}),
-      el("div", {style: "margin-top:6px; font-size:13px;", textContent: item.caption || ""})
-    )
-  );
-
-  loadReidMatches();
-}
-
-function setReidMode(mode) {
-  activeReidMode = mode;
-  $("#btn-mode-any").classList.toggle("active", mode === "any");
-  $("#btn-mode-cloth").classList.toggle("active", mode === "cloth_change");
-  loadReidMatches();
-}
-
-async function loadReidMatches() {
-  if (!activeReidTrack) return;
-  const status = $("#reid-status");
-  const noteBox = $("#reid-note-box");
-  const grid = $("#reid-grid");
-  const fullBody = $("#fb-filter").checked;
-
-  status.textContent = "Matching across other cameras…";
-  if (noteBox) noteBox.style.display = "none";
-  grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "Computing appearance & gait cosine metrics…"})));
-
+  if (ds) url += `&dataset=${encodeURIComponent(ds)}`;
+  if (cam) url += `&camera=${encodeURIComponent(cam)}`;
   try {
-    const res = await fetch(`/api/reid/${activeReidTrack.id}?mode=${activeReidMode}&k=16&full_body=${fullBody}`);
-    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-    const data = await res.json();
-
-    const appPct = Math.round(data.w_appearance * 100);
-    const gaitPct = Math.round((1 - data.w_appearance) * 100);
-    status.textContent = `${data.results.length} matches · Mode: ${data.mode === 'cloth_change' ? 'Gait Only' : 'Dual Fusion'} (${appPct}% App / ${gaitPct}% Gait)`;
-
-    if (noteBox && data.note) {
-      noteBox.textContent = `ℹ️ ${data.note}`;
-      noteBox.style.display = "block";
-    }
-
-    if (!data.results.length) {
-      grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "No cross-camera matches found matching the criteria."})));
-    } else {
-      grid.replaceChildren(...data.results.map(c => createCard(c, {reid: true})));
-    }
+    const data = await api(url, ctrl.signal);
+    if (ctrl !== S.ctrl) return;
+    data._ms = Math.round(performance.now() - t0);
+    S.data = data; S.results = (data.results || []).map((r, i) => ({ ...r, _i: i }));
+    normalizeScores();
+    renderUnderstood(); renderResults(); renderExamples();
   } catch (err) {
-    status.textContent = `Re-ID failed: ${err.message}`;
-    grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1; color:var(--danger);"}, el("p", {textContent: err.message})));
+    if (err.name === "AbortError") return;
+    area.replaceChildren(h("div", { class: "alert error", style: "margin-top:24px" }, icon("alert"),
+      h("div", { style: "flex:1" }, h("b", {}, "Search failed. "), err.message),
+      h("button", { class: "btn sm", onclick: () => run(q) }, icon("retry"), "Retry")));
   }
 }
 
-// Evidence Pinning Drawer
-function togglePinEvidence(item) {
-  const idx = pinnedEvidence.findIndex(p => p.id === item.id);
-  if (idx >= 0) {
-    pinnedEvidence.splice(idx, 1);
+function normalizeScores() {
+  // /api/ask returns a 0..1 confidence; /api/search returns raw fused scores: show them relative to the best hit
+  const raw = S.results.map(r => r.score || 0);
+  const max = Math.max(...raw, 0);
+  const isProb = S.mode === "ask" || max > 0.3;
+  for (const r of S.results) r._pct = isProb ? Math.round(Math.min(1, Math.max(0, r.score || 0)) * 100)
+                                              : max ? Math.round(100 * (r.score || 0) / max) : null;
+}
+
+/* ============================================================ understood strip */
+function tokenFor(c, neg) {
+  const soft = !c.required && !neg;
+  const cls = ["token", neg ? "neg" : "", soft ? "soft" : "", c.type === "text" ? "text" : ""].join(" ");
+  const kids = [];
+  if (neg) kids.push(h("span", { class: "k" }, "not"));
+  if (c.type === "color") {
+    kids.push(h("span", { class: "swatch", style: `background:${SWATCH[c.value] || c.value}` }), c.value);
+    if (c.applies_to && c.applies_to !== "any") kids.push(h("span", { class: "k" }, "on"), c.applies_to);
+  } else if (c.type === "text") kids.push(`“${c.value}”`);
+  else if (c.type === "action") kids.push(icon("loop"), c.value);
+  else if (c.type === "attribute") kids.push(icon("person"), c.value);
+  else kids.push(c.value);
+  return h("span", { class: cls, title: soft ? "preference (not required)" : neg ? "must not be present" : "required" }, ...kids);
+}
+function renderUnderstood() {
+  const d = S.data, wrap = $("#understood-wrap");
+  if (!d || !d.plan) { wrap.hidden = true; return; }
+  const p = d.plan, toks = [];
+  toks.push(h("span", { class: "label" }, "Understood"));
+  toks.push(h("span", { class: "token" }, icon(KIND_ICON[p.kind] || "spark"),
+    { any: "person or vehicle", incident: "event" }[p.kind] || p.kind));
+  for (const c of p.constraints || []) toks.push(tokenFor(c, false));
+  for (const c of p.negations || []) toks.push(tokenFor(c, true));
+  if (p.time) {
+    const t = p.time, span = t.start && t.end ? `${t.start}–${t.end}` : t.start ? `after ${t.start}` : t.end ? `before ${t.end}` : "";
+    const date = t.date ? t.date.replace("*-", "").replace(/^(\d+)-(\d+)$/, (m, a, b) => `${MONTHS[+a - 1]} ${+b}`) : "";
+    toks.push(h("span", { class: "token time" }, icon("clock"), [span, date].filter(Boolean).join(" · ")));
+  }
+  if (p.camera) toks.push(h("span", { class: "token cam" }, icon("cam"), p.camera));
+  const full = S.results.filter(r => r.match === "full").length;
+  toks.push(h("span", { class: "meta" }, `${p.planner === "llm" ? "LLM" : "rules"} planner · ${full} exact · ${d._ms} ms`));
+  $("#understood").replaceChildren(...toks);
+  const notes = [d.notice, ...(p.notes || [])].filter(Boolean);
+  $("#notice").replaceChildren(...(notes.length ? [h("div", { class: "alert" }, icon("alert"), h("div", {}, notes.join(" ")))] : []));
+  wrap.hidden = false;
+}
+
+/* ============================================================ results */
+function sorted(list) {
+  const by = { score: (a, b) => (b._pct ?? 0) - (a._pct ?? 0) || a._i - b._i,
+    "time-asc": (a, b) => (a.recorded_at || "").localeCompare(b.recorded_at || "") || a.start_s - b.start_s,
+    "time-desc": (a, b) => (b.recorded_at || "").localeCompare(a.recorded_at || "") || b.start_s - a.start_s };
+  return S.sort === "relevance" ? list : [...list].sort(by[S.sort] || (() => 0));
+}
+function renderResults() {
+  const area = $("#results-area"), n = S.results.length, d = S.data || {};
+  const graded = S.mode === "ask" && S.results.some(r => r.match);
+  const nFull = S.results.filter(r => r.match === "full").length;
+  const title = !n ? "No results" : !graded ? `${n} result${n === 1 ? "" : "s"}` :
+    nFull ? `${nFull} exact match${nFull === 1 ? "" : "es"}` : "No exact matches";
+  const sub = graded && n - nFull ? `+ ${n - nFull} partial · ${d._ms} ms` : `${d._ms} ms`;
+  const bar = h("div", { class: "resbar" },
+    h("h2", {}, title),
+    h("span", { class: "sub" }, sub),
+    h("span", { style: "flex:1" }),
+    h("label", { class: "field" }, "Sort", (() => {
+      const s = h("select", { class: "select", onchange: e => { S.sort = e.target.value; store.set("sort", S.sort); renderResults(); } },
+        h("option", { value: "score" }, "Best match"), h("option", { value: "time-asc" }, "Earliest first"), h("option", { value: "time-desc" }, "Latest first"));
+      s.value = S.sort; return s;
+    })()),
+    h("div", { class: "seg", role: "group", "aria-label": "View" },
+      h("button", { "aria-pressed": String(S.view === "grid"), onclick: () => { S.view = "grid"; store.set("view", "grid"); renderResults(); } }, icon("grid"), "Grid"),
+      h("button", { "aria-pressed": String(S.view === "timeline"), onclick: () => { S.view = "timeline"; store.set("view", "timeline"); renderResults(); } }, icon("timeline"), "Timeline")),
+    h("button", { class: "btn sm", onclick: exportResults, disabled: !n, title: "Download results as JSON" }, icon("download"), "Export"));
+  if (!n) {
+    area.replaceChildren(bar, h("div", { class: "hero", style: "padding-top:30px" },
+      h("div", { class: "glyph" }, icon("search")), h("h3", {}, "Nothing matched"),
+      h("p", {}, S.data && S.data.notice ? S.data.notice : "Try fewer requirements, another camera or dataset, or turn off “Exact only”.")));
+    return;
+  }
+  if (S.view === "timeline") { area.replaceChildren(bar, timeline()); return; }
+  const wide = S.mode === "incident" || S.results.every(r => r.kind === "incident");
+  const hasMatch = S.mode === "ask" && S.results.some(r => r.match);
+  const full = sorted(S.results.filter(r => !hasMatch || r.match === "full"));
+  const part = hasMatch ? sorted(S.results.filter(r => r.match && r.match !== "full")) : [];
+  const out = [bar];
+  if (full.length) {
+    if (hasMatch) out.push(h("div", { class: "section-title", style: "margin-top:4px" }, icon("check"), "Matches every requirement",
+      h("span", { class: "pill" }, full.length), h("span", { class: "line" })));
+    out.push(h("div", { class: "grid" + (wide ? " wide" : "") }, ...full.map((r, i) => card(r, i))));
+  }
+  if (part.length) {
+    const miss = {};
+    part.forEach(r => (r.missing || []).forEach(m => miss[m] = (miss[m] || 0) + 1));
+    const top = Object.entries(miss).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
+    out.push(h("div", { class: "section-title" }, icon("minus"), "Partial matches", h("span", { class: "pill" }, part.length),
+      top.length ? h("span", { class: "why" }, `mostly missing ${top.join(", ")}`) : null, h("span", { class: "line" })));
+    out.push(h("div", { class: "grid" + (wide ? " wide" : "") }, ...part.map((r, i) => card(r, full.length + i))));
+  }
+  area.replaceChildren(...out);
+  S.order = [...full, ...part];
+}
+
+function scorePct(r, opts) {
+  if (opts && opts.reid) { const z = r.score ?? 0; return Math.min(99, Math.max(5, Math.round(100 / (1 + Math.exp(-0.85 * z))))); }
+  if (opts && opts.vreid) return r.score != null ? Math.round(Math.min(1, Math.max(0, r.score)) * 100) : null;
+  return r._pct;
+}
+function media(r, opts = {}) {
+  const m = h("div", { class: "media" });
+  if (!r.thumb) {
+    m.append(h("div", { style: "display:grid;place-items:center;height:100%;color:var(--text-3)" }, icon(KIND_ICON[r.kind] || "cam", "lg")));
   } else {
-    pinnedEvidence.push(item);
+    m.append(h("img", { src: r.thumb, alt: r.caption || `${r.kind} ${r.id}`, loading: "lazy",
+      onerror: e => { e.target.replaceWith(h("div", { style: "display:grid;place-items:center;height:100%;color:var(--text-3)" }, icon(KIND_ICON[r.kind] || "cam", "lg"))); } }));
   }
-  $("#evidence-count").textContent = pinnedEvidence.length;
+  m.append(h("div", { class: "shade" }), h("div", { class: "play-hint" }, h("span", {}, icon("play"))));
+  m.append(h("div", { class: "tl" }, h("span", { class: "ov" }, icon("cam"), r.camera || "cam")));
+  if (r.match && !opts.reid && !opts.vreid) m.append(h("div", { class: "tr" },
+    h("span", { class: "ov " + (r.match === "full" ? "ok" : "part"), title: r.match === "full" ? "matches every requirement" : "partial match" },
+      icon(r.match === "full" ? "check" : "minus"), r.verified ? "VLM ✓" : r.match === "full" ? "exact" : "partial")));
+  m.append(h("div", { class: "bl" }, h("span", { class: "ov" }, icon("clock"), fmtWhen(r, false))));
+  return m;
 }
-
-function openEvidenceDrawer() {
-  const grid = $("#evidence-grid");
-  $("#evidence-stats-label").textContent = `${pinnedEvidence.length} suspect clips currently saved in evidence.`;
-  if (!pinnedEvidence.length) {
-    grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "No items pinned to evidence yet. Click 'Pin' on any result card."})));
-  } else {
-    grid.replaceChildren(...pinnedEvidence.map(item => createCard(item)));
+function card(r, idx, opts = {}) {
+  const pct = scorePct(r, opts);
+  const pinned = isPinned(r);
+  const chips = [];
+  if (!opts.compact) {
+    if (r.verified) chips.push(h("span", { class: "chip vlm" }, icon("shield"), "VLM verified"));
+    // "jacket" is implied by "red jacket": show only the most specific matched labels
+    const met = (r.matched || []).filter(m => !(r.matched || []).some(o => o !== m && o.endsWith(" " + m)));
+    met.forEach(m => chips.push(h("span", { class: "chip ok", title: "matched" }, icon("check"), m)));
+    (r.missing || []).forEach(m => chips.push(h("span", { class: "chip miss", title: "missing" }, icon("x"), m)));
+    if (!r.match) chips.push(...attrChips(r.attrs).slice(0, 3));
   }
-  evidenceModal.showModal();
+  if (opts.reid) {
+    if (r.appearance_z != null) chips.push(h("span", { class: "chip" }, `app z ${r.appearance_z}`));
+    if (r.gait_z != null) chips.push(h("span", { class: "chip" + (r.gait_z > .5 ? " ok" : "") }, `gait z ${r.gait_z}`));
+  }
+  if (opts.vreid) {
+    if (r.appearance_sim != null) chips.push(h("span", { class: "chip" }, `visual ${Number(r.appearance_sim).toFixed(2)}`));
+    if (r.st_valid) chips.push(h("span", { class: "chip ok" }, icon("route"), "route ok"));
+  }
+  const el = h("article", { class: `card ${r.match && r.match !== "full" && !opts.reid ? "partial" : ""}`, tabindex: 0, "data-key": keyOf(r),
+    "aria-label": `${r.kind} on ${r.camera}`,
+    onclick: () => opts.onOpen ? opts.onOpen(r) : openInspector(idx),
+    onkeydown: e => { if (e.key === "Enter") (opts.onOpen ? opts.onOpen(r) : openInspector(idx)); } },
+    media(r, opts),
+    h("div", { class: "body" },
+      pct != null ? h("div", { class: "row score", title: "match score" }, h("div", { class: "bar" }, h("i", { style: `width:${pct}%` })), h("b", {}, `${pct}%`)) : null,
+      r.caption ? h("div", { class: "cap" }, r.caption) : null,
+      chips.length ? h("div", { class: "chips" }, ...chips) : null,
+      h("div", { class: "foot" },
+        h("span", { class: "when", title: r.recorded_at || "" },
+          `${r.recorded_at ? fmtWhen(r).split(" · ")[0] + " · " : ""}#${r.id} · ${Math.max(1, Math.round((r.end_s || 0) - (r.start_s || 0)))}s`),
+        h("button", { class: "iconbtn" + (pinned ? " on" : ""), title: pinned ? "Unpin" : "Pin as evidence", "aria-label": "Pin as evidence",
+          onclick: e => { e.stopPropagation(); togglePin(r); e.currentTarget.classList.toggle("on", isPinned(r)); } }, icon("pin")))));
+  return el;
+}
+function attrChips(a) {
+  if (!a) return [];
+  const out = [];
+  if (a.upper_color) out.push(h("span", { class: "chip" }, h("span", { class: "swatch", style: `background:${SWATCH[a.upper_color] || a.upper_color}` }), `top ${a.upper_color}`));
+  if (a.lower_color) out.push(h("span", { class: "chip" }, h("span", { class: "swatch", style: `background:${SWATCH[a.lower_color] || a.lower_color}` }), `bottom ${a.lower_color}`));
+  if (a.color && a.type) out.push(h("span", { class: "chip" }, h("span", { class: "swatch", style: `background:${SWATCH[a.color] || a.color}` }), `${a.color} ${a.type}`));
+  if (a.motion) out.push(h("span", { class: "chip" }, a.motion));
+  if (a.turn && !["none", "straight"].includes(a.turn)) out.push(h("span", { class: "chip" }, `turn ${a.turn}`));
+  return out;
 }
 
-function clearEvidence() {
-  pinnedEvidence = [];
-  $("#evidence-count").textContent = "0";
-  $("#evidence-grid").replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "Evidence drawer cleared."})));
+/* ============================================================ timeline */
+function timeline() {
+  const items = S.results.filter(r => r.recorded_at);
+  const wrap = h("div", { class: "tl-wrap" });
+  if (!items.length) {
+    wrap.append(h("div", { class: "tl-note" }, "None of these results has a recording time (only videos with a timestamp in the file name can be placed on the timeline)."));
+    return wrap;
+  }
+  const tod = S.tlMode === "tod";
+  // recorded_at is camera-local wall time: read it as-is (no time-zone shifts)
+  const ms = r => { const [d, t] = r.recorded_at.split("T"), [y, mo, da] = d.split("-").map(Number), [hh, mi, ss] = t.split(":").map(Number);
+    return tod ? ((hh * 60 + mi) * 60 + ss) * 1000 : Date.UTC(y, mo - 1, da, hh, mi, ss); };
+  const ts = items.map(ms);
+  let lo = Math.min(...ts), hi = Math.max(...ts);
+  if (hi - lo < 10 * 60e3) { const mid = (lo + hi) / 2; lo = mid - 5 * 60e3; hi = mid + 5 * 60e3; }
+  const pad = (hi - lo) * .04; lo -= pad; hi += pad;
+  const pos = t => `${(100 * (t - lo) / (hi - lo)).toFixed(2)}%`;
+  const axis = h("div", { class: "tl-axis" });
+  const span = hi - lo, hm = d => `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+  for (let i = 0; i <= 6; i++) {
+    const d = new Date(lo + span * i / 6);
+    const lab = tod || span < 36 * 3600e3 ? hm(d) + (!tod && span > 12 * 3600e3 ? ` ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}` : "")
+      : `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+    axis.append(h("span", { style: `left:${(100 * i / 6).toFixed(2)}%;${i === 0 ? "transform:none" : i === 6 ? "transform:translateX(-100%)" : ""}` }, lab));
+  }
+  wrap.append(h("div", { class: "row", style: "margin-bottom:10px;gap:10px" },
+    h("div", { class: "seg", role: "group", "aria-label": "Timeline axis" },
+      h("button", { "aria-pressed": String(!tod), onclick: () => { S.tlMode = "date"; renderResults(); } }, "Date"),
+      h("button", { "aria-pressed": String(tod), onclick: () => { S.tlMode = "tod"; renderResults(); } }, "Time of day")),
+    h("span", { class: "sub mono", style: "font-size:11.5px;color:var(--text-3)" }, tod ? "all days on one 24-hour axis" : "chronological")));
+  const byCam = {};
+  items.forEach(r => (byCam[r.camera] = byCam[r.camera] || []).push(r));
+  const lanes = Object.keys(byCam).sort().map(cam => h("div", { class: "tl-lane" }, h("div", { class: "tl-name", title: cam }, cam),
+    h("div", { class: "tl-track" }, ...byCam[cam].map(r => h("button", {
+      class: "tl-dot" + (r.match && r.match !== "full" ? " partial" : ""), style: `left:${pos(ms(r))}`,
+      title: `${fmtWhen(r)} · ${r.caption || ""}`, "aria-label": `${r.kind} at ${fmtWhen(r)}`,
+      onclick: () => { S.order = items; openInspector(items.indexOf(r)); } })))));
+  wrap.append(axis, ...lanes);
+  const missing = S.results.length - items.length;
+  wrap.append(h("div", { class: "tl-note" }, `Recording time from the video file names (local camera time). Orange = exact match, gray = partial.${missing ? ` ${missing} result(s) without a timestamp are not shown.` : ""}`));
+  return wrap;
 }
 
-// Export Findings
-function exportFindingsJSON() {
-  if (!currentResults.length) return alert("No search results to export.");
-  const blob = new Blob([JSON.stringify(currentResults, null, 2)], {type: "application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `cctv_findings_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+/* ============================================================ inspector */
+const drawer = $("#drawer"), scrim = $("#scrim");
+let player = null, current = null, lastFocus = null;
+function openDrawer(d) { lastFocus = document.activeElement; d.classList.add("open"); scrim.classList.add("open"); document.body.style.overflow = "hidden"; }
+function closeDrawers() {
+  for (const d of [drawer, $("#evdrawer")]) d.classList.remove("open");
+  scrim.classList.remove("open"); document.body.style.overflow = "";
+  if (player) { player.pause(); }
+  if (S.reid.ctrl) S.reid.ctrl.abort();
+  $$(".card.selected").forEach(c => c.classList.remove("selected"));
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+}
+scrim.addEventListener("click", closeDrawers);
+$("#dr-close").addEventListener("click", closeDrawers);
+$("#dr-prev").addEventListener("click", () => step(-1));
+$("#dr-next").addEventListener("click", () => step(1));
+function step(d) {
+  if (!S.order || S.sel < 0) return;
+  const n = S.order.length, i = (S.sel + d + n) % n;
+  openInspector(i);
 }
 
-// Initialize on page load
-setKind("ask");
-
-let allCamerasByDataset = {};
-let allCamerasList = [];
-
-function onDatasetChange() {
-  const ds = $("#dataset-filter").value;
-  const camSelect = $("#cam-filter");
-  const cams = (ds && allCamerasByDataset[ds]) ? allCamerasByDataset[ds] : allCamerasList;
-  camSelect.replaceChildren(
-    el("option", {value: "", textContent: ds ? `All ${cams.length} Cameras in ${ds.toUpperCase()}` : `All ${cams.length} Cameras`}),
-    ...cams.map(c => el("option", {value: c, textContent: c}))
-  );
-  executeSearch();
+function openInspector(i, item) {
+  const r = item || (S.order || S.results)[i];
+  if (!r) return;
+  S.sel = item ? -1 : i; current = r;
+  $$(".card.selected").forEach(c => c.classList.remove("selected"));
+  $("#dr-title-text").textContent = `${{ person: "Person", vehicle: "Vehicle", incident: "Event" }[r.kind] || "Clip"} #${r.id} · ${r.camera}`;
+  $("#dr-prev").disabled = $("#dr-next").disabled = item != null || !(S.order && S.order.length > 1);
+  renderInspector(r);
+  if (!drawer.classList.contains("open")) openDrawer(drawer);
 }
 
-// Fetch stats and cameras dynamically
-(async function initTelemetry() {
-  try {
-    const res = await fetch("/api/stats");
-    if (res.ok) {
-      const data = await res.json();
-      allCamerasList = data.cameras || [];
-      allCamerasByDataset = data.cameras_by_dataset || {};
+function renderInspector(r) {
+  const body = $("#dr-body");
+  const v = h("video", { controls: true, playsInline: true, preload: "metadata" });
+  player = v;
+  const msg = h("div", { class: "player-msg", hidden: true });
+  const t0 = r.clip_t0 || 0;
+  v.src = r.clip;
+  v.addEventListener("loadedmetadata", () => {
+    if (t0 > 0 && t0 < (v.duration || Infinity)) v.currentTime = t0;
+    v.play().catch(() => {});
+  }, { once: true });
+  v.addEventListener("error", () => { msg.hidden = false; msg.textContent = "This clip could not be played (missing file or unsupported format)."; });
+  const speeds = h("div", { class: "seg", role: "group", "aria-label": "Playback speed" },
+    ...[0.5, 1, 1.5, 2, 4].map(s => h("button", { "aria-pressed": String(s === 1), onclick: e => {
+      v.playbackRate = s; $$("button", e.currentTarget.parentElement).forEach(b => b.setAttribute("aria-pressed", String(b === e.currentTarget)));
+    } }, `${s}×`)));
+  const loop = h("label", { class: "switch" }, h("input", { type: "checkbox", onchange: e => v.loop = e.target.checked }), h("span", { class: "track" }), "Loop");
+  const canvas = h("canvas");
+  const showBox = store.get("showBox", true);
+  const boxSw = r.kind !== "incident" ? h("label", { class: "switch", title: "Draw the tracked box on the video" },
+    h("input", { type: "checkbox", checked: showBox, onchange: e => { store.set("showBox", e.target.checked); overlay.on = e.target.checked; overlay.draw(); } }),
+    h("span", { class: "track" }), "Box") : null;
+  const overlay = boxOverlay(v, canvas, r, showBox);
+  const jump = t0 > 0 ? h("button", { class: "btn sm", onclick: () => { v.currentTime = t0; v.play().catch(() => {}); } }, icon("target"), `Jump to detection`) : null;
 
-      if (data.datasets && data.datasets.length) {
-        const dsSelect = $("#dataset-filter");
-        dsSelect.replaceChildren(
-          el("option", {value: "", textContent: `All ${data.datasets.length} Datasets`}),
-          ...data.datasets.map(d => el("option", {value: d, textContent: d.toUpperCase()}))
-        );
-      }
+  const tabs = h("div", { class: "tabs", role: "tablist" });
+  const panel = h("div", {});
+  const tabDefs = [["details", "Details", "info"]];
+  if (r.kind === "person") tabDefs.push(["reid", "Same person on other cameras", "dna"]);
+  if (r.kind === "vehicle") tabDefs.push(["vreid", "Track across cameras", "route"]);
+  const showTab = key => {
+    $$(".tab", tabs).forEach(t => t.setAttribute("aria-selected", String(t.dataset.k === key)));
+    panel.replaceChildren(key === "details" ? details(r) : key === "reid" ? reidPanel(r) : vreidPanel(r));
+  };
+  tabDefs.forEach(([k, label, ic]) => tabs.append(h("button", { class: "tab", role: "tab", "data-k": k, onclick: () => showTab(k) }, icon(ic), label)));
+  body.replaceChildren(
+    h("div", { class: "player" }, h("div", { class: "stage" }, v, canvas), msg, h("div", { class: "player-bar" }, speeds, loop, boxSw, h("span", { style: "flex:1" }), jump,
+      h("span", { class: "sub mono", style: "font-size:11.5px;color:var(--text-3)" }, r.is_full_video ? "full recording" : "clip"))),
+    tabs, panel);
+  showTab("details");
+  body.scrollTop = 0;
+}
 
-      if (allCamerasList.length) {
-        const select = $("#cam-filter");
-        select.replaceChildren(
-          el("option", {value: "", textContent: `All ${allCamerasList.length} Cameras`}),
-          ...allCamerasList.map(c => el("option", {value: c, textContent: c}))
-        );
-        $("#stat-cams").textContent = allCamerasList.length;
-      }
-      if (data.tracks && data.tracks.person) {
-        $("#stat-tracks").textContent = Number(data.tracks.person).toLocaleString();
-      }
+/* tracked-box overlay: per-frame boxes from /api/track/{id}/boxes, drawn in sync with the video */
+let overlayRAF = 0;
+function boxOverlay(v, canvas, r, on) {
+  const o = { on, data: null, draw: () => {} };
+  if (r.kind === "incident") return o;
+  cancelAnimationFrame(overlayRAF);
+  const css = getComputedStyle(document.documentElement);
+  o.draw = () => {
+    const ctx = canvas.getContext("2d"), dpr = window.devicePixelRatio || 1;
+    const cw = v.clientWidth, ch = v.clientHeight;
+    if (canvas.width !== Math.round(cw * dpr) || canvas.height !== Math.round(ch * dpr)) {
+      canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
+      canvas.style.width = cw + "px"; canvas.style.height = ch + "px";
     }
-  } catch (e) {
-    console.warn("Telemetry init error:", e);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, cw, ch);
+    const d = o.data;
+    if (!o.on || !d || !d.boxes.length || !v.videoWidth) return;
+    const t = v.currentTime, B = d.boxes;
+    let lo = 0, hi = B.length - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (B[m][0] < t) lo = m + 1; else hi = m; }
+    const cand = [B[lo], B[Math.max(0, lo - 1)]].sort((a, b) => Math.abs(a[0] - t) - Math.abs(b[0] - t))[0];
+    if (Math.abs(cand[0] - t) > Math.max(0.25, 2 / d.fps)) return;
+    const s = Math.min(cw / v.videoWidth, ch / v.videoHeight), ox = (cw - v.videoWidth * s) / 2, oy = (ch - v.videoHeight * s) / 2;
+    const k = v.videoWidth / (d.width || v.videoWidth);
+    const x = ox + cand[1] * k * s, y = oy + cand[2] * k * s, w = cand[3] * k * s, hh = cand[4] * k * s;
+    const color = css.getPropertyValue("--accent").trim() || "#ffb020";
+    ctx.lineWidth = 2; ctx.strokeStyle = color; ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 4;
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, hh, 4) : ctx.rect(x, y, w, hh); ctx.stroke();
+    ctx.shadowBlur = 0;
+    const label = `${r.kind} #${r.id}`;
+    ctx.font = "600 11px Inter, system-ui, sans-serif";
+    const tw = ctx.measureText(label).width + 10, ly = y > 18 ? y - 18 : y + hh + 2;
+    ctx.fillStyle = color; ctx.fillRect(x - 1, ly, tw, 16);
+    ctx.fillStyle = "#1a1203"; ctx.fillText(label, x + 4, ly + 12);
+  };
+  const tick = () => { o.draw(); if (!v.paused && drawer.classList.contains("open")) overlayRAF = requestAnimationFrame(tick); };
+  v.addEventListener("play", () => { cancelAnimationFrame(overlayRAF); tick(); });
+  for (const ev of ["seeked", "timeupdate", "loadeddata", "pause"]) v.addEventListener(ev, o.draw);
+  window.addEventListener("resize", o.draw);
+  api(`/api/track/${r.id}/boxes`).then(d => { o.data = d; o.draw(); }).catch(() => {});
+  return o;
+}
+
+function details(r) {
+  const pin = isPinned(r);
+  const rows = [
+    ["Recorded", r.recorded_at ? r.recorded_at.replace("T", " ") : "unknown"],
+    ["In video", `${fmtDur(r.start_s)} – ${fmtDur(r.end_s)} (${Math.max(1, Math.round((r.end_s || 0) - (r.start_s || 0)))} s)`],
+    ["Camera", r.camera || "–"], ["Dataset", r.dataset || "–"], ["Type", r.kind], ["Track ID", r.id],
+  ];
+  if (r._pct != null) rows.push(["Match", `${r._pct}%${r.coverage != null ? ` · ${Math.round(r.coverage * 100)}% of requirements` : ""}`]);
+  const out = [];
+  if (r.caption) out.push(h("div", { class: "block-title", style: "margin-top:0" }, "Description"), h("div", { class: "desc" }, r.caption));
+  if (r.match) {
+    out.push(h("div", { class: "block-title" }, "Why this result"));
+    const list = h("div", { class: "verify-list" });
+    (r.matched || []).forEach(m => list.append(h("div", { class: "verify-item" }, h("span", { class: "chip ok" }, icon("check"), "met"), m,
+      r.verify && r.verify[m] != null ? h("span", { class: "m" }, `VLM ${r.verify[m] > 0 ? "+" : ""}${r.verify[m]}`) : null)));
+    (r.missing || []).forEach(m => list.append(h("div", { class: "verify-item" }, h("span", { class: "chip miss" }, icon("x"), "missing"), m)));
+    if (r.verify) Object.entries(r.verify).filter(([k]) => !(r.matched || []).includes(k)).forEach(([k, m]) =>
+      list.append(h("div", { class: "verify-item" }, h("span", { class: "chip vlm" }, icon("shield"), "VLM"), k, h("span", { class: "m" }, `${m > 0 ? "+" : ""}${m}`))));
+    out.push(list);
+    if (r.verified != null) out.push(h("div", { class: "note", style: "margin-top:8px" },
+      r.verified ? "The vision model confirmed every required part on the video frames." : "The vision model was not sure about every part."));
   }
-})();
+  const at = attrChips(r.attrs);
+  if (at.length) out.push(h("div", { class: "block-title" }, "Tracker attributes"), h("div", { class: "chips" }, ...at));
+  out.push(h("div", { class: "block-title" }, "Metadata"), h("div", { class: "kv" }, ...rows.flatMap(([k, v]) => [h("div", { class: "k" }, k), h("div", { class: "v" }, String(v))])));
+  const pinBtn = h("button", { class: "btn" + (pin ? " primary" : ""), onclick: e => { togglePin(r); const on = isPinned(r); e.currentTarget.classList.toggle("primary", on); e.currentTarget.lastChild.textContent = on ? "Pinned" : "Pin as evidence"; renderResultsPinState(); } },
+    icon("pin"), h("span", {}, pin ? "Pinned" : "Pin as evidence"));
+  out.push(h("div", { class: "dr-actions" }, pinBtn,
+    h("a", { class: "btn", href: r.clip, target: "_blank", rel: "noopener" }, icon("play"), "Open video in new tab"),
+    h("button", { class: "btn", onclick: () => { navigator.clipboard && navigator.clipboard.writeText(JSON.stringify({ id: r.id, camera: r.camera, recorded_at: r.recorded_at, caption: r.caption }, null, 1)).then(() => toast("Copied details"), () => toast("Copy failed")); } }, "Copy details")));
+  return h("div", {}, ...out);
+}
+function renderResultsPinState() {
+  // refresh pin icons on the visible cards without re-rendering them
+  $$(".card[data-key]").forEach(c => {
+    const on = S.pinned.some(p => keyOf(p) === c.dataset.key);
+    const b = $(".foot .iconbtn", c);
+    if (b) b.classList.toggle("on", on);
+  });
+}
+
+function reidPanel(r) {
+  const st = S.reid;
+  const grid = h("div", { class: "grid compact" });
+  const status = h("span", { class: "reid-status" });
+  const note = h("div", { class: "note", hidden: true });
+  const load = async () => {
+    if (st.ctrl) st.ctrl.abort();
+    const ctrl = st.ctrl = new AbortController();
+    status.textContent = "matching appearance and gait across cameras…"; note.hidden = true;
+    grid.replaceChildren(...Array.from({ length: 8 }, () => h("div", { class: "skel" }, h("div", { class: "m shimmer" }), h("div", { class: "l shimmer" }))));
+    try {
+      const d = await api(`/api/reid/${r.id}?mode=${st.mode}&k=16&full_body=${st.fullBody}`, ctrl.signal);
+      if (ctrl !== st.ctrl) return;
+      const a = Math.round((d.w_appearance ?? 1) * 100);
+      status.textContent = `${d.results.length} match${d.results.length === 1 ? "" : "es"} · ${a}% appearance / ${100 - a}% gait`;
+      if (d.note) { note.hidden = false; note.textContent = d.note; }
+      grid.replaceChildren(...(d.results.length ? d.results.map(x => card(x, -1, { reid: true, compact: true, onOpen: y => openInspector(-1, y) }))
+        : [h("div", { class: "tl-note" }, "No matches on other cameras.")]));
+    } catch (e) {
+      if (e.name === "AbortError") return;
+      status.textContent = ""; grid.replaceChildren(h("div", { class: "alert error" }, icon("alert"), h("div", {}, e.message)));
+    }
+  };
+  const modeSeg = h("div", { class: "seg", role: "group", "aria-label": "Re-ID mode" },
+    ...[["any", "Appearance + gait"], ["cloth_change", "Changed clothes (gait only)"]].map(([m, l]) =>
+      h("button", { "aria-pressed": String(st.mode === m), onclick: e => { st.mode = m; $$("button", e.currentTarget.parentElement).forEach(b => b.setAttribute("aria-pressed", String(b === e.currentTarget))); load(); } }, l)));
+  const fb = h("label", { class: "switch" }, h("input", { type: "checkbox", checked: st.fullBody, onchange: e => { st.fullBody = e.target.checked; load(); } }), h("span", { class: "track" }), "Full-body only");
+  load();
+  return h("div", {}, h("div", { class: "reid-controls" }, modeSeg, fb, status), note, grid);
+}
+
+function vreidPanel(r) {
+  const st = S.reid;
+  const grid = h("div", { class: "grid compact" });
+  const status = h("span", { class: "reid-status" });
+  const load = async () => {
+    if (st.ctrl) st.ctrl.abort();
+    const ctrl = st.ctrl = new AbortController();
+    status.textContent = "matching across cameras and road topology…";
+    grid.replaceChildren(...Array.from({ length: 8 }, () => h("div", { class: "skel" }, h("div", { class: "m shimmer" }), h("div", { class: "l shimmer" }))));
+    try {
+      const d = await api(`/api/reid/vehicle/${r.id}?use_st=${st.st}&use_color=${st.color}&k=12`, ctrl.signal);
+      if (ctrl !== st.ctrl) return;
+      status.textContent = `${d.results.length} match${d.results.length === 1 ? "" : "es"}`;
+      grid.replaceChildren(...(d.results.length ? d.results.map(x => card({ ...x, kind: x.kind || "vehicle" }, -1, { vreid: true, compact: true, onOpen: y => openInspector(-1, y) }))
+        : [h("div", { class: "tl-note" }, "No matching vehicle on other cameras within the constraints.")]));
+    } catch (e) {
+      if (e.name === "AbortError") return;
+      status.textContent = ""; grid.replaceChildren(h("div", { class: "alert error" }, icon("alert"), h("div", {}, e.message)));
+    }
+  };
+  const sw = (label, key) => h("label", { class: "switch" }, h("input", { type: "checkbox", checked: st[key], onchange: e => { st[key] = e.target.checked; load(); } }), h("span", { class: "track" }), label);
+  load();
+  return h("div", {}, h("div", { class: "reid-controls" }, sw("Road topology", "st"), sw("Same color", "color"), status), grid);
+}
+
+/* ============================================================ evidence */
+const keyOf = r => `${r.kind}:${r.id}`;
+const isPinned = r => S.pinned.some(p => keyOf(p) === keyOf(r));
+function togglePin(r) {
+  if (isPinned(r)) { S.pinned = S.pinned.filter(p => keyOf(p) !== keyOf(r)); toast("Removed from evidence"); }
+  else {
+    const keep = ["id", "kind", "camera", "dataset", "caption", "thumb", "clip", "clip_t0", "clip_t1", "start_s", "end_s", "recorded_at", "is_full_video", "attrs", "matched", "missing"];
+    S.pinned.push({ ...Object.fromEntries(keep.map(k => [k, r[k]])), note: "", pinned_at: new Date().toISOString(), query: S.lastQuery });
+    toast("Pinned as evidence");
+  }
+  store.set("evidence", S.pinned); evCount(); renderResultsPinState();
+  if ($("#evdrawer").classList.contains("open")) renderEvidence();
+}
+function evCount() { const c = $("#ev-count"); c.textContent = S.pinned.length; c.classList.toggle("zero", !S.pinned.length); }
+function renderEvidence() {
+  const b = $("#ev-body");
+  if (!S.pinned.length) {
+    b.replaceChildren(h("div", { class: "hero", style: "padding:40px 10px" }, h("div", { class: "glyph" }, icon("pin")), h("h3", { style: "font-size:17px" }, "No evidence yet"),
+      h("p", {}, "Pin results with the pin button on a card or in the inspector. Pins stay in this browser.")));
+    return;
+  }
+  b.replaceChildren(...S.pinned.map(p => h("div", { class: "ev-item", onclick: () => { closeDrawers(); setTimeout(() => openInspector(-1, p), 50); } },
+    h("div", { class: "th" }, p.thumb ? h("img", { src: p.thumb, alt: "" }) : icon(KIND_ICON[p.kind] || "cam", "lg")),
+    h("div", { class: "tx" },
+      h("b", {}, `${p.kind} #${p.id} · ${p.camera}`),
+      h("div", { class: "mono", style: "font-size:11.5px;color:var(--text-3)" }, fmtWhen(p)),
+      p.caption ? h("div", { class: "cap" }, p.caption) : null,
+      h("textarea", { placeholder: "Add a note…", value: p.note || "", onclick: e => e.stopPropagation(),
+        oninput: e => { p.note = e.target.value; store.set("evidence", S.pinned); } })),
+    h("button", { class: "iconbtn", title: "Remove", "aria-label": "Remove", onclick: e => { e.stopPropagation(); togglePin(p); } }, icon("x")))));
+}
+$("#ev-open").addEventListener("click", () => { renderEvidence(); openDrawer($("#evdrawer")); });
+$("#ev-close").addEventListener("click", closeDrawers);
+$("#ev-clear").addEventListener("click", () => {
+  if (!S.pinned.length || !confirm(`Remove all ${S.pinned.length} pinned item(s)?`)) return;
+  S.pinned = []; store.set("evidence", []); evCount(); renderEvidence(); renderResultsPinState();
+});
+$("#ev-export").addEventListener("click", () => download(S.pinned, "cctv_evidence"));
+function exportResults() { download({ query: S.lastQuery, plan: S.data && S.data.plan, results: S.results }, "cctv_results"); }
+function download(obj, name) {
+  if (!obj || (Array.isArray(obj) && !obj.length)) { toast("Nothing to export"); return; }
+  const a = h("a", { href: URL.createObjectURL(new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" })),
+    download: `${name}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json` });
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ============================================================ keyboard */
+document.addEventListener("keydown", e => {
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+  if (e.key === "Escape" && (drawer.classList.contains("open") || $("#evdrawer").classList.contains("open"))) { closeDrawers(); return; }
+  if (typing) return;
+  if (e.key === "/" || (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey))) { e.preventDefault(); $("#q").focus(); $("#q").select(); }
+  if (drawer.classList.contains("open") && S.sel >= 0) {
+    if (e.key === "ArrowRight") step(1);
+    if (e.key === "ArrowLeft") step(-1);
+  }
+});
+
+/* ============================================================ status + filters */
+function fillCameras() {
+  const ds = $("#f-dataset").value, sel = $("#f-camera"), prev = sel.value;
+  const cams = ds && S.camsByDs[ds] ? S.camsByDs[ds] : S.cams;
+  sel.replaceChildren(h("option", { value: "" }, `All cameras (${cams.length})`), ...cams.map(c => h("option", { value: c }, c)));
+  if (cams.includes(prev)) sel.value = prev;
+}
+async function initStatus() {
+  try {
+    const s = await api("/api/stats");
+    S.cams = s.cameras || []; S.camsByDs = s.cameras_by_dataset || {};
+    $("#f-dataset").replaceChildren(h("option", { value: "" }, "All datasets"), ...(s.datasets || []).map(d => h("option", { value: d }, d.toUpperCase())));
+    fillCameras();
+    const t = s.tracks || {};
+    $("#sys-cams").textContent = S.cams.length;
+    $("#sys-tracks").textContent = ((t.person || 0) + (t.vehicle || 0)).toLocaleString();
+    $("#sys-events").textContent = (s.windows || 0).toLocaleString();
+  } catch (e) { console.warn("stats", e); }
+  const poll = async () => {
+    try {
+      const hl = await api("/api/health");
+      S.gpu = !!hl.gpu;
+      $("#sys-hw").textContent = hl.gpu ? "GPU" : "CPU";
+      $("#verify-hint").textContent = hl.gpu ? "" : "(slow on CPU)";
+      if (hl.gpu && store.get("s-llm", null) == null) $("#s-llm").checked = true;
+      $("#sys-dot").classList.toggle("ready", !!hl.done);
+      $("#sys-state").textContent = hl.error ? "Degraded" : hl.done ? "Ready" : "Warming up…";
+      if (!hl.done) setTimeout(poll, 3000);
+    } catch (e) { $("#sys-state").textContent = "Offline"; setTimeout(poll, 5000); }
+  };
+  poll();
+}
+
+/* ============================================================ boot */
+evCount();
+setMode("ask");
+initStatus();
+const params = new URLSearchParams(location.search);
+if (params.get("q")) { if (params.get("mode") && EXAMPLES[params.get("mode")]) setMode(params.get("mode")); run(params.get("q")); }
 </script>
 </body>
 </html>

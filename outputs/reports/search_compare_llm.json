@@ -1,0 +1,3968 @@
+{
+ "k": 10,
+ "llm": true,
+ "verify": false,
+ "total_before": 59,
+ "total_after": 87,
+ "queries": [
+  {
+   "query": "red bluewhale",
+   "plan": {
+    "kind": "any",
+    "text": "red bluewhale",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "text",
+      "value": "bluewhale",
+      "applies_to": null,
+      "required": true
+     },
+     {
+      "type": "color",
+      "value": "red",
+      "applies_to": "bluewhale",
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "anything: \"bluewhale\", red bluewhale",
+   "notice": "No caption in the index mentions \"bluewhale\". No result matches every part of the query. Showing partial matches.",
+   "unsupported": [
+    "bluewhale"
+   ],
+   "before_full": 0,
+   "after_full": 0,
+   "latency_after": 31.63,
+   "timings": {
+    "plan": 29.135,
+    "retrieve": 2.459,
+    "score": 0.002
+   },
+   "before": [
+    {
+     "id": 19709,
+     "kind": "person",
+     "caption": "The person wears a red shirt and blue jeans, carrying a red bag over their shoulder, standing with hands on hips. Motion: walking stationary."
+    },
+    {
+     "id": 5118,
+     "kind": "person",
+     "caption": "The person wears red and blue clothing, carries a bag, and stands with hands on hips. Motion: walking right."
+    },
+    {
+     "id": 19739,
+     "kind": "person",
+     "caption": "A woman in a red long-sleeved shirt and jeans stands with a man in a red shirt and gray cap, holding a white object near a wall. Motion: standing stationary."
+    },
+    {
+     "id": 19654,
+     "kind": "person",
+     "caption": "The person wears a red shirt, khaki pants, black sneakers, and a red cap. They carry a blue bag and walk with their head slightly tilted down. Motion: walking right."
+    },
+    {
+     "id": 18185,
+     "kind": "person",
+     "caption": "The person wears a red shirt and blue jeans, carrying a black bag, and is seen walking with their head slightly tilted down. Motion: walking right."
+    },
+    {
+     "id": 13794,
+     "kind": "person",
+     "caption": "The person wears a red shirt, blue jeans, and carries a bag while walking. Motion: walking right."
+    },
+    {
+     "id": 19829,
+     "kind": "person",
+     "caption": "A person wearing red shirt, khaki pants, and black shoes stands with a blue and red bag, leaning slightly forward. Motion: standing stationary."
+    },
+    {
+     "id": 19720,
+     "kind": "person",
+     "caption": "The person wears a red shirt, khaki pants, and a red cap, carrying a blue bag, standing with hands on hips. Motion: walking stationary."
+    },
+    {
+     "id": 2195,
+     "kind": "person",
+     "caption": "The person wears a red shirt, blue jeans, and carries a backpack while walking. Motion: walking right."
+    },
+    {
+     "id": 19658,
+     "kind": "person",
+     "caption": "A woman in a red shirt and blue jeans stands near a counter, holding a phone, while a child in a red cap and gray shirt crouches nearby. Motion: standing stationary."
+    }
+   ],
+   "after": [
+    {
+     "id": 19709,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "\"bluewhale\"",
+      "red bluewhale"
+     ],
+     "coverage": 0.15,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red shirt and blue jeans, carrying a red bag over their shoulder, standing with hands on hips. Motion: walking stationary."
+    },
+    {
+     "id": 5118,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "\"bluewhale\"",
+      "red bluewhale"
+     ],
+     "coverage": 0.15,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears red and blue clothing, carries a bag, and stands with hands on hips. Motion: walking right."
+    },
+    {
+     "id": 19739,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "\"bluewhale\"",
+      "red bluewhale"
+     ],
+     "coverage": 0.15,
+     "verified": null,
+     "verify": null,
+     "caption": "A woman in a red long-sleeved shirt and jeans stands with a man in a red shirt and gray cap, holding a white object near a wall. Motion: standing stationary."
+    },
+    {
+     "id": 9566,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "\"bluewhale\"",
+      "red bluewhale"
+     ],
+     "coverage": 0.15,
+     "verified": null,
+     "verify": null,
+     "caption": "A red sedan with a sunroof. Motion: stopped."
+    },
+    {
+     "id": 19654,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "\"bluewhale\"",
+      "red bluewhale"
+     ],
+     "coverage": 0.15,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red shirt, khaki pants, black sneakers, and a red cap. They carry a blue bag and walk with their head slightly tilted down. Motion: walking right."
+    },
+    {
+     "id": 18185,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "\"bluewhale\"",
+      "red bluewhale"
+     ],
+     "coverage": 0.15,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red shirt and blue jeans, carrying a black bag, and is seen walking with their head slightly tilted down. Motion: walking right."
+    },
+    {
+     "id": 13794,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "\"bluewhale\"",
+      "red bluewhale"
+     ],
+     "coverage": 0.15,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red shirt, blue jeans, and carries a bag while walking. Motion: walking right."
+    },
+    {
+     "id": 19829,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "\"bluewhale\"",
+      "red bluewhale"
+     ],
+     "coverage": 0.15,
+     "verified": null,
+     "verify": null,
+     "caption": "A person wearing red shirt, khaki pants, and black shoes stands with a blue and red bag, leaning slightly forward. Motion: standing stationary."
+    },
+    {
+     "id": 19720,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "\"bluewhale\"",
+      "red bluewhale"
+     ],
+     "coverage": 0.15,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red shirt, khaki pants, and a red cap, carrying a blue bag, standing with hands on hips. Motion: walking stationary."
+    },
+    {
+     "id": 2195,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "\"bluewhale\"",
+      "red bluewhale"
+     ],
+     "coverage": 0.15,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red shirt, blue jeans, and carries a backpack while walking. Motion: walking right."
+    }
+   ]
+  },
+  {
+   "query": "blue whale",
+   "plan": {
+    "kind": "any",
+    "text": "blue whale",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "color",
+      "value": "blue",
+      "applies_to": "upper",
+      "required": true
+     },
+     {
+      "type": "text",
+      "value": "whale",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "anything: blue upper, \"whale\"",
+   "notice": "No caption in the index mentions \"whale\". No result matches every part of the query. Showing partial matches (blue upper).",
+   "unsupported": [
+    "whale"
+   ],
+   "before_full": 0,
+   "after_full": 0,
+   "latency_after": 2.79,
+   "timings": {
+    "plan": 2.401,
+    "retrieve": 0.35,
+    "score": 0.002
+   },
+   "before": [
+    {
+     "id": 20058,
+     "kind": "person",
+     "caption": "The person wears a blue shirt, gray pants, and carries a blue backpack while walking. Motion: walking away from camera."
+    },
+    {
+     "id": 2582,
+     "kind": "person",
+     "caption": "A person wearing a blue t-shirt sits with their back to the camera, holding a blue object in their lap. Motion: standing stationary."
+    },
+    {
+     "id": 23349,
+     "kind": "person",
+     "caption": "The person wears a blue shirt with a shark design, black pants, and carries a blue bag over their shoulder while walking. Motion: walking left."
+    },
+    {
+     "id": 5162,
+     "kind": "person",
+     "caption": "The person wears a blue t-shirt, khaki shorts, and sandals, carrying a blue bag over their shoulder while walking. Motion: walking left."
+    },
+    {
+     "id": 15526,
+     "kind": "person",
+     "caption": "The person wears a blue shirt, gray pants, and carries two blue water jugs over their shoulder while walking. Motion: walking right."
+    },
+    {
+     "id": 9100,
+     "kind": "person",
+     "caption": "The person wears a blue shirt with white trim, holding a black object, standing upright. Motion: walking toward camera."
+    },
+    {
+     "id": 4869,
+     "kind": "person",
+     "caption": "The person wears a blue and white striped polo shirt, dark pants, and holds a phone while sitting on a chair with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 96,
+     "kind": "person",
+     "caption": "The person wears a black shirt, blue jeans, and carries a blue backpack while walking. Motion: standing stationary."
+    },
+    {
+     "id": 4928,
+     "kind": "person",
+     "caption": "The person wears a blue striped polo shirt, blue jeans, and black shoes, holding a phone, sitting with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 7406,
+     "kind": "person",
+     "caption": "The person wears a blue and white striped polo shirt, dark pants, and holds a phone while sitting on a chair with legs crossed. Motion: standing stationary."
+    }
+   ],
+   "after": [
+    {
+     "id": 20058,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "blue upper"
+     ],
+     "missing": [
+      "\"whale\""
+     ],
+     "coverage": 0.5,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue shirt, gray pants, and carries a blue backpack while walking. Motion: walking away from camera."
+    },
+    {
+     "id": 2582,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "blue upper"
+     ],
+     "missing": [
+      "\"whale\""
+     ],
+     "coverage": 0.5,
+     "verified": null,
+     "verify": null,
+     "caption": "A person wearing a blue t-shirt sits with their back to the camera, holding a blue object in their lap. Motion: standing stationary."
+    },
+    {
+     "id": 23349,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "blue upper"
+     ],
+     "missing": [
+      "\"whale\""
+     ],
+     "coverage": 0.5,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue shirt with a shark design, black pants, and carries a blue bag over their shoulder while walking. Motion: walking left."
+    },
+    {
+     "id": 5162,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "blue upper"
+     ],
+     "missing": [
+      "\"whale\""
+     ],
+     "coverage": 0.5,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue t-shirt, khaki shorts, and sandals, carrying a blue bag over their shoulder while walking. Motion: walking left."
+    },
+    {
+     "id": 15526,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "blue upper"
+     ],
+     "missing": [
+      "\"whale\""
+     ],
+     "coverage": 0.5,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue shirt, gray pants, and carries two blue water jugs over their shoulder while walking. Motion: walking right."
+    },
+    {
+     "id": 9100,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "blue upper"
+     ],
+     "missing": [
+      "\"whale\""
+     ],
+     "coverage": 0.5,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue shirt with white trim, holding a black object, standing upright. Motion: walking toward camera."
+    },
+    {
+     "id": 4928,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "blue upper"
+     ],
+     "missing": [
+      "\"whale\""
+     ],
+     "coverage": 0.5,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue striped polo shirt, blue jeans, and black shoes, holding a phone, sitting with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 6979,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "blue upper"
+     ],
+     "missing": [
+      "\"whale\""
+     ],
+     "coverage": 0.5,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue and white striped shirt, blue jeans, and holds a phone while sitting on a chair with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 22632,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "blue upper"
+     ],
+     "missing": [
+      "\"whale\""
+     ],
+     "coverage": 0.5,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a light blue shirt with short sleeves, standing with arms slightly bent, holding an object near their chest. Motion: walking right."
+    },
+    {
+     "id": 2359,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "blue upper"
+     ],
+     "missing": [
+      "\"whale\""
+     ],
+     "coverage": 0.5,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue and white striped shirt, blue jeans, and white sneakers, carrying a blue and white bag over their shoulder, standing with hands clasped in front. Motion: standing stationary."
+    }
+   ]
+  },
+  {
+   "query": "man in a red jacket with a backpack walking left",
+   "plan": {
+    "kind": "person",
+    "text": "man in a red jacket walking left",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "color",
+      "value": "red",
+      "applies_to": "jacket",
+      "required": true
+     },
+     {
+      "type": "object",
+      "value": "backpack",
+      "applies_to": null,
+      "required": true
+     },
+     {
+      "type": "object",
+      "value": "jacket",
+      "applies_to": null,
+      "required": true
+     },
+     {
+      "type": "action",
+      "value": "walking left",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "person: red jacket, backpack, jacket, walking left",
+   "notice": null,
+   "unsupported": [],
+   "before_full": 4,
+   "after_full": 10,
+   "latency_after": 21.94,
+   "timings": {
+    "plan": 21.696,
+    "retrieve": 0.237,
+    "score": 0.002
+   },
+   "before": [
+    {
+     "id": 20166,
+     "kind": "person",
+     "caption": "A man in a red shirt and khaki shorts carries a backpack and a white object while walking. Motion: walking right."
+    },
+    {
+     "id": 12991,
+     "kind": "person",
+     "caption": "The person wears a red jacket, black pants, carries a backpack, and stands with hands near the waist. Motion: walking left."
+    },
+    {
+     "id": 14584,
+     "kind": "person",
+     "caption": "A man in a red t-shirt and blue jeans carries a backpack while walking on a sidewalk. Motion: walking stationary."
+    },
+    {
+     "id": 18551,
+     "kind": "person",
+     "caption": "The person wears a red jacket, black beanie, and carries a backpack and a book, standing upright. Motion: standing left."
+    },
+    {
+     "id": 12987,
+     "kind": "person",
+     "caption": "The person wears a red jacket, black pants, carries a backpack, and walks with hands in pockets. Motion: walking away from camera."
+    },
+    {
+     "id": 13200,
+     "kind": "person",
+     "caption": "The person wears a red jacket, black pants, and a black beanie, carrying a red backpack and a phone, standing with hands in pockets. Motion: walking left."
+    },
+    {
+     "id": 1750,
+     "kind": "person",
+     "caption": "The person wears a red shirt under a black jacket, carrying a backpack, and walks with their head slightly down. Motion: walking right."
+    },
+    {
+     "id": 13166,
+     "kind": "person",
+     "caption": "The person wears a red jacket, black pants, carries a backpack, and holds an object in their hands while walking. Motion: walking left."
+    },
+    {
+     "id": 14361,
+     "kind": "person",
+     "caption": "The person wears a dark jacket, carrying a red backpack, and stands with arms slightly bent, looking to the side. Motion: walking left."
+    },
+    {
+     "id": 8482,
+     "kind": "person",
+     "caption": "The person wears a red jacket, black pants, and carries a red bag over their shoulder while walking. Motion: walking left."
+    }
+   ],
+   "after": [
+    {
+     "id": 13166,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red jacket",
+      "backpack",
+      "jacket",
+      "walking left"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red jacket, black pants, carries a backpack, and holds an object in their hands while walking. Motion: walking left."
+    },
+    {
+     "id": 13200,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red jacket",
+      "backpack",
+      "jacket",
+      "walking left"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red jacket, black pants, and a black beanie, carrying a red backpack and a phone, standing with hands in pockets. Motion: walking left."
+    },
+    {
+     "id": 12991,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red jacket",
+      "backpack",
+      "jacket",
+      "walking left"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red jacket, black pants, carries a backpack, and stands with hands near the waist. Motion: walking left."
+    },
+    {
+     "id": 12997,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red jacket",
+      "backpack",
+      "jacket",
+      "walking left"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red jacket, black pants, and a dark beanie, carrying a backpack while walking. Motion: standing left."
+    },
+    {
+     "id": 24321,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red jacket",
+      "backpack",
+      "jacket",
+      "walking left"
+     ],
+     "missing": [],
+     "coverage": 0.9,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red jacket, black pants, carries a backpack, and walks with hands in pockets. Motion: walking right."
+    },
+    {
+     "id": 12987,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red jacket",
+      "backpack",
+      "jacket",
+      "walking left"
+     ],
+     "missing": [],
+     "coverage": 0.9,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red jacket, black pants, carries a backpack, and walks with hands in pockets. Motion: walking away from camera."
+    },
+    {
+     "id": 12958,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red jacket",
+      "backpack",
+      "jacket",
+      "walking left"
+     ],
+     "missing": [],
+     "coverage": 0.9,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red jacket, black pants, carries a backpack, and stands with hands in pockets. Motion: walking right."
+    },
+    {
+     "id": 13217,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red jacket",
+      "backpack",
+      "jacket",
+      "walking left"
+     ],
+     "missing": [],
+     "coverage": 0.9,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red jacket, black pants, carries a backpack, and walks with their head slightly tilted down. Motion: walking right."
+    },
+    {
+     "id": 13143,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red jacket",
+      "backpack",
+      "jacket",
+      "walking left"
+     ],
+     "missing": [],
+     "coverage": 0.9,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red jacket, black pants, and carries a backpack while walking with their head slightly tilted down. Motion: walking right."
+    },
+    {
+     "id": 12940,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red jacket",
+      "backpack",
+      "jacket",
+      "walking left"
+     ],
+     "missing": [],
+     "coverage": 0.9,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red jacket, black pants, and carries a backpack while walking. Motion: standing stationary."
+    }
+   ]
+  },
+  {
+   "query": "person in red pants",
+   "plan": {
+    "kind": "person",
+    "text": "person in red pants",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "color",
+      "value": "red",
+      "applies_to": "pants",
+      "required": true
+     },
+     {
+      "type": "object",
+      "value": "pants",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "person: red pants, pants",
+   "notice": null,
+   "unsupported": [],
+   "before_full": 3,
+   "after_full": 10,
+   "latency_after": 1.49,
+   "timings": {
+    "plan": 1.262,
+    "retrieve": 0.224,
+    "score": 0.001
+   },
+   "before": [
+    {
+     "id": 2150,
+     "kind": "person",
+     "caption": "The person wears a red hoodie, khaki pants, and black shoes, carrying nothing, with hands in pockets and walking forward. Motion: walking right."
+    },
+    {
+     "id": 6869,
+     "kind": "person",
+     "caption": "The person wears a red shirt and khaki pants, carrying a bag over their shoulder, walking with hands in pockets. Motion: walking left."
+    },
+    {
+     "id": 4300,
+     "kind": "person",
+     "caption": "The person wears a red shirt and khaki pants, carrying a green bag, and is walking with their hands in their pockets. Motion: walking toward camera."
+    },
+    {
+     "id": 7224,
+     "kind": "person",
+     "caption": "The person wears a red shirt with a gray stripe, khaki pants, and carries a black object in their right hand while walking. Motion: walking stationary."
+    },
+    {
+     "id": 21770,
+     "kind": "person",
+     "caption": "The person wears a red shirt and khaki pants, carrying a white bag, walking with hands in pockets. Motion: walking away from camera."
+    },
+    {
+     "id": 24179,
+     "kind": "person",
+     "caption": "The person wears a red shirt and dark pants, carrying a bag over their shoulder, walking with hands in pockets. Motion: walking away from camera."
+    },
+    {
+     "id": 3143,
+     "kind": "person",
+     "caption": "The person wears a colorful patterned top, red pants, holds a yellow object, and sits with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 17096,
+     "kind": "person",
+     "caption": "The person wears red shirts and dark pants, carrying a bag, walking with hands in pockets. Motion: walking left."
+    },
+    {
+     "id": 9302,
+     "kind": "person",
+     "caption": "The person wears red pants, a multicolored shirt, carries a yellow bag, and sits with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 20103,
+     "kind": "person",
+     "caption": "The person wears a red shirt and dark pants, carrying nothing, walking with hands in pockets. Motion: walking left."
+    }
+   ],
+   "after": [
+    {
+     "id": 17096,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red pants",
+      "pants"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears red shirts and dark pants, carrying a bag, walking with hands in pockets. Motion: walking left."
+    },
+    {
+     "id": 180,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red pants",
+      "pants"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a black jacket, red pants, and carries a red bag over their shoulder while standing with hands clasped in front. Motion: walking stationary."
+    },
+    {
+     "id": 9302,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red pants",
+      "pants"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears red pants, a multicolored shirt, carries a yellow bag, and sits with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 3143,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red pants",
+      "pants"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a colorful patterned top, red pants, holds a yellow object, and sits with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 20023,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red pants",
+      "pants"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a colorful patterned top, red pants, and carries a bag while sitting with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 787,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red pants",
+      "pants"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a patterned jacket, red pants, and white shoes, carrying a bag, and stands with hands in pockets. Motion: standing stationary."
+    },
+    {
+     "id": 19980,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red pants",
+      "pants"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a colorful patterned top, red pants, and carries a bag while sitting with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 3214,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red pants",
+      "pants"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a colorful patterned top, red pants, and holds a yellow object while seated with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 3133,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red pants",
+      "pants"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a colorful patterned top and red pants, holding a green object, seated with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 3054,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "red pants",
+      "pants"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a colorful patterned top and red pants, holding a green object, seated with legs crossed. Motion: standing stationary."
+    }
+   ]
+  },
+  {
+   "query": "white truck turning right",
+   "plan": {
+    "kind": "vehicle",
+    "text": "white truck turning right",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "color",
+      "value": "white",
+      "applies_to": "vehicle",
+      "required": true
+     },
+     {
+      "type": "object",
+      "value": "truck",
+      "applies_to": null,
+      "required": true
+     },
+     {
+      "type": "action",
+      "value": "turning right",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "vehicle: white vehicle, truck, turning right",
+   "notice": null,
+   "unsupported": [],
+   "before_full": 6,
+   "after_full": 10,
+   "latency_after": 1.24,
+   "timings": {
+    "plan": 1.134,
+    "retrieve": 0.109,
+    "score": 0.001
+   },
+   "before": [
+    {
+     "id": 8086,
+     "kind": "vehicle",
+     "caption": "A white pickup truck with a black bed cover is shown. Motion: moving right."
+    },
+    {
+     "id": 8185,
+     "kind": "vehicle",
+     "caption": "A white pickup truck with a long bed. Motion: moving right."
+    },
+    {
+     "id": 5725,
+     "kind": "vehicle",
+     "caption": "A white pickup truck with a black bed cover is parked. Motion: moving right."
+    },
+    {
+     "id": 4831,
+     "kind": "vehicle",
+     "caption": "A white utility truck with a large rear-mounted crane is parked. Motion: moving right."
+    },
+    {
+     "id": 10484,
+     "kind": "vehicle",
+     "caption": "A white pickup truck with a black tire is parked on the side of the road. Motion: moving right."
+    },
+    {
+     "id": 15059,
+     "kind": "vehicle",
+     "caption": "A white pickup truck with a black stripe on the side is shown. Motion: moving straight."
+    },
+    {
+     "id": 15598,
+     "kind": "vehicle",
+     "caption": "A white pickup truck with a long bed. Motion: moving straight."
+    },
+    {
+     "id": 5697,
+     "kind": "vehicle",
+     "caption": "A black Ford truck with chrome grille and side mirror is shown. Motion: moving right."
+    },
+    {
+     "id": 8052,
+     "kind": "vehicle",
+     "caption": "A white SUV with tinted windows. Motion: moving right."
+    },
+    {
+     "id": 17747,
+     "kind": "vehicle",
+     "caption": "A white SUV with a sunroof. Motion: moving right."
+    }
+   ],
+   "after": [
+    {
+     "id": 8086,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "white vehicle",
+      "truck",
+      "turning right"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A white pickup truck with a black bed cover is shown. Motion: moving right."
+    },
+    {
+     "id": 8185,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "white vehicle",
+      "truck",
+      "turning right"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A white pickup truck with a long bed. Motion: moving right."
+    },
+    {
+     "id": 5725,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "white vehicle",
+      "truck",
+      "turning right"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A white pickup truck with a black bed cover is parked. Motion: moving right."
+    },
+    {
+     "id": 4831,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "white vehicle",
+      "truck",
+      "turning right"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A white utility truck with a large rear-mounted crane is parked. Motion: moving right."
+    },
+    {
+     "id": 10484,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "white vehicle",
+      "truck",
+      "turning right"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A white pickup truck with a black tire is parked on the side of the road. Motion: moving right."
+    },
+    {
+     "id": 5697,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "white vehicle",
+      "truck",
+      "turning right"
+     ],
+     "missing": [],
+     "coverage": 0.917,
+     "verified": null,
+     "verify": null,
+     "caption": "A black Ford truck with chrome grille and side mirror is shown. Motion: moving right."
+    },
+    {
+     "id": 7737,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "white vehicle",
+      "truck",
+      "turning right"
+     ],
+     "missing": [],
+     "coverage": 0.917,
+     "verified": null,
+     "verify": null,
+     "caption": "A white van with tinted windows is seen from the rear. Motion: moving right."
+    },
+    {
+     "id": 5869,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "white vehicle",
+      "truck",
+      "turning right"
+     ],
+     "missing": [],
+     "coverage": 0.917,
+     "verified": null,
+     "verify": null,
+     "caption": "A black pickup truck with a visible license plate number. Motion: moving right."
+    },
+    {
+     "id": 12922,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "white vehicle",
+      "truck",
+      "turning right"
+     ],
+     "missing": [],
+     "coverage": 0.917,
+     "verified": null,
+     "verify": null,
+     "caption": "A black Ford truck with chrome grille and side mirror is shown. Motion: moving right."
+    },
+    {
+     "id": 14981,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "white vehicle",
+      "truck",
+      "turning right"
+     ],
+     "missing": [],
+     "coverage": 0.917,
+     "verified": null,
+     "verify": null,
+     "caption": "A black Ford truck with chrome grille and side mirror is shown. Motion: moving right."
+    }
+   ]
+  },
+  {
+   "query": "budget truck",
+   "plan": {
+    "kind": "vehicle",
+    "text": "budget truck",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "text",
+      "value": "budget",
+      "applies_to": "vehicle",
+      "required": true
+     },
+     {
+      "type": "term",
+      "value": "budget",
+      "applies_to": null,
+      "required": true
+     },
+     {
+      "type": "object",
+      "value": "truck",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "vehicle: \"budget\", budget, truck",
+   "notice": null,
+   "unsupported": [],
+   "before_full": 1,
+   "after_full": 1,
+   "latency_after": 1.32,
+   "timings": {
+    "plan": 1.137,
+    "retrieve": 0.11,
+    "score": 0.001
+   },
+   "before": [
+    {
+     "id": 398,
+     "kind": "vehicle",
+     "caption": "A white Budget moving truck with a yellow logo on the side. Motion: stopped."
+    },
+    {
+     "id": 10365,
+     "kind": "vehicle",
+     "caption": "A red pickup truck with chrome wheels is parked. Motion: stopped."
+    },
+    {
+     "id": 279,
+     "kind": "vehicle",
+     "caption": "A black pickup truck with a chrome grille. Motion: stopped."
+    },
+    {
+     "id": 11190,
+     "kind": "vehicle",
+     "caption": "A red pickup truck with a chrome grille is parked. Motion: stopped."
+    },
+    {
+     "id": 11171,
+     "kind": "vehicle",
+     "caption": "A red pickup truck with a chrome grille is shown. Motion: stopped."
+    },
+    {
+     "id": 16939,
+     "kind": "vehicle",
+     "caption": "A black pickup truck with chrome wheels. Motion: moving straight."
+    },
+    {
+     "id": 817,
+     "kind": "vehicle",
+     "caption": "A black Ford F-350 Super Duty pickup truck with a chrome grille and black wheels is parked. Motion: stopped."
+    },
+    {
+     "id": 19326,
+     "kind": "vehicle",
+     "caption": "A black Ford F-450 with a Royal logo on the hood is shown. Motion: moving right."
+    },
+    {
+     "id": 11108,
+     "kind": "vehicle",
+     "caption": "A red Chevrolet pickup truck with chrome wheels is parked. Motion: stopped."
+    },
+    {
+     "id": 8688,
+     "kind": "vehicle",
+     "caption": "A white utility truck with a large bucket lift attached to its back is shown. Motion: stopped."
+    }
+   ],
+   "after": [
+    {
+     "id": 398,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "\"budget\"",
+      "budget",
+      "truck"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A white Budget moving truck with a yellow logo on the side. Motion: stopped."
+    },
+    {
+     "id": 10365,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "truck"
+     ],
+     "missing": [
+      "\"budget\"",
+      "budget"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A red pickup truck with chrome wheels is parked. Motion: stopped."
+    },
+    {
+     "id": 279,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "truck"
+     ],
+     "missing": [
+      "\"budget\"",
+      "budget"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A black pickup truck with a chrome grille. Motion: stopped."
+    },
+    {
+     "id": 11190,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "truck"
+     ],
+     "missing": [
+      "\"budget\"",
+      "budget"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A red pickup truck with a chrome grille is parked. Motion: stopped."
+    },
+    {
+     "id": 11171,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "truck"
+     ],
+     "missing": [
+      "\"budget\"",
+      "budget"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A red pickup truck with a chrome grille is shown. Motion: stopped."
+    },
+    {
+     "id": 16939,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "truck"
+     ],
+     "missing": [
+      "\"budget\"",
+      "budget"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A black pickup truck with chrome wheels. Motion: moving straight."
+    },
+    {
+     "id": 817,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "truck"
+     ],
+     "missing": [
+      "\"budget\"",
+      "budget"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A black Ford F-350 Super Duty pickup truck with a chrome grille and black wheels is parked. Motion: stopped."
+    },
+    {
+     "id": 11108,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "truck"
+     ],
+     "missing": [
+      "\"budget\"",
+      "budget"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A red Chevrolet pickup truck with chrome wheels is parked. Motion: stopped."
+    },
+    {
+     "id": 8688,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "truck"
+     ],
+     "missing": [
+      "\"budget\"",
+      "budget"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A white utility truck with a large bucket lift attached to its back is shown. Motion: stopped."
+    },
+    {
+     "id": 16643,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "truck"
+     ],
+     "missing": [
+      "\"budget\"",
+      "budget"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A black pickup truck with chrome wheels. Motion: stopped."
+    }
+   ]
+  },
+  {
+   "query": "bag with \"catalyst\" written on it",
+   "plan": {
+    "kind": "person",
+    "text": "bag with catalyst written on it",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "text",
+      "value": "catalyst",
+      "applies_to": null,
+      "required": true
+     },
+     {
+      "type": "object",
+      "value": "bag",
+      "applies_to": null,
+      "required": true
+     },
+     {
+      "type": "term",
+      "value": "written",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "person: \"catalyst\", bag, written",
+   "notice": null,
+   "unsupported": [],
+   "before_full": 1,
+   "after_full": 1,
+   "latency_after": 1.56,
+   "timings": {
+    "plan": 1.237,
+    "retrieve": 0.256,
+    "score": 0.002
+   },
+   "before": [
+    {
+     "id": 478,
+     "kind": "person",
+     "caption": "The person wears a black shirt, dark pants, and a blue cap, carrying a blue bag with \"DAD\" written on it, standing with hands behind their back. Motion: standing stationary."
+    },
+    {
+     "id": 480,
+     "kind": "person",
+     "caption": "The person wears a blue jacket over a purple shirt, carries a blue bag with \"Catalyst\" written on it, and stands with hands behind their back. Motion: standing stationary."
+    },
+    {
+     "id": 4945,
+     "kind": "person",
+     "caption": "The person wears a red t-shirt with \"Harvard\" written on it, a dark jacket, khaki pants, and black shoes. They carry a black bag and sit with their legs crossed, looking down at something in their hands. Motion: standing stationary."
+    },
+    {
+     "id": 18760,
+     "kind": "person",
+     "caption": "A man wears a gray t-shirt with \"DON'T SWEAT\" printed on it, blue jeans, and sneakers. He holds a black bag with green accents. Motion: standing stationary."
+    },
+    {
+     "id": 16425,
+     "kind": "person",
+     "caption": "The person wears a dark jacket, carries a red bag, and holds it with both hands while walking. Motion: walking right."
+    },
+    {
+     "id": 4984,
+     "kind": "person",
+     "caption": "The person wears a floral red and black shirt, blue jeans, and white sneakers, carrying a white bag with blue accents over their shoulder. Motion: standing stationary."
+    },
+    {
+     "id": 14712,
+     "kind": "person",
+     "caption": "The person wears a black and white patterned top with black leggings, carrying a dark shoulder bag while adjusting it on their head. Motion: standing stationary."
+    },
+    {
+     "id": 1503,
+     "kind": "person",
+     "caption": "The person wears a blue shirt with a pattern, carrying a bag over their shoulder, and stands with hands behind their back. Motion: standing stationary."
+    },
+    {
+     "id": 449,
+     "kind": "person",
+     "caption": "The person wears a black shirt, dark pants, and a blue backpack with white text. They stand with hands behind their back. Motion: standing stationary."
+    },
+    {
+     "id": 5950,
+     "kind": "person",
+     "caption": "The person wears a dark top and pants, carrying a bag, seated with hands on their lap, appearing to read or write. Motion: standing stationary."
+    }
+   ],
+   "after": [
+    {
+     "id": 480,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "\"catalyst\"",
+      "bag",
+      "written"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue jacket over a purple shirt, carries a blue bag with \"Catalyst\" written on it, and stands with hands behind their back. Motion: standing stationary."
+    },
+    {
+     "id": 478,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "bag",
+      "written"
+     ],
+     "missing": [
+      "\"catalyst\""
+     ],
+     "coverage": 0.667,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a black shirt, dark pants, and a blue cap, carrying a blue bag with \"DAD\" written on it, standing with hands behind their back. Motion: standing stationary."
+    },
+    {
+     "id": 4945,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "bag",
+      "written"
+     ],
+     "missing": [
+      "\"catalyst\""
+     ],
+     "coverage": 0.667,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red t-shirt with \"Harvard\" written on it, a dark jacket, khaki pants, and black shoes. They carry a black bag and sit with their legs crossed, looking down at something in their hands. Motion: standing stationary."
+    },
+    {
+     "id": 16425,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "bag"
+     ],
+     "missing": [
+      "\"catalyst\"",
+      "written"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a dark jacket, carries a red bag, and holds it with both hands while walking. Motion: walking right."
+    },
+    {
+     "id": 14712,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "bag"
+     ],
+     "missing": [
+      "\"catalyst\"",
+      "written"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a black and white patterned top with black leggings, carrying a dark shoulder bag while adjusting it on their head. Motion: standing stationary."
+    },
+    {
+     "id": 1164,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "bag"
+     ],
+     "missing": [
+      "\"catalyst\"",
+      "written"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a patterned shirt and pants, carrying a cup and a bag, leaning forward slightly while holding something on their lap. Motion: walking stationary."
+    },
+    {
+     "id": 18760,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "bag"
+     ],
+     "missing": [
+      "\"catalyst\"",
+      "written"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A man wears a gray t-shirt with \"DON'T SWEAT\" printed on it, blue jeans, and sneakers. He holds a black bag with green accents. Motion: standing stationary."
+    },
+    {
+     "id": 1503,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "bag"
+     ],
+     "missing": [
+      "\"catalyst\"",
+      "written"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue shirt with a pattern, carrying a bag over their shoulder, and stands with hands behind their back. Motion: standing stationary."
+    },
+    {
+     "id": 4984,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "bag"
+     ],
+     "missing": [
+      "\"catalyst\"",
+      "written"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a floral red and black shirt, blue jeans, and white sneakers, carrying a white bag with blue accents over their shoulder. Motion: standing stationary."
+    },
+    {
+     "id": 501,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "bag"
+     ],
+     "missing": [
+      "\"catalyst\"",
+      "written"
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a black shirt, dark pants, and a blue backpack with white text. They stand with hands behind their back. Motion: standing stationary."
+    }
+   ]
+  },
+  {
+   "query": "woman in a black coat without a bag",
+   "plan": {
+    "kind": "person",
+    "text": "woman in a black coat",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "color",
+      "value": "black",
+      "applies_to": "upper",
+      "required": true
+     },
+     {
+      "type": "object",
+      "value": "coat",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": [
+     {
+      "type": "object",
+      "value": "bag",
+      "applies_to": null,
+      "required": true
+     }
+    ]
+   },
+   "understood": "person: black upper, coat, not bag",
+   "notice": null,
+   "unsupported": [],
+   "before_full": 0,
+   "after_full": 1,
+   "latency_after": 2.42,
+   "timings": {
+    "plan": 2.204,
+    "retrieve": 0.218,
+    "score": 0.002
+   },
+   "before": [
+    {
+     "id": 22535,
+     "kind": "person",
+     "caption": "The person wears a black coat, carrying a black bag, standing with hands in pockets, looking down. Motion: walking left."
+    },
+    {
+     "id": 13689,
+     "kind": "person",
+     "caption": "The person wears a black coat and pants, carrying a bag, and stands with hands in pockets, looking down. Motion: walking away from camera."
+    },
+    {
+     "id": 15802,
+     "kind": "person",
+     "caption": "The person wears a dark coat and pants, carrying a bag, walking with a slight lean forward. Motion: walking left."
+    },
+    {
+     "id": 346,
+     "kind": "person",
+     "caption": "The woman wears a black coat, gray pants, and black boots, carrying a black bag, walking with her head slightly tilted down. Motion: walking right."
+    },
+    {
+     "id": 10375,
+     "kind": "person",
+     "caption": "The person wears a dark coat, carrying a black bag, standing with hands in pockets, looking down. Motion: walking toward camera."
+    },
+    {
+     "id": 5712,
+     "kind": "person",
+     "caption": "The person wears a black coat with a fur-lined hood, black pants, and black shoes, carrying nothing, standing still. Motion: walking away from camera."
+    },
+    {
+     "id": 17401,
+     "kind": "person",
+     "caption": "The person wears a black coat, scarf, and pants, carrying a bag, standing with hands in pockets. Motion: walking away from camera."
+    },
+    {
+     "id": 16928,
+     "kind": "person",
+     "caption": "The person wears a black coat, dark pants, and black shoes, carrying a bag and a drink, standing with hands slightly raised. Motion: walking away from camera."
+    },
+    {
+     "id": 24667,
+     "kind": "person",
+     "caption": "The person wears a dark coat over a black shirt, carrying a bag, and stands with hands in pockets. Motion: standing stationary."
+    },
+    {
+     "id": 1312,
+     "kind": "person",
+     "caption": "The person wears a black coat, dark pants, and a beanie, carrying a bag while standing near a window. Motion: standing left."
+    }
+   ],
+   "after": [
+    {
+     "id": 625,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "black upper",
+      "coat"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a black jacket, gray scarf, and a dark beanie, carrying nothing, standing upright with hands possibly in pockets. Motion: walking stationary."
+    }
+   ]
+  },
+  {
+   "query": "someone running",
+   "plan": {
+    "kind": "person",
+    "text": "someone running",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "action",
+      "value": "running",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "person: running",
+   "notice": null,
+   "unsupported": [],
+   "before_full": 10,
+   "after_full": 10,
+   "latency_after": 1.25,
+   "timings": {
+    "plan": 1.102,
+    "retrieve": 0.143,
+    "score": 0.001
+   },
+   "before": [
+    {
+     "id": 24965,
+     "kind": "person",
+     "caption": "The person wears a dark jacket, light-colored pants, and carries a bag over their shoulder while running. Motion: running left."
+    },
+    {
+     "id": 23172,
+     "kind": "person",
+     "caption": "The person wears a green shirt, dark pants, and carries a backpack while walking. Motion: running right."
+    },
+    {
+     "id": 18583,
+     "kind": "person",
+     "caption": "The person is wearing dark clothing, carrying a red item, and has their head slightly tilted forward. Motion: running right."
+    },
+    {
+     "id": 1108,
+     "kind": "person",
+     "caption": "The person wears dark clothing, carrying a white object, and is standing with arms crossed. Motion: running left."
+    },
+    {
+     "id": 7487,
+     "kind": "person",
+     "caption": "The person wears a yellow shirt and holds a black object, standing with their back slightly turned. Motion: running left."
+    },
+    {
+     "id": 6779,
+     "kind": "person",
+     "caption": "The person wears a blue shirt and sits in a chair, holding an object near their chest. Motion: running left."
+    },
+    {
+     "id": 8257,
+     "kind": "person",
+     "caption": "The person wears dark-colored clothing, carries a bag, and stands with hands behind their back. Motion: running toward camera."
+    },
+    {
+     "id": 11661,
+     "kind": "person",
+     "caption": "The person is wearing a dark-colored shirt and pants, carrying a bag, and leaning forward slightly while looking down. Motion: running right."
+    },
+    {
+     "id": 4141,
+     "kind": "person",
+     "caption": "The person wears a blue shirt, carries a can, and stands near a table with a chair behind them. Motion: running left."
+    },
+    {
+     "id": 7158,
+     "kind": "person",
+     "caption": "The individual wears a light green shirt, carrying a phone, and is seated with their head slightly tilted down. Motion: running left."
+    }
+   ],
+   "after": [
+    {
+     "id": 24965,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "running"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a dark jacket, light-colored pants, and carries a bag over their shoulder while running. Motion: running left."
+    },
+    {
+     "id": 23172,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "running"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a green shirt, dark pants, and carries a backpack while walking. Motion: running right."
+    },
+    {
+     "id": 18583,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "running"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person is wearing dark clothing, carrying a red item, and has their head slightly tilted forward. Motion: running right."
+    },
+    {
+     "id": 1108,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "running"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears dark clothing, carrying a white object, and is standing with arms crossed. Motion: running left."
+    },
+    {
+     "id": 6779,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "running"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue shirt and sits in a chair, holding an object near their chest. Motion: running left."
+    },
+    {
+     "id": 7487,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "running"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a yellow shirt and holds a black object, standing with their back slightly turned. Motion: running left."
+    },
+    {
+     "id": 8257,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "running"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears dark-colored clothing, carries a bag, and stands with hands behind their back. Motion: running toward camera."
+    },
+    {
+     "id": 23589,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "running"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears dark pants and a dark shirt, carrying nothing, standing with hands behind back. Motion: running toward camera."
+    },
+    {
+     "id": 10186,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "running"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears dark pants and a dark jacket, carrying nothing, standing with hands behind their back. Motion: running right."
+    },
+    {
+     "id": 13189,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "running"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears dark clothing, carrying a bag, and is walking with their head slightly down. Motion: running toward camera."
+    }
+   ]
+  },
+  {
+   "query": "black suv parked",
+   "plan": {
+    "kind": "vehicle",
+    "text": "black suv parked",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "color",
+      "value": "black",
+      "applies_to": "vehicle",
+      "required": true
+     },
+     {
+      "type": "object",
+      "value": "suv",
+      "applies_to": null,
+      "required": true
+     },
+     {
+      "type": "action",
+      "value": "parked",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "vehicle: black vehicle, suv, parked",
+   "notice": null,
+   "unsupported": [],
+   "before_full": 10,
+   "after_full": 10,
+   "latency_after": 1.29,
+   "timings": {
+    "plan": 1.127,
+    "retrieve": 0.166,
+    "score": 0.001
+   },
+   "before": [
+    {
+     "id": 13054,
+     "kind": "vehicle",
+     "caption": "A black SUV with a silver trim is parked. Motion: stopped."
+    },
+    {
+     "id": 423,
+     "kind": "vehicle",
+     "caption": "A black SUV with a dark roof is parked. Motion: stopped."
+    },
+    {
+     "id": 12983,
+     "kind": "vehicle",
+     "caption": "A black SUV with a silver trim is parked on the side of the road. Motion: stopped."
+    },
+    {
+     "id": 23448,
+     "kind": "vehicle",
+     "caption": "A black SUV with a visible rear license plate is parked. Motion: stopped."
+    },
+    {
+     "id": 12562,
+     "kind": "vehicle",
+     "caption": "A black SUV with a visible license plate is parked. Motion: stopped."
+    },
+    {
+     "id": 782,
+     "kind": "vehicle",
+     "caption": "A black Jeep Cherokee with a license plate is parked. Motion: stopped."
+    },
+    {
+     "id": 11272,
+     "kind": "vehicle",
+     "caption": "A black SUV with a silver trim on the side is parked. Motion: stopped."
+    },
+    {
+     "id": 16944,
+     "kind": "vehicle",
+     "caption": "A black SUV with tinted windows is parked. Motion: stopped."
+    },
+    {
+     "id": 780,
+     "kind": "vehicle",
+     "caption": "A black Jeep Cherokee with silver rims is parked. Motion: stopped."
+    },
+    {
+     "id": 3294,
+     "kind": "vehicle",
+     "caption": "A black SUV with tinted windows is parked. Motion: stopped."
+    }
+   ],
+   "after": [
+    {
+     "id": 13054,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "black vehicle",
+      "suv",
+      "parked"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A black SUV with a silver trim is parked. Motion: stopped."
+    },
+    {
+     "id": 423,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "black vehicle",
+      "suv",
+      "parked"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A black SUV with a dark roof is parked. Motion: stopped."
+    },
+    {
+     "id": 16944,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "black vehicle",
+      "suv",
+      "parked"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A black SUV with tinted windows is parked. Motion: stopped."
+    },
+    {
+     "id": 3294,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "black vehicle",
+      "suv",
+      "parked"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A black SUV with tinted windows is parked. Motion: stopped."
+    },
+    {
+     "id": 11220,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "black vehicle",
+      "suv",
+      "parked"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A black SUV with tinted windows is parked. Motion: stopped."
+    },
+    {
+     "id": 15972,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "black vehicle",
+      "suv",
+      "parked"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A black SUV with tinted windows is parked. Motion: stopped."
+    },
+    {
+     "id": 16062,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "black vehicle",
+      "suv",
+      "parked"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A black SUV with tinted windows is parked. Motion: stopped."
+    },
+    {
+     "id": 8397,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "black vehicle",
+      "suv",
+      "parked"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A black SUV with tinted windows is parked. Motion: stopped."
+    },
+    {
+     "id": 23562,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "black vehicle",
+      "suv",
+      "parked"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A black SUV with tinted windows is parked. Motion: stopped."
+    },
+    {
+     "id": 14957,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "black vehicle",
+      "suv",
+      "parked"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A black SUV with tinted windows is parked. Motion: stopped."
+    }
+   ]
+  },
+  {
+   "query": "person wearing a green cap",
+   "plan": {
+    "kind": "person",
+    "text": "person wearing a green cap",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "color",
+      "value": "green",
+      "applies_to": "cap",
+      "required": true
+     },
+     {
+      "type": "object",
+      "value": "cap",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "person: green cap, cap",
+   "notice": null,
+   "unsupported": [],
+   "before_full": 4,
+   "after_full": 10,
+   "latency_after": 1.87,
+   "timings": {
+    "plan": 1.679,
+    "retrieve": 0.185,
+    "score": 0.001
+   },
+   "before": [
+    {
+     "id": 13111,
+     "kind": "person",
+     "caption": "The person wears a green cap, dark jacket, and jeans, carrying a phone, standing with hands near chest. Motion: standing stationary."
+    },
+    {
+     "id": 23016,
+     "kind": "person",
+     "caption": "The person wears a green cap, gray shirt, and khaki pants, carrying a book and a phone, standing with hands clasped in front. Motion: walking stationary."
+    },
+    {
+     "id": 22912,
+     "kind": "person",
+     "caption": "The person wears a light green shirt, plaid pants, and a tan cap, carrying a black bag over their shoulder, standing with hands behind their back. Motion: standing stationary."
+    },
+    {
+     "id": 12213,
+     "kind": "person",
+     "caption": "A person wearing a dark green t-shirt with a blue design, black pants, and a black cap walks while carrying a gray backpack over their shoulder. Motion: walking stationary."
+    },
+    {
+     "id": 454,
+     "kind": "person",
+     "caption": "The person wears a white cap, green camouflage jacket, and blue backpack. They sit with hands on their lap, holding a phone. Motion: standing stationary."
+    },
+    {
+     "id": 22262,
+     "kind": "person",
+     "caption": "The person wears a green jacket, blue jeans, and a cap, carrying a backpack, and stands with their back slightly turned. Motion: walking stationary."
+    },
+    {
+     "id": 22907,
+     "kind": "person",
+     "caption": "The man wears a green cap, plaid shirt, and khaki pants, carrying a black bag over his shoulder, standing with hands behind his back. Motion: standing stationary."
+    },
+    {
+     "id": 23722,
+     "kind": "person",
+     "caption": "The person wears a black t-shirt and cap, carrying a green object, and is walking with their head slightly down. Motion: walking right."
+    },
+    {
+     "id": 3382,
+     "kind": "person",
+     "caption": "The person wears a green hat, a plaid shirt, and carries a black bag over their shoulder while standing with hands behind their back. Motion: walking stationary."
+    },
+    {
+     "id": 7402,
+     "kind": "person",
+     "caption": "The person wears green clothing, carries a green bag, and stands with arms slightly bent, holding the bag. Motion: walking stationary."
+    }
+   ],
+   "after": [
+    {
+     "id": 13111,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "green cap",
+      "cap"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a green cap, dark jacket, and jeans, carrying a phone, standing with hands near chest. Motion: standing stationary."
+    },
+    {
+     "id": 23016,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "green cap",
+      "cap"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a green cap, gray shirt, and khaki pants, carrying a book and a phone, standing with hands clasped in front. Motion: walking stationary."
+    },
+    {
+     "id": 22907,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "green cap",
+      "cap"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The man wears a green cap, plaid shirt, and khaki pants, carrying a black bag over his shoulder, standing with hands behind his back. Motion: standing stationary."
+    },
+    {
+     "id": 18876,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "green cap",
+      "cap"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue shirt, dark pants, and a green cap, carrying a bag over their shoulder while walking. Motion: standing stationary."
+    },
+    {
+     "id": 12208,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "green cap",
+      "cap"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a black t-shirt with green stripes, a black cap, and holds a white object while standing near a table. Motion: standing stationary."
+    },
+    {
+     "id": 3382,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "green cap",
+      "cap"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a green hat, a plaid shirt, and carries a black bag over their shoulder while standing with hands behind their back. Motion: walking stationary."
+    },
+    {
+     "id": 23006,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "green cap",
+      "cap"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a gray t-shirt, dark pants, and a green cap, carrying an orange object, standing with hands behind their back. Motion: standing toward camera."
+    },
+    {
+     "id": 25489,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "green cap",
+      "cap"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a black t-shirt with a green design, a dark cap, and holds a phone in their right hand while standing near a counter. Motion: walking stationary."
+    },
+    {
+     "id": 23040,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "green cap",
+      "cap"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a light blue button-up shirt, olive green pants, and a green cap, holding a tablet with both hands while walking. Motion: standing stationary."
+    },
+    {
+     "id": 12212,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "green cap",
+      "cap"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a black t-shirt with green stripes, a black cap, and holds a phone in their right hand while standing slightly bent forward. Motion: standing stationary."
+    }
+   ]
+  },
+  {
+   "query": "yellow school bus",
+   "plan": {
+    "kind": "vehicle",
+    "text": "yellow school bus",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "color",
+      "value": "yellow",
+      "applies_to": "vehicle",
+      "required": true
+     },
+     {
+      "type": "text",
+      "value": "school",
+      "applies_to": null,
+      "required": true
+     },
+     {
+      "type": "object",
+      "value": "bus",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "vehicle: yellow vehicle, \"school\", bus",
+   "notice": "No caption in the index mentions \"school\". No result matches every part of the query. Showing partial matches (bus).",
+   "unsupported": [
+    "school"
+   ],
+   "before_full": 0,
+   "after_full": 0,
+   "latency_after": 1.72,
+   "timings": {
+    "plan": 1.523,
+    "retrieve": 0.164,
+    "score": 0.001
+   },
+   "before": [
+    {
+     "id": 23365,
+     "kind": "vehicle",
+     "caption": "A white bus with black windows and a silver front is shown. Motion: moving straight."
+    },
+    {
+     "id": 18319,
+     "kind": "vehicle",
+     "caption": "A white bus with blue stripes and the number 185 on it. Motion: stopped."
+    },
+    {
+     "id": 669,
+     "kind": "vehicle",
+     "caption": "A white bus with red and yellow stripes is parked. Motion: stopped."
+    },
+    {
+     "id": 7756,
+     "kind": "vehicle",
+     "caption": "A white bus with blue stripes is parked on a road. Motion: stopped."
+    },
+    {
+     "id": 104,
+     "kind": "vehicle",
+     "caption": "A white bus with a yellow stripe is parked on the side of the road. Motion: stopped."
+    },
+    {
+     "id": 20286,
+     "kind": "vehicle",
+     "caption": "A white bus with blue stripes is parked near a smaller car. Motion: stopped."
+    },
+    {
+     "id": 20617,
+     "kind": "vehicle",
+     "caption": "A white bus with blue stripes is parked near a silver car. Motion: stopped."
+    },
+    {
+     "id": 20785,
+     "kind": "vehicle",
+     "caption": "A white bus with blue stripes is parked on a tarmac. Motion: stopped."
+    },
+    {
+     "id": 20243,
+     "kind": "vehicle",
+     "caption": "A white bus with blue stripes is parked next to a car. Motion: stopped."
+    },
+    {
+     "id": 23107,
+     "kind": "vehicle",
+     "caption": "The vehicle is a dark-colored bus with a large front window. Motion: stopped."
+    }
+   ],
+   "after": [
+    {
+     "id": 669,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "bus"
+     ],
+     "missing": [
+      "yellow vehicle",
+      "\"school\""
+     ],
+     "coverage": 0.433,
+     "verified": null,
+     "verify": null,
+     "caption": "A white bus with red and yellow stripes is parked. Motion: stopped."
+    },
+    {
+     "id": 104,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "bus"
+     ],
+     "missing": [
+      "yellow vehicle",
+      "\"school\""
+     ],
+     "coverage": 0.433,
+     "verified": null,
+     "verify": null,
+     "caption": "A white bus with a yellow stripe is parked on the side of the road. Motion: stopped."
+    },
+    {
+     "id": 23365,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "bus"
+     ],
+     "missing": [
+      "yellow vehicle",
+      "\"school\""
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A white bus with black windows and a silver front is shown. Motion: moving straight."
+    },
+    {
+     "id": 18319,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "bus"
+     ],
+     "missing": [
+      "yellow vehicle",
+      "\"school\""
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A white bus with blue stripes and the number 185 on it. Motion: stopped."
+    },
+    {
+     "id": 7756,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "bus"
+     ],
+     "missing": [
+      "yellow vehicle",
+      "\"school\""
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A white bus with blue stripes is parked on a road. Motion: stopped."
+    },
+    {
+     "id": 95,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "bus"
+     ],
+     "missing": [
+      "yellow vehicle",
+      "\"school\""
+     ],
+     "coverage": 0.433,
+     "verified": null,
+     "verify": null,
+     "caption": "A white bus with a yellow stripe is parked on the side of the road. Motion: stopped."
+    },
+    {
+     "id": 20286,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "bus"
+     ],
+     "missing": [
+      "yellow vehicle",
+      "\"school\""
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A white bus with blue stripes is parked near a smaller car. Motion: stopped."
+    },
+    {
+     "id": 20617,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "bus"
+     ],
+     "missing": [
+      "yellow vehicle",
+      "\"school\""
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A white bus with blue stripes is parked near a silver car. Motion: stopped."
+    },
+    {
+     "id": 20785,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "bus"
+     ],
+     "missing": [
+      "yellow vehicle",
+      "\"school\""
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A white bus with blue stripes is parked on a tarmac. Motion: stopped."
+    },
+    {
+     "id": 20243,
+     "kind": "vehicle",
+     "match": "partial",
+     "matched": [
+      "bus"
+     ],
+     "missing": [
+      "yellow vehicle",
+      "\"school\""
+     ],
+     "coverage": 0.333,
+     "verified": null,
+     "verify": null,
+     "caption": "A white bus with blue stripes is parked next to a car. Motion: stopped."
+    }
+   ]
+  },
+  {
+   "query": "person riding a bicycle",
+   "plan": {
+    "kind": "person",
+    "text": "person riding a bicycle",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "action",
+      "value": "riding",
+      "applies_to": "bicycle",
+      "required": true
+     },
+     {
+      "type": "object",
+      "value": "bicycle",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "person: riding, bicycle",
+   "notice": null,
+   "unsupported": [],
+   "before_full": 3,
+   "after_full": 3,
+   "latency_after": 1.35,
+   "timings": {
+    "plan": 1.161,
+    "retrieve": 0.189,
+    "score": 0.001
+   },
+   "before": [
+    {
+     "id": 1604,
+     "kind": "person",
+     "caption": "The person wears a dark jacket and pants, carrying a bag over their shoulder, and rides a bicycle with a slight lean forward. Motion: walking stationary."
+    },
+    {
+     "id": 1588,
+     "kind": "person",
+     "caption": "The person wears a plaid shirt, jeans, and a beanie, carrying a backpack while riding a bicycle. Motion: standing stationary."
+    },
+    {
+     "id": 1584,
+     "kind": "person",
+     "caption": "The person wears a plaid shirt, jeans, and sneakers, carrying a backpack while riding a bicycle with hands on handlebars. Motion: walking left."
+    },
+    {
+     "id": 337,
+     "kind": "person",
+     "caption": "The person is wearing dark clothing, carrying a bag, and sitting with their legs crossed. Motion: walking stationary."
+    },
+    {
+     "id": 6,
+     "kind": "person",
+     "caption": "The person is wearing dark clothing, carrying a bag, and appears to be sitting or leaning forward slightly. Motion: standing stationary."
+    },
+    {
+     "id": 10918,
+     "kind": "person",
+     "caption": "The person wears dark clothing, carries a bag, and sits with legs crossed, hands resting on their lap. Motion: standing stationary."
+    },
+    {
+     "id": 1336,
+     "kind": "person",
+     "caption": "The person wears a dark jacket over a light shirt, carries a bag, and sits with their legs crossed, leaning slightly forward. Motion: standing stationary."
+    },
+    {
+     "id": 2354,
+     "kind": "person",
+     "caption": "The person wears a blue shirt, dark pants, carries a bag, and sits with legs crossed. Motion: walking stationary."
+    },
+    {
+     "id": 455,
+     "kind": "person",
+     "caption": "The person wears a black shirt and dark pants, carrying a red object, and sits with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 2349,
+     "kind": "person",
+     "caption": "The person wears a white shirt and dark pants, carrying a backpack, and is standing with hands on knees. Motion: walking stationary."
+    }
+   ],
+   "after": [
+    {
+     "id": 1604,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "riding",
+      "bicycle"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a dark jacket and pants, carrying a bag over their shoulder, and rides a bicycle with a slight lean forward. Motion: walking stationary."
+    },
+    {
+     "id": 1588,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "riding",
+      "bicycle"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a plaid shirt, jeans, and a beanie, carrying a backpack while riding a bicycle. Motion: standing stationary."
+    },
+    {
+     "id": 1584,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "riding",
+      "bicycle"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a plaid shirt, jeans, and sneakers, carrying a backpack while riding a bicycle with hands on handlebars. Motion: walking left."
+    },
+    {
+     "id": 337,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "riding",
+      "bicycle"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person is wearing dark clothing, carrying a bag, and sitting with their legs crossed. Motion: walking stationary."
+    },
+    {
+     "id": 6,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "riding",
+      "bicycle"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person is wearing dark clothing, carrying a bag, and appears to be sitting or leaning forward slightly. Motion: standing stationary."
+    },
+    {
+     "id": 10918,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "riding",
+      "bicycle"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears dark clothing, carries a bag, and sits with legs crossed, hands resting on their lap. Motion: standing stationary."
+    },
+    {
+     "id": 1336,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "riding",
+      "bicycle"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a dark jacket over a light shirt, carries a bag, and sits with their legs crossed, leaning slightly forward. Motion: standing stationary."
+    },
+    {
+     "id": 2354,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "riding",
+      "bicycle"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue shirt, dark pants, carries a bag, and sits with legs crossed. Motion: walking stationary."
+    },
+    {
+     "id": 455,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "riding",
+      "bicycle"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a black shirt and dark pants, carrying a red object, and sits with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 2349,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "riding",
+      "bicycle"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a white shirt and dark pants, carrying a backpack, and is standing with hands on knees. Motion: walking stationary."
+    }
+   ]
+  },
+  {
+   "query": "red car",
+   "plan": {
+    "kind": "vehicle",
+    "text": "red car",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "color",
+      "value": "red",
+      "applies_to": "vehicle",
+      "required": true
+     },
+     {
+      "type": "object",
+      "value": "car",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "vehicle: red vehicle, car",
+   "notice": null,
+   "unsupported": [],
+   "before_full": 10,
+   "after_full": 10,
+   "latency_after": 1.31,
+   "timings": {
+    "plan": 1.113,
+    "retrieve": 0.195,
+    "score": 0.001
+   },
+   "before": [
+    {
+     "id": 21332,
+     "kind": "vehicle",
+     "caption": "A white sedan with a red car behind it. Motion: stopped."
+    },
+    {
+     "id": 1169,
+     "kind": "vehicle",
+     "caption": "A red sports car with a spoiler. Motion: stopped."
+    },
+    {
+     "id": 14438,
+     "kind": "vehicle",
+     "caption": "A red sedan with a visible rear license plate is shown. Motion: stopped."
+    },
+    {
+     "id": 21407,
+     "kind": "vehicle",
+     "caption": "A silver sedan with a red car behind it. Motion: stopped."
+    },
+    {
+     "id": 4228,
+     "kind": "vehicle",
+     "caption": "A red sedan with a sunroof. Motion: moving straight."
+    },
+    {
+     "id": 8416,
+     "kind": "vehicle",
+     "caption": "A red car with a black hood is shown from above. Motion: stopped."
+    },
+    {
+     "id": 8377,
+     "kind": "vehicle",
+     "caption": "A red car with a visible front right headlight is shown. Motion: stopped."
+    },
+    {
+     "id": 8432,
+     "kind": "vehicle",
+     "caption": "A red car with a visible front right headlight is shown from above. Motion: stopped."
+    },
+    {
+     "id": 7898,
+     "kind": "vehicle",
+     "caption": "A red car with a black windshield is shown from the front. Motion: stopped."
+    },
+    {
+     "id": 21223,
+     "kind": "vehicle",
+     "caption": "A white sedan with a red car behind it. Motion: stopped."
+    }
+   ],
+   "after": [
+    {
+     "id": 21332,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "red vehicle",
+      "car"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A white sedan with a red car behind it. Motion: stopped."
+    },
+    {
+     "id": 1169,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "red vehicle",
+      "car"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A red sports car with a spoiler. Motion: stopped."
+    },
+    {
+     "id": 21407,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "red vehicle",
+      "car"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A silver sedan with a red car behind it. Motion: stopped."
+    },
+    {
+     "id": 8416,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "red vehicle",
+      "car"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A red car with a black hood is shown from above. Motion: stopped."
+    },
+    {
+     "id": 21223,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "red vehicle",
+      "car"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A white sedan with a red car behind it. Motion: stopped."
+    },
+    {
+     "id": 8377,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "red vehicle",
+      "car"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A red car with a visible front right headlight is shown. Motion: stopped."
+    },
+    {
+     "id": 7898,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "red vehicle",
+      "car"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A red car with a black windshield is shown from the front. Motion: stopped."
+    },
+    {
+     "id": 8432,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "red vehicle",
+      "car"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A red car with a visible front right headlight is shown from above. Motion: stopped."
+    },
+    {
+     "id": 21226,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "red vehicle",
+      "car"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A silver sedan with a red car parked next to it. Motion: stopped."
+    },
+    {
+     "id": 21386,
+     "kind": "vehicle",
+     "match": "full",
+     "matched": [
+      "red vehicle",
+      "car"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A silver sedan with a red car parked next to it. Motion: stopped."
+    }
+   ]
+  },
+  {
+   "query": "people fighting",
+   "plan": {
+    "kind": "person",
+    "text": "people fighting",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "action",
+      "value": "fighting",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "person: fighting",
+   "notice": "No result matches every part of the query. Showing partial matches.",
+   "unsupported": [],
+   "before_full": 0,
+   "after_full": 0,
+   "latency_after": 1.34,
+   "timings": {
+    "plan": 1.14,
+    "retrieve": 0.199,
+    "score": 0.001
+   },
+   "before": [
+    {
+     "id": 7679,
+     "kind": "incident",
+     "caption": "A group of people walk down the road."
+    },
+    {
+     "id": 6735,
+     "kind": "incident",
+     "caption": "The woman on the left turns to face the man on the right. The man on the right turns to face the woman on the left."
+    },
+    {
+     "id": 3755,
+     "kind": "incident",
+     "caption": "A group of people walk across the gym."
+    },
+    {
+     "id": 1388,
+     "kind": "incident",
+     "caption": "The woman on the right turns to face the man on the left."
+    },
+    {
+     "id": 7311,
+     "kind": "incident",
+     "caption": "A person is walking on the sidewalk. A person is walking on the sidewalk. A person is walking on the sidewalk. A person is walking on the sidewalk."
+    },
+    {
+     "id": 10802,
+     "kind": "incident",
+     "caption": "A group of people walk on the sidewalk."
+    },
+    {
+     "id": 10801,
+     "kind": "incident",
+     "caption": "A group of people walk on the sidewalk."
+    },
+    {
+     "id": 10839,
+     "kind": "incident",
+     "caption": "A group of people walk on the sidewalk."
+    },
+    {
+     "id": 4140,
+     "kind": "incident",
+     "caption": "A group of people walk on the sidewalk."
+    },
+    {
+     "id": 10822,
+     "kind": "incident",
+     "caption": "A group of people walk on the sidewalk."
+    }
+   ],
+   "after": [
+    {
+     "id": 625,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "fighting"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a black jacket, gray scarf, and a dark beanie, carrying nothing, standing upright with hands possibly in pockets. Motion: walking stationary."
+    },
+    {
+     "id": 19918,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "fighting"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a black shirt, dark pants, and carries a large, light-colored object resembling a shovel or tool. They are in a crouched stance, appearing to prepare for or recover from an action. Motion: walking right."
+    },
+    {
+     "id": 20149,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "fighting"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a white shirt, dark pants, carries a black backpack, and walks with a relaxed posture. Motion: walking stationary."
+    },
+    {
+     "id": 1200,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "fighting"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "Person wears black jacket, blue shirt, jeans, brown shoes; carries black bag; hugs another person closely. Motion: standing stationary."
+    },
+    {
+     "id": 6197,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "fighting"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a red shirt, blue jeans, and sneakers, carrying a backpack, sitting with legs crossed. Motion: standing stationary."
+    },
+    {
+     "id": 15436,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "fighting"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "Person wears blue t-shirt, jeans, and cap; holds white object; stands with arms slightly raised, facing another individual. Motion: standing stationary."
+    },
+    {
+     "id": 7539,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "fighting"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "A man wears a dark blue t-shirt and green shorts, holding a basketball while standing with his head down. Motion: standing stationary."
+    },
+    {
+     "id": 25457,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "fighting"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a striped shirt and dark pants, seated in a chair with hands on their head, appearing to be in distress. Motion: standing stationary."
+    },
+    {
+     "id": 10965,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "fighting"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a white shirt, dark pants, and carries a backpack while walking with their head slightly tilted down. Motion: standing stationary."
+    },
+    {
+     "id": 4019,
+     "kind": "person",
+     "match": "partial",
+     "matched": [],
+     "missing": [
+      "fighting"
+     ],
+     "coverage": 0.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a black and white striped sweater, dark pants, and carries a long object, possibly a baton, while walking. Motion: walking away from camera."
+    }
+   ]
+  },
+  {
+   "query": "guy in a whitman football shirt",
+   "plan": {
+    "kind": "person",
+    "text": "guy in a whitman football shirt",
+    "camera": null,
+    "notes": [],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "text",
+      "value": "whitman",
+      "applies_to": "shirt",
+      "required": true
+     },
+     {
+      "type": "term",
+      "value": "whitman",
+      "applies_to": null,
+      "required": true
+     },
+     {
+      "type": "term",
+      "value": "football",
+      "applies_to": null,
+      "required": true
+     },
+     {
+      "type": "object",
+      "value": "shirt",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "person: \"whitman\", whitman, football, shirt",
+   "notice": null,
+   "unsupported": [],
+   "before_full": 1,
+   "after_full": 1,
+   "latency_after": 1.54,
+   "timings": {
+    "plan": 1.242,
+    "retrieve": 0.2,
+    "score": 0.002
+   },
+   "before": [
+    {
+     "id": 352,
+     "kind": "person",
+     "caption": "The person wears a blue t-shirt with \"Whitman Football\" text, black pants, and sneakers. They carry a black bag and adjust their hair while standing near a trash can. Motion: standing stationary."
+    },
+    {
+     "id": 23057,
+     "kind": "person",
+     "caption": "The man wears a gray sweatshirt, blue jeans, and black sneakers, carrying a dark bag and holding a football and a cup. Motion: standing stationary."
+    },
+    {
+     "id": 13888,
+     "kind": "person",
+     "caption": "The man wears a gray t-shirt with \"Don't Sweat the Small Stuff\" printed on it, blue jeans, and a black backpack. He holds a yellow object in his right hand and gestures with his left hand. Motion: standing stationary."
+    },
+    {
+     "id": 13896,
+     "kind": "person",
+     "caption": "The man wears a gray t-shirt with \"DON'T SWEAT SWAG\" printed on it, blue jeans, and a black backpack. He holds a yellow object in his right hand and gestures with his left. Motion: standing stationary."
+    },
+    {
+     "id": 14076,
+     "kind": "person",
+     "caption": "The man wears a gray t-shirt with \"DON'T SWEAT THE SWAG\" printed on it, blue jeans, and a black backpack. He holds a yellow piece of paper in his right hand and a watch on his left wrist. Motion: standing away from camera."
+    },
+    {
+     "id": 18776,
+     "kind": "person",
+     "caption": "The man wears a gray t-shirt with \"DON'T SNOB\" printed on it, holding a black object, possibly a phone, and has his hands clasped together on the table. Motion: standing stationary."
+    },
+    {
+     "id": 6829,
+     "kind": "person",
+     "caption": "The man wears a black t-shirt, blue jeans, and a dark cap. He holds a white cup in his right hand and a can in his left. Motion: standing stationary."
+    },
+    {
+     "id": 4578,
+     "kind": "person",
+     "caption": "A man wears a black t-shirt with colorful text, green pants, and holds a yellow and green object while standing near a staircase. Motion: walking stationary."
+    },
+    {
+     "id": 17733,
+     "kind": "person",
+     "caption": "The man wears a gray t-shirt with \"DON'T SWEAT\" printed on it, blue jeans, and holds a black bag. He stands near a seated woman, adjusting his shirt. Motion: walking away from camera."
+    },
+    {
+     "id": 18686,
+     "kind": "person",
+     "caption": "The man wears a gray t-shirt with \"DON'T SWEAT\" printed on it, blue shorts, and holds a yellow-capped bottle while sitting at a table. Motion: standing stationary."
+    }
+   ],
+   "after": [
+    {
+     "id": 352,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "\"whitman\"",
+      "whitman",
+      "football",
+      "shirt"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue t-shirt with \"Whitman Football\" text, black pants, and sneakers. They carry a black bag and adjust their hair while standing near a trash can. Motion: standing stationary."
+    },
+    {
+     "id": 23057,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "football",
+      "shirt"
+     ],
+     "missing": [
+      "\"whitman\"",
+      "whitman"
+     ],
+     "coverage": 0.5,
+     "verified": null,
+     "verify": null,
+     "caption": "The man wears a gray sweatshirt, blue jeans, and black sneakers, carrying a dark bag and holding a football and a cup. Motion: standing stationary."
+    },
+    {
+     "id": 13888,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "shirt"
+     ],
+     "missing": [
+      "\"whitman\"",
+      "whitman",
+      "football"
+     ],
+     "coverage": 0.25,
+     "verified": null,
+     "verify": null,
+     "caption": "The man wears a gray t-shirt with \"Don't Sweat the Small Stuff\" printed on it, blue jeans, and a black backpack. He holds a yellow object in his right hand and gestures with his left hand. Motion: standing stationary."
+    },
+    {
+     "id": 13896,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "shirt"
+     ],
+     "missing": [
+      "\"whitman\"",
+      "whitman",
+      "football"
+     ],
+     "coverage": 0.25,
+     "verified": null,
+     "verify": null,
+     "caption": "The man wears a gray t-shirt with \"DON'T SWEAT SWAG\" printed on it, blue jeans, and a black backpack. He holds a yellow object in his right hand and gestures with his left. Motion: standing stationary."
+    },
+    {
+     "id": 14076,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "shirt"
+     ],
+     "missing": [
+      "\"whitman\"",
+      "whitman",
+      "football"
+     ],
+     "coverage": 0.25,
+     "verified": null,
+     "verify": null,
+     "caption": "The man wears a gray t-shirt with \"DON'T SWEAT THE SWAG\" printed on it, blue jeans, and a black backpack. He holds a yellow piece of paper in his right hand and a watch on his left wrist. Motion: standing away from camera."
+    },
+    {
+     "id": 18776,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "shirt"
+     ],
+     "missing": [
+      "\"whitman\"",
+      "whitman",
+      "football"
+     ],
+     "coverage": 0.25,
+     "verified": null,
+     "verify": null,
+     "caption": "The man wears a gray t-shirt with \"DON'T SNOB\" printed on it, holding a black object, possibly a phone, and has his hands clasped together on the table. Motion: standing stationary."
+    },
+    {
+     "id": 6829,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "shirt"
+     ],
+     "missing": [
+      "\"whitman\"",
+      "whitman",
+      "football"
+     ],
+     "coverage": 0.25,
+     "verified": null,
+     "verify": null,
+     "caption": "The man wears a black t-shirt, blue jeans, and a dark cap. He holds a white cup in his right hand and a can in his left. Motion: standing stationary."
+    },
+    {
+     "id": 4578,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "shirt"
+     ],
+     "missing": [
+      "\"whitman\"",
+      "whitman",
+      "football"
+     ],
+     "coverage": 0.25,
+     "verified": null,
+     "verify": null,
+     "caption": "A man wears a black t-shirt with colorful text, green pants, and holds a yellow and green object while standing near a staircase. Motion: walking stationary."
+    },
+    {
+     "id": 17733,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "shirt"
+     ],
+     "missing": [
+      "\"whitman\"",
+      "whitman",
+      "football"
+     ],
+     "coverage": 0.25,
+     "verified": null,
+     "verify": null,
+     "caption": "The man wears a gray t-shirt with \"DON'T SWEAT\" printed on it, blue jeans, and holds a black bag. He stands near a seated woman, adjusting his shirt. Motion: walking away from camera."
+    },
+    {
+     "id": 18686,
+     "kind": "person",
+     "match": "partial",
+     "matched": [
+      "shirt"
+     ],
+     "missing": [
+      "\"whitman\"",
+      "whitman",
+      "football"
+     ],
+     "coverage": 0.25,
+     "verified": null,
+     "verify": null,
+     "caption": "The man wears a gray t-shirt with \"DON'T SWEAT\" printed on it, blue shorts, and holds a yellow-capped bottle while sitting at a table. Motion: standing stationary."
+    }
+   ]
+  },
+  {
+   "query": "persn in a blu hoodie",
+   "plan": {
+    "kind": "person",
+    "text": "persn in a blu hoodie",
+    "camera": null,
+    "notes": [
+     "read \"persn\" as \"person\"",
+     "read \"blu\" as \"blue\""
+    ],
+    "planner": "llm",
+    "constraints": [
+     {
+      "type": "color",
+      "value": "blue",
+      "applies_to": "hoodie",
+      "required": true
+     },
+     {
+      "type": "object",
+      "value": "hoodie",
+      "applies_to": null,
+      "required": true
+     }
+    ],
+    "negations": []
+   },
+   "understood": "person: blue hoodie, hoodie",
+   "notice": null,
+   "unsupported": [],
+   "before_full": 6,
+   "after_full": 10,
+   "latency_after": 1.95,
+   "timings": {
+    "plan": 1.744,
+    "retrieve": 0.204,
+    "score": 0.001
+   },
+   "before": [
+    {
+     "id": 22207,
+     "kind": "person",
+     "caption": "The person wears a light blue hoodie and dark pants, carrying a green object, walking with hands in pockets. Motion: walking away from camera."
+    },
+    {
+     "id": 25234,
+     "kind": "person",
+     "caption": "The person wears a blue hoodie, black pants, and white sneakers, carrying a bag over their shoulder, walking with hands in pockets. Motion: standing stationary."
+    },
+    {
+     "id": 13688,
+     "kind": "person",
+     "caption": "The person wears a blue hoodie, yellow plaid shirt, khaki pants, and white sneakers, carrying a bag over their shoulder, standing with hands in pockets. Motion: walking toward camera."
+    },
+    {
+     "id": 287,
+     "kind": "person",
+     "caption": "The person wears a black hoodie, blue jeans, and a beanie, with hands in pockets, standing upright. Motion: standing stationary."
+    },
+    {
+     "id": 152,
+     "kind": "person",
+     "caption": "The person wears a black hoodie, blue jeans, and a beanie, standing with hands in pockets. Motion: standing stationary."
+    },
+    {
+     "id": 327,
+     "kind": "person",
+     "caption": "The person wears a black hoodie, blue jeans, and a beanie, standing with hands in pockets. Motion: standing stationary."
+    },
+    {
+     "id": 11787,
+     "kind": "person",
+     "caption": "The person wears a dark blue hoodie with white stripes on the hood, carrying a black bag over their shoulder, and stands with their back to the camera. Motion: walking toward camera."
+    },
+    {
+     "id": 2612,
+     "kind": "person",
+     "caption": "The person wears a blue hoodie over a red shirt, khaki pants, and black shoes, carrying a backpack, standing with hands in pockets. Motion: standing stationary."
+    },
+    {
+     "id": 22730,
+     "kind": "person",
+     "caption": "The person wears a dark blue hoodie, black pants, and white sneakers, carrying a small object in their right hand while walking down stairs. Motion: walking right."
+    },
+    {
+     "id": 1134,
+     "kind": "person",
+     "caption": "The person wears a black hoodie, blue jeans, and a beanie, with hands in pockets; no items are visible. Motion: standing stationary."
+    }
+   ],
+   "after": [
+    {
+     "id": 22207,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "blue hoodie",
+      "hoodie"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a light blue hoodie and dark pants, carrying a green object, walking with hands in pockets. Motion: walking away from camera."
+    },
+    {
+     "id": 25234,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "blue hoodie",
+      "hoodie"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue hoodie, black pants, and white sneakers, carrying a bag over their shoulder, walking with hands in pockets. Motion: standing stationary."
+    },
+    {
+     "id": 13688,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "blue hoodie",
+      "hoodie"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue hoodie, yellow plaid shirt, khaki pants, and white sneakers, carrying a bag over their shoulder, standing with hands in pockets. Motion: walking toward camera."
+    },
+    {
+     "id": 2612,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "blue hoodie",
+      "hoodie"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue hoodie over a red shirt, khaki pants, and black shoes, carrying a backpack, standing with hands in pockets. Motion: standing stationary."
+    },
+    {
+     "id": 22730,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "blue hoodie",
+      "hoodie"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a dark blue hoodie, black pants, and white sneakers, carrying a small object in their right hand while walking down stairs. Motion: walking right."
+    },
+    {
+     "id": 8765,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "blue hoodie",
+      "hoodie"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue hoodie, black pants, and white sneakers, carrying a phone in their right hand, standing with hands slightly apart. Motion: walking toward camera."
+    },
+    {
+     "id": 11787,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "blue hoodie",
+      "hoodie"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a dark blue hoodie with white stripes on the hood, carrying a black bag over their shoulder, and stands with their back to the camera. Motion: walking toward camera."
+    },
+    {
+     "id": 13248,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "blue hoodie",
+      "hoodie"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue hoodie, red pants, and sneakers, carrying a bag over their shoulder, walking with hands in pockets. Motion: standing right."
+    },
+    {
+     "id": 25228,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "blue hoodie",
+      "hoodie"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a dark blue hoodie and black pants, carrying a bag over their shoulder, standing with hands in pockets. Motion: walking toward camera."
+    },
+    {
+     "id": 2858,
+     "kind": "person",
+     "match": "full",
+     "matched": [
+      "blue hoodie",
+      "hoodie"
+     ],
+     "missing": [],
+     "coverage": 1.0,
+     "verified": null,
+     "verify": null,
+     "caption": "The person wears a blue hoodie, black pants, a gray cap, and blue sneakers, carrying a clear plastic bottle and a small black item. Motion: walking right."
+    }
+   ]
+  }
+ ]
+}

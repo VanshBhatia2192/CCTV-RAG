@@ -11,7 +11,7 @@ VEH = r"\b(car|truck|van|suv|bus|bike|motorcycle|vehicle|sedan|taxi)\b"
 INC = r"\b(fight|accident|crash|fire|robbery|theft|fall|fell|assault|explosion|vandal|incident|collision)\w*"
 _m = _t = None
 
-def _llm(q):
+def _load_llm():
     global _m, _t
     if _m is None:
         from transformers import AutoModelForCausalLM, AutoTokenizer, logging as hf_logging
@@ -22,12 +22,20 @@ def _llm(q):
         except Exception:
             _t = AutoTokenizer.from_pretrained(MODELS["parser_llm"])
             _m = AutoModelForCausalLM.from_pretrained(MODELS["parser_llm"], torch_dtype="auto").to(DEV).eval()
-    msgs = [{"role": "system", "content": SYS}, {"role": "user", "content": q}]
-    ids = _t.apply_chat_template(msgs, add_generation_prompt=True, return_tensors="pt", return_dict=True).to(DEV)
+    return _m, _t
+
+def chat_json(system, q, max_new_tokens=100):
+    """Greedy-decode one chat turn of the parser LLM and return the first JSON object in the reply."""
+    m, t = _load_llm()
+    msgs = [{"role": "system", "content": system}, {"role": "user", "content": q}]
+    ids = t.apply_chat_template(msgs, add_generation_prompt=True, return_tensors="pt", return_dict=True).to(DEV)
     with torch.no_grad():
-        out = _m.generate(**ids, max_new_tokens=100, do_sample=False)
-    txt = _t.decode(out[0][ids["input_ids"].shape[1]:], skip_special_tokens=True)
+        out = m.generate(**ids, max_new_tokens=max_new_tokens, do_sample=False)
+    txt = t.decode(out[0][ids["input_ids"].shape[1]:], skip_special_tokens=True)
     return json.loads(re.search(r"\{.*\}", txt, re.S).group(0))
+
+def _llm(q):
+    return chat_json(SYS, q)
 
 def _rules(q):
     PERS = r"\b(person|people|man|men|woman|women|male|female|boy|girl|teenager|kid|child|pedestrian|guy|lady|wearing|wears|carrying|carries|jacket|shirt|jeans|backpack|hoodie|hat)\b"

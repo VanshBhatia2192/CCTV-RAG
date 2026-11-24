@@ -1,0 +1,56 @@
+{
+ "pairs": 60,
+ "main/any": {
+  "R@1": 26.7,
+  "R@5": 61.7,
+  "R@20": 86.7,
+  "MRR": 0.441,
+  "found_in_top_k": 96.7,
+  "median_latency_s": 0.15,
+  "median_results": 200,
+  "errors": 0
+ },
+ "main/cloth_change": {
+  "R@1": 16.7,
+  "R@5": 46.7,
+  "R@20": 66.7,
+  "MRR": 0.305,
+  "found_in_top_k": 73.3,
+  "median_latency_s": 0.04,
+  "median_results": 200,
+  "errors": 0
+ },
+ "branch/any": {
+  "R@1": 20.0,
+  "R@5": 40.0,
+  "R@20": 70.0,
+  "MRR": 0.321,
+  "found_in_top_k": 88.3,
+  "median_latency_s": 4.26,
+  "median_results": 200,
+  "errors": 0
+ },
+ "branch/cloth_change": {
+  "R@1": 3.3,
+  "R@5": 16.7,
+  "R@20": 33.3,
+  "MRR": 0.107,
+  "found_in_top_k": 75.0,
+  "median_latency_s": 4.23,
+  "median_results": 200,
+  "errors": 0
+ },
+ "branch/appearance_only": {
+  "R@1": 18.3,
+  "R@5": 48.3,
+  "R@20": 78.3,
+  "MRR": 0.33,
+  "found_in_top_k": 96.7,
+  "median_latency_s": 4.24,
+  "median_results": 200,
+  "errors": 0
+ },
+ "top10_overlap/any": 0.68,
+ "top10_overlap/cloth_change": 0.17,
+ "branch_cloth_change_gates_drop_fraction": 0.203
+}

@@ -1,0 +1,309 @@
+{
+ "model": "Qwen2.5-VL-7B",
+ "args": {
+  "sets": [
+   "rstp",
+   "cityflow",
+   "meva"
+  ],
+  "n": 600,
+  "cctv_height": 100,
+  "max_windows": 3000,
+  "batch": 128,
+  "out": "outputs/reports/caption_bench.json"
+ },
+ "rstp_h100": {
+  "items": 600,
+  "v1": {
+   "R@1": 11.0,
+   "R@5": 26.5,
+   "R@10": 38.0,
+   "mAP": 10.6,
+   "queries": 1200
+  },
+  "v2": {
+   "R@1": 16.0,
+   "R@5": 36.0,
+   "R@10": 46.2,
+   "mAP": 14.0,
+   "queries": 1200
+  },
+  "v1_s": 17,
+  "v2_s": 35,
+  "v2_parse_failures": 0,
+  "samples": [
+   {
+    "query": "The woman is seen from behind wearing a long black down jacket.She also wears a pair of gloves and takes a bag in her hand.",
+    "v1": "The person wears a red jacket, black pants, and white sneakers, carrying a bag, and stands with hands behind their back.",
+    "v2": "A person wearing a red shirt, black pants, white sneakers. Posture: walking. person wearing a red shirt and black pants."
+   },
+   {
+    "query": "This is a riding man on a yellow bicycle who is wearing a dark brown jacket with its hood covered his head.",
+    "v1": "The person wears a dark jacket, black pants, and a hooded hat, carrying nothing, and rides a yellow bicycle with a relaxed posture.",
+    "v2": "A woman wearing a gray hoodie, a brown jacket, blue jeans, white sneakers, a black cap, with glasses. Hair: long dark hair. Posture: riding a bike. wearing a backpack."
+   },
+   {
+    "query": "The man was wearing a brown coat, black trousers and grey shoes. He was walking with a green backpack on his back.",
+    "v1": "The person wears a brown jacket, black pants, and white sneakers, carrying a teal backpack, standing with hands in pockets, looking forward.",
+    "v2": "A man wearing a gray jacket, blue jeans, white sneakers, carrying a blue backpack. Posture: walking. person wearing a backpack."
+   },
+   {
+    "query": "This is a walking young lady who is wearing a red bown coat with a brown shoulder bag.Her hat is pink and the scarf is white.The stockings and shoes are black.",
+    "v1": "The person wears a red coat, black pants, and a pink hat, carrying a brown bag, standing with hands near face.",
+    "v2": "A woman wearing a red jacket, a red shirt, black leggings, black boots, a pink beanie, carrying a brown handbag and a cup. Posture: walking."
+   },
+   {
+    "query": "The woman is wearing a black down jacket and a black skirt with some patterns on it.She has brown hair.",
+    "v1": "The person wears a black coat over a patterned dress, carrying a bag, and stands with hands clasped in front.",
+    "v2": "A woman wearing a black jacket, a black skirt, a black cap, carrying a phone, with glasses. Hair: long dark hair. Posture: walking. red flower accessory on hat."
+   },
+   {
+    "query": "A female walker is wearing a long black coat,tight pants and a pair of boots with a bag over her left arm",
+    "v1": "The person wears a dark coat with fur trim, carries a black bag, and walks with a slight lean forward.",
+    "v2": "A woman wearing a navy coat, a blue jacket, black pants, black high heels, carrying a white handbag and a phone. Visible text: \"25\". Hair: long dark hair. Posture: walking. carrying a phone and wearing a white handbag."
+   },
+   {
+    "query": "This is a walking man with black frame glasses who is wearing a dark grey down coat, a black scarf, a pair of blue jeans and black shoes.",
+    "v1": "The individual wears a gray puffer jacket, blue jeans, and carries a backpack while walking with a relaxed posture.",
+    "v2": "A man wearing a gray jacket, a gray shirt, blue jeans, a black cap, carrying a red backpack, with glasses. Hair: short dark hair. Posture: walking. wearing a backpack and a cap."
+   },
+   {
+    "query": "The short black haired man with a pair of glasses is wearing a dark grey down-filled coat ,black trousers and white sneakers.He is walking and calling somebody.",
+    "v1": "The person wears a gray jacket over a white shirt, black pants, and white sneakers, carrying a yellow object, standing with hands near face.",
+    "v2": "A man wearing a gray jacket, a beige shirt, black pants, white sneakers, a black cap, with glasses. Hair: short dark hair. Posture: standing. person has a phone in their hand."
+   },
+   {
+    "query": "The woman is wearing a white coat with the hood.She wears black pants and black boots.She is  carrying a purple backpack.",
+    "v1": "The person wears a white jacket, black leggings, and black boots, carrying a purple and pink backpack, standing with hands behind their back.",
+    "v2": "A woman wearing a white jacket, black leggings, white sneakers, carrying a purple backpack. Posture: walking. carrying a backpack."
+   },
+   {
+    "query": "The woman is wearing a bright pink down jacket,a pair of blue jeans and black shoes.And she is carrying a black shoulder bag and holding something in the hand.",
+    "v1": "The person wears a pink hooded jacket, blue jeans, and brown shoes, carrying a black crossbody bag, standing with hands in pockets.",
+    "v2": "A woman wearing a pink jacket, a pink hoodie, blue jeans, carrying a black shoulder bag, with glasses. Hair: long dark hair. Posture: standing. wearing a pink hoodie and jacket with a black shoulder bag."
+   },
+   {
+    "query": "The long black haired woman is wearing a black coat,black jeans and black shoes.She is walking and carrying a black backpack with her hand in her pocket.",
+    "v1": "The person wears a dark coat over a lighter jacket, blue jeans, and black boots, carrying a bag, and stands with hands slightly raised.",
+    "v2": "A person wearing a black jacket, a black shirt, blue jeans, black shoes, carrying a black backpack. Posture: walking. person wearing a black jacket and jeans, carrying a black backpack."
+   },
+   {
+    "query": "A woman wears a pink down jacket,black trouser,a pair of high boots with a pink hat on her head.She is riding a bike.",
+    "v1": "The person wears a pink hat, striped jacket, black pants, and brown boots, carrying a red bag while riding a bicycle with one hand on the handlebars.",
+    "v2": "A woman wearing a pink jacket, a pink striped jacket, black pants, brown boots, a pink hat, carrying a red bag, with glasses. Posture: riding a bike. wearing a pink hat and striped jacket."
+   },
+   {
+    "query": "The man is wearing a blue coat, grey trousers and black shoes. He put one hand in his pocket and rode a bicycle.",
+    "v1": "The person wears a blue and green jacket, gray pants, and black shoes, carrying a bag on their back while riding a bicycle.",
+    "v2": "A person wearing a green jacket, a blue jacket, gray pants, with glasses. Posture: riding a bike. wearing a backpack."
+   },
+   {
+    "query": "The man is wearing a green coat, blue trousers and black shoes. He was walking with a briefcase and a glass pot in his hand.",
+    "v1": "The person wears a green jacket, blue jeans, and black shoes, carrying a black bag over their shoulder while walking.",
+    "v2": "A man wearing a green jacket, blue jeans, carrying a black object. Hair: short. Posture: walking. carrying a black object."
+   },
+   {
+    "query": "The man with a white hat is wearing a white jacket,jeans and a pair of sneakers.He is riding bike.",
+    "v1": "The person wears a white jacket with orange stripes, blue pants, and sneakers, carrying a black backpack while sitting on a bench.",
+    "v2": "A person wearing an orange jacket, a white striped hoodie, blue jeans, white sneakers, carrying a black backpack. Posture: riding a bike. person wearing a white hoodie with an orange stripe and a black backpack."
+   }
+  ]
+ },
+ "cityflow": {
+  "items": 284,
+  "v1": {
+   "R@1": 5.9,
+   "R@5": 17.0,
+   "R@10": 26.8,
+   "mAP": 12.6,
+   "queries": 852
+  },
+  "v2": {
+   "R@1": 6.0,
+   "R@5": 20.2,
+   "R@10": 28.9,
+   "mAP": 13.5,
+   "queries": 852
+  },
+  "v1_s": 14,
+  "v2_s": 30,
+  "v2_parse_failures": 14,
+  "samples": [
+   {
+    "query": "An orange car drives up a hill.",
+    "v1": "An orange Subaru Crosstrek with a roof rack is driving on a highway.",
+    "v2": "An orange hatchback with roof rack. Driving straight on a highway. no other distinctive features."
+   },
+   {
+    "query": "A navy blue SUV is driving down a residential street curving right.",
+    "v1": "A dark green Jeep Grand Cherokee with a sunroof is parked on the street.",
+    "v2": "A green jeep grand cherokee suv with roof rack, tinted windows. Parked on a street. car has snow on hood."
+   },
+   {
+    "query": "White SUV keeps straight.",
+    "v1": "A white Ford SUV with a roof rack is seen from above.",
+    "v2": "A white and gray ford explorer suv with roof rack. Visible text: \"POLICE\". Parked on a parking lot. The vehicle has a police logo on the door."
+   },
+   {
+    "query": "A small silver sedan keeps straight.",
+    "v1": "A silver sedan with a blue front bumper is driving on a road.",
+    "v2": "A silver sedan with tinted windows. Driving straight on a street. driver wearing a hat."
+   },
+   {
+    "query": "A black SUV is going straight.",
+    "v1": "A black Mercedes-Benz SUV with roof racks is parked on a street.",
+    "v2": "A black mercedes-benz glk-class suv with roof rack. Parked on a street."
+   },
+   {
+    "query": "A cargo truck with a flatbed drives straight.",
+    "v1": "A black semi-truck with a flatbed trailer is driving on a highway.",
+    "v2": "A black and gray peterbilt 389 box truck with ladder on roof. Driving straight on a highway. white awning."
+   },
+   {
+    "query": "A blue truck runs down the street.",
+    "v1": "A blue Ford F-150 pickup truck is driving on a road with a mountainous background.",
+    "v2": "A blue ford f-150 pickup truck with tinted windows. Driving straight on a highway. The truck has a logo on the back door."
+   },
+   {
+    "query": "A Black color car going in the road.",
+    "v1": "A black sedan with distinctive white stripes on its hood is captured in three surveillance frames.",
+    "v2": "A black sedan with tinted windows. Parked on a parking lot. car has a black hood ornament."
+   },
+   {
+    "query": "A gray whitish pickup truck turning right.",
+    "v1": "A white Ford F-350 Super Duty crew cab pickup truck with a ladder rack on the bed.",
+    "v2": "A silver ford f-250 pickup truck with roof rack, ladder on roof. Driving straight on a street."
+   },
+   {
+    "query": "A blue pickup runs down the street.",
+    "v1": "A blue Ford F-150 pickup truck with a chrome grille is driving on a highway.",
+    "v2": "A blue ford f-150 pickup truck with open bed cover. Driving straight on a highway. The truck has a visible Ford logo on the front."
+   },
+   {
+    "query": "A gray SUV goes straight across the traffic light and turns left.",
+    "v1": "A green Subaru Outback with a roof rack is parked in a parking lot.",
+    "v2": "An olive subaru outback suv with roof rack. Parked on a parking lot. blue pickup truck in background."
+   },
+   {
+    "query": "A small white suv turns right.",
+    "v1": "A white Honda Fit with a visible license plate is shown from various angles.",
+    "v2": "A white hatchback with tinted windows. Parked on a street. car parked next to another car."
+   },
+   {
+    "query": "White minivan going straight at an intersection.",
+    "v1": "A silver minivan with black tinted windows is parked on the street.",
+    "v2": "A silver dodge grand caravan minivan with roof rack, tinted windows. Visible text: \"Grand Caravan\". Driving straight on a street. The van has a visible logo on the side."
+   },
+   {
+    "query": "A white sedan turns right and switches lane to.",
+    "v1": "A white sedan with tinted windows is parked on a snowy street.",
+    "v2": "A white sedan with tinted windows. Parked on a street. car parked next to a pole."
+   },
+   {
+    "query": "A red sedan turns right.",
+    "v1": "A maroon sedan with a white license plate is driving on a road.",
+    "v2": "A maroon oldsmobile alero sedan with sunroof. Driving straight on a highway. The car has a sunroof."
+   }
+  ]
+ },
+ "meva": {
+  "windows": 176,
+  "v1": {
+   "R@1": 25.7,
+   "R@5": 54.3,
+   "R@10": 62.9,
+   "MRR": 0.37,
+   "queries": 35
+  },
+  "v2": {
+   "R@1": 31.4,
+   "R@5": 51.4,
+   "R@10": 62.9,
+   "MRR": 0.42,
+   "queries": 35
+  },
+  "v2_s": 77,
+  "samples": [
+   {
+    "label": "stand-up",
+    "v1": "A man walks towards the chairs on the right side of the gym.",
+    "v2": "A man in a black suit walks across the gym and stands near the table. Events: man in black suit walks across the gym; man in black suit stands near the table. Setting: gym."
+   },
+   {
+    "label": "text-on-phone",
+    "v1": "A woman walks past the building.",
+    "v2": "A man and woman walk away from the building entrance. Events: man in blue shirt walks away sidewalk; woman in black shirt walks away sidewalk. Setting: building entrance."
+   },
+   {
+    "label": "open-trunk",
+    "v1": "A man opens the trunk of a red car.",
+    "v2": "A man opens and closes the trunk of his motorcycle. Events: man wearing green cap open motorcycle trunk; man wearing green cap close motorcycle trunk. Setting: parking lot."
+   },
+   {
+    "label": "heavy-carry",
+    "v1": "A man walks down the hallway towards the camera.",
+    "v2": "A man in a blue shirt walks down the hallway pushing a cart. Events: man in blue shirt walks down hallway cart; man in blue shirt pushes cart down hallway. Setting: hallway."
+   },
+   {
+    "label": "vehicle-picksup-person",
+    "v1": "A man walks past the red car.",
+    "v2": "A man wearing a black suit and hat walks away from the camera along the sidewalk. Events: a man wearing a black suit and hat walks away sidewalk. Setting: sidewalk."
+   },
+   {
+    "label": "vehicle-starting",
+    "v1": "A person is walking on the sidewalk. A car is driving down the road.",
+    "v2": "A man in a blue jacket walks away from the camera. Events: man in black jacket walks away sidewalk; man in white jacket walks away sidewalk; man in blue jacket walks away sidewalk. Setting: sidewalk."
+   },
+   {
+    "label": "vehicle-uturn",
+    "v1": "A black car drives into the parking lot.",
+    "v2": "A black SUV reverses and stops in the parking lot. Events: black SUV reverse parking lot; black SUV stop parking lot. Setting: parking lot."
+   },
+   {
+    "label": "unload-vehicle",
+    "v1": "A black van is parked in the parking lot. A man walks towards the van.",
+    "v2": "A man in a black shirt walks around a car and opens its trunk. Events: man in black shirt walks away from the car; man in black shirt walks towards the car. Setting: parking lot."
+   },
+   {
+    "label": "read-document",
+    "v1": "A woman walks into the room.",
+    "v2": "A woman walks through the door while a man stands up from a couch. Events: woman in black coat walks through the door; man in blue jeans stands up couch. Setting: building entrance."
+   },
+   {
+    "label": "vehicle-uturn",
+    "v1": "A blue car drives down the road.",
+    "v2": "A car drives away and three people walk away from the camera. Events: man in red jacket walks away sidewalk; man in blue jacket walks away sidewalk; man in white jacket walks away sidewalk; car drives away right. Setting: parking lot."
+   },
+   {
+    "label": "vehicle-dropsoff-person",
+    "v1": "A silver car drives into the parking lot. A person gets out of the car and walks towards the building.",
+    "v2": "A man gets out of his car and opens the car door. Events: a man get out of the car; a man open the car door. Setting: parking lot."
+   },
+   {
+    "label": "vehicle-reversing",
+    "v1": "A maroon car reverses out of the parking lot.",
+    "v2": "A man in a red jacket gets into a truck and drives away. Events: a man in a red jacket enter the truck; a man in a red jacket get into the truck. Setting: parking lot."
+   },
+   {
+    "label": "heavy-carry",
+    "v1": "A woman in a blue jacket walks on the sidewalk. A group of people walk down the sidewalk.",
+    "v2": "A man in a black jacket walks back and forth on the sidewalk. Events: man in black jacket walks away sidewalk; man in black jacket walks towards sidewalk. Setting: sidewalk."
+   },
+   {
+    "label": "laptop-interaction",
+    "v1": "A man in a black jacket walks into the room. A woman in a tan jacket stands up from her chair.",
+    "v2": "A man walks through the door and a woman walks away from the door. Events: man in black jacket walks through the door; woman in pink shirt walks away from the door. Setting: building entrance."
+   },
+   {
+    "label": "riding",
+    "v1": "A man on a scooter is riding down the road. A car drives by.",
+    "v2": "Person A, person B and person C walk away from the camera. Events: person A walks away sidewalk; person B walks away sidewalk; person C walks away sidewalk. Setting: sidewalk."
+   },
+   {
+    "label": "vehicle-uturn",
+    "v1": "A person is walking on the sidewalk. A car drives down the road.",
+    "v2": "A man in a black jacket and a man in a green jacket walk away from the camera. Events: man in black jacket walks away sidewalk; man in green jacket walks away sidewalk. Setting: parking lot."
+   }
+  ]
+ }
+}

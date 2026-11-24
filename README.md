@@ -204,7 +204,7 @@ cctv-search/
 │   ├── index/                  # Database connectors (SQLite WAL + Qdrant)
 │   ├── ingest/                 # Video chunking & motion gate filtering
 │   ├── person/                 # Person detection, tracking & CLIP fine-tuning
-│   ├── query/                  # Natural language query parsing & reranking
+│   ├── query/                  # Query planner, per-requirement scoring, VLM verification
 │   ├── scale/                  # Batch embedding & cluster scaling utilities
 │   ├── ui/                     # Alternative Gradio interface
 │   └── vehicle/                # Vehicle representation & contrastive learning
@@ -255,6 +255,43 @@ ssh -L 8000:localhost:8000 user@server_ip
 ```
 Then open [`http://localhost:8000`](http://localhost:8000) in your browser.
 
+On the cluster the login node has no GPU, so the LLM query planner and VLM verification are slow there. To run the
+demo on a GPU node instead (Qdrant from `run_demo.sh` must be up on mgmt01):
+```bash
+bash scripts/hpc/submit.sh scripts/hpc/demo_gpu.pbs        # node name is printed in outputs/logs/demo_gpu.log
+ssh -N -L 8000:<gpu-node>:8000 hpc                          # on your laptop
+```
+
+---
+
+## 🧠 Context-Aware Search (`/api/ask`)
+
+Plain hybrid matching treats a query as a bag of words, so `red bluewhale` returned anything red. The Ask endpoint
+now understands the query before searching (`src/query/contextual.py`):
+
+1. **Plan** (`src/query/plan.py`): the query becomes separate requirements, time filters ("after 5pm",
+   "between 4 and 5 pm on march 7", "in the morning", from the recording time in MEVA file names) and implied
+   concepts ("cop" -> uniform, "delivery guy" -> package, "cyclist" -> bicycle, "old woman" -> elderly + woman); e.g. `red bluewhale` ->
+   text `"bluewhale"` (required) + color `red` on `bluewhale`; `woman in a black coat without a bag` -> black coat,
+   *not* bag. Unknown words are treated as names/brands/visible text, typos of domain words are fixed
+   (`persn in a blu hoodie`), camera names become filters. Rules run in milliseconds; the "LLM Query Planner"
+   toggle fills the same schema with the parser LLM.
+2. **Retrieve**: the existing RRF hybrid search, plus captions that contain rare named terms and captions that
+   already satisfy every requirement, so exact matches outside the embedding top-k are not missed.
+3. **Score each requirement** (`src/query/constraints.py`): a result is a *full* match only if it satisfies every
+   required part (colors must sit on the named garment/vehicle); others are labelled *partial* with what is
+   missing, negations are excluded. A required term no caption mentions is reported instead of silently ignored.
+4. **Verify** (optional, "VLM Verify" toggle, needs a GPU; `src/query/verify.py`): Qwen2.5-VL answers one yes/no
+   question per requirement for the top results; any "no" rejects the result.
+
+The response carries `understood`, `notice` and per-result `match` / `matched` / `missing`, which the UI shows.
+`strict=true` returns full or verified matches only. Before/after comparison on a fixed query list:
+
+```bash
+DEMO_DB=/tmp/meta_demo_$USER.db QDRANT_URL=http://localhost:6335 python -m eval.search.compare_queries   # CPU, rules planner
+bash scripts/hpc/submit.sh scripts/hpc/search_compare.pbs                                              # GPU: rules, LLM, VLM verify
+```
+
 ---
 
 ## 🔍 Core Workflows
@@ -272,11 +309,34 @@ python -m src.person.detect_track --kind person
 python -m src.person.detect_track --kind vehicle
 ```
 
-### 3. VLM Captioning
-Generate descriptive natural language captions using Qwen2.5-VL:
+### 3. VLM Captioning (v2: structured, high-resolution)
+`src/captions/v2.py` re-crops the 4 best frames of every track from the source video (largest box not cut by the
+frame edge, padded, enlarged to ~448 px; CCTV crops are ~100 px high, which gave the VLM only a dozen visual tokens),
+and gives scene windows 8 frames at up to 768 px. Qwen2.5-VL-7B fills a JSON schema (each garment's color and type,
+bag, carried items, exact visible text, vehicle make/type/features, scene events), and a consistent sentence is built
+from it. Runs on vLLM (`~/envs/vllm`, ~17 tracks/s on one H100) or HuggingFace:
 ```bash
-python -m src.captions.caption_tracks --kind all
+for k in person vehicle window; do qsub -v MODE=caption,BACKEND=vllm,KIND=$k scripts/hpc/captions_v2.pbs; done
+QDRANT_URL=http://localhost:6335 python -m src.captions.v2_import          # into SQLite (+ text index); --revert undoes
+qsub -v MODE=bench,BACKEND=vllm,ARGS="--n 600" scripts/hpc/captions_v2.pbs  # v1 vs v2 benchmark
 ```
+Caption benchmark (human descriptions retrieving the right item through the captions, same text search as the app;
+`outputs/reports/caption_bench.json`):
+
+| Set | Metric | v1 | v2 |
+|---|---|---|---|
+| RSTPReid people (600, crops shrunk to 100 px) | R@1 / R@5 / mAP | 11.0 / 26.5 / 10.6 | **16.0 / 36.0 / 14.0** |
+| CityFlow-NL vehicles (284 tracks) | R@1 / R@5 / mAP | 5.9 / 17.0 / 12.6 | **6.0 / 20.2 / 13.5** |
+| MEVA activities (176 scene windows, 35 classes) | R@1 / MRR | 25.7 / 0.37 | **31.4 / 0.42** |
+
+On the full index (all 11,338 scene windows as distractors, 36 classes) old and new scene captions are about level
+(MRR 0.138 vs 0.128) and good at different activities, so scenes are indexed as **v1 sentence + v2 description**:
+R@1 8.6% → **11.1%**, R@5 20.0% → **27.8%**, MRR 0.138 → **0.173** (`outputs/reports/eval_activities_v2.json`;
+the older 25% R@1 in `eval_activities.json` was measured when the index held only the labelled clips).
+v2 captions are live in the index (13,680 people, 11,930 vehicles, 11,327 scenes; old ones kept in `caption_v1`,
+backup `meta.db.bak-v1`).
+
+The old free-text captioner (`src/captions/caption_tracks.py`, `caption_windows.py`) is kept for reference.
 
 ### 4. Gait Silhouette Extraction & Indexing
 Extract normalized $64\times 64$ silhouettes via YOLOv8-seg and index $4,096$-d gait vectors into Qdrant:

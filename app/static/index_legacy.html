@@ -1,0 +1,1491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CCTV-RAG | Multi-Modal Surveillance Intelligence Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #0a0d14;
+    --bg-surface: #111622;
+    --bg-card: #161c2e;
+    --bg-card-hover: #1c243a;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-hover: rgba(255, 255, 255, 0.16);
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent: #38bdf8;
+    --accent-glow: rgba(56, 189, 248, 0.25);
+    --accent-dark: #0284c7;
+    --badge-bg: rgba(56, 189, 248, 0.12);
+    --badge-text: #7dd3fc;
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.12);
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.12);
+    --danger: #ef4444;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 18px;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.25);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.35);
+    --shadow-lg: 0 10px 28px rgba(0,0,0,0.45);
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  [data-theme="light"] {
+    --bg-base: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f1f5f9;
+    --border: #e2e8f0;
+    --border-hover: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --accent: #0284c7;
+    --accent-glow: rgba(2, 132, 199, 0.18);
+    --accent-dark: #0369a1;
+    --badge-bg: #e0f2fe;
+    --badge-text: #0369a1;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 10px rgba(0,0,0,0.07);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.09);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  /* Navigation Bar */
+  nav {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(16px);
+  }
+  .nav-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: inherit;
+  }
+  .brand-icon {
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(135deg, #0284c7, #38bdf8);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 800;
+    font-size: 16px;
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+  .brand-title {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+  }
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .nav-stats {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+  }
+  .nav-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .nav-stat-val {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .btn-icon {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 15px;
+  }
+  .btn-icon:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-hover);
+  }
+  .btn-evidence {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 7px 13px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-evidence:hover { border-color: var(--accent); }
+  .badge-count {
+    background: var(--accent);
+    color: #0b0f17;
+    font-size: 11px;
+    font-weight: 800;
+    border-radius: 999px;
+    padding: 1px 6px;
+  }
+
+  /* Main Container */
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  /* Search Hero Panel */
+  .search-hero {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 22px 26px;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 24px;
+  }
+  .search-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .tab-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    transition: all 0.15s ease;
+  }
+  .tab-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-hover);
+    background: var(--bg-card);
+  }
+  .tab-btn.active {
+    background: var(--accent);
+    color: #0b0f17;
+    border-color: var(--accent);
+    font-weight: 700;
+    box-shadow: 0 0 16px var(--accent-glow);
+  }
+
+  .search-input-wrap {
+    display: flex;
+    gap: 10px;
+  }
+  .search-input {
+    flex: 1;
+    background: var(--bg-base);
+    border: 1.5px solid var(--border);
+    color: var(--text-primary);
+    font-size: 15px;
+    padding: 13px 18px;
+    border-radius: var(--radius-lg);
+    font-family: inherit;
+    transition: all 0.2s ease;
+  }
+  .search-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-glow);
+  }
+  .btn-submit {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: #0b0f17;
+    border: none;
+    font-weight: 700;
+    font-size: 14.5px;
+    padding: 0 26px;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px var(--accent-glow);
+  }
+
+  /* Filters & Controls Toolbar */
+  .toolbar {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .toolbar-left, .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .toolbar-label {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .select-filter {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .select-filter:focus { outline: none; border-color: var(--accent); }
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+  }
+  .toggle-label input { accent-color: var(--accent); }
+
+  .query-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-top: 12px;
+    font-size: 12.5px;
+  }
+  .chip-sample {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip-sample:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--badge-bg);
+  }
+
+  /* Results Meta Header */
+  .results-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 0 4px;
+  }
+  .results-count {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .results-count strong {
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+  }
+  .btn-export {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 5px 12px;
+    border-radius: var(--radius-md);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-export:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+
+  /* Cards Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .grid.wide {
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  }
+
+  /* Card Item */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    box-shadow: var(--shadow-sm);
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-md);
+    background: var(--bg-card-hover);
+  }
+  .card-media {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    background: #000;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .grid.wide .card-media { height: 210px; }
+  .card-media img, .card-media video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    transition: transform 0.3s ease;
+  }
+  .card:hover .card-media img { transform: scale(1.03); }
+
+  .overlay-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(11, 15, 23, 0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--radius-sm);
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+  }
+  .overlay-time {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(11, 15, 23, 0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--radius-sm);
+    padding: 3px 7px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    color: #e2e8f0;
+  }
+
+  .card-body {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .card-title {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 13.5px;
+  }
+  .match-score {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--accent);
+  }
+  .score-bar-bg {
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: -2px;
+  }
+  .score-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-dark), var(--accent));
+    border-radius: 999px;
+  }
+
+  .card-caption {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.45;
+  }
+
+  .card-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .tag {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    padding: 2px 7px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  .tag.top { border-color: rgba(56, 189, 248, 0.3); color: #7dd3fc; }
+  .tag.bot { border-color: rgba(16, 185, 129, 0.3); color: #6ee7b7; }
+  .tag.mot { border-color: rgba(245, 158, 11, 0.3); color: #fcd34d; }
+  .tag.ok { border-color: var(--success); color: var(--success); background: var(--success-bg); }
+  .tag.miss { border-color: var(--warning); color: var(--warning); background: var(--warning-bg); }
+  .query-banner { margin: -6px 4px 14px; padding: 10px 14px; border-radius: 10px; font-size: 13px;
+    border: 1px solid var(--border); color: var(--text-secondary); display: flex; flex-direction: column; gap: 4px; }
+  .query-banner[hidden] { display: none; }
+  .query-banner .understood b { color: var(--text-primary); font-family: var(--font-mono); font-weight: 600; }
+  .query-banner .notice { color: var(--warning); }
+
+  .card-actions {
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+  }
+  .btn-card {
+    flex: 1;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+  .btn-card:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--badge-bg);
+  }
+  .btn-card.pin:hover {
+    border-color: var(--warning);
+    color: var(--warning);
+    background: var(--warning-bg);
+  }
+
+  /* Modals */
+  dialog {
+    border: 1px solid var(--border-hover);
+    border-radius: var(--radius-xl);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    padding: 0;
+    width: min(1050px, 94vw);
+    max-height: 90vh;
+    box-shadow: var(--shadow-lg);
+    margin: auto;
+  }
+  dialog::backdrop {
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+  }
+  .modal-head {
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .modal-title {
+    font-size: 16px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .btn-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+  }
+  .btn-close:hover { color: var(--text-primary); }
+  .modal-body {
+    padding: 20px 22px;
+    overflow-y: auto;
+    max-height: calc(90vh - 75px);
+  }
+
+  /* Video Modal Extras */
+  video.cinema-player {
+    width: 100%;
+    max-height: 65vh;
+    background: #000;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+  }
+  .video-controls-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .speed-pills {
+    display: flex;
+    gap: 4px;
+  }
+  .speed-pill {
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-base);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  .speed-pill.active {
+    background: var(--accent);
+    color: #0b0f17;
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* Re-ID Modal Extras */
+  .reid-query-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .reid-query-img {
+    height: 130px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: #000;
+  }
+  .reid-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .reid-mode-btn {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    color: var(--text-secondary);
+    padding: 12px 16px;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s;
+  }
+  .reid-mode-btn:hover { border-color: var(--border-hover); }
+  .reid-mode-btn.active {
+    border-color: var(--accent);
+    background: var(--badge-bg);
+    color: var(--text-primary);
+  }
+  .reid-mode-title { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+  .reid-mode-desc { font-size: 12px; color: var(--text-muted); }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+  .empty-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.6; }
+</style>
+</head>
+<body data-theme="dark">
+
+<nav>
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-title">CCTV-RAG <span class="status-pill"><span class="status-dot"></span> <span id="status-text">Operational</span></span></div>
+      </div>
+    </div>
+    
+    <div class="nav-stats">
+      <div class="nav-stat-item">📹 <span class="nav-stat-val" id="stat-cams">24</span> Cams</div>
+      <div class="nav-stat-item">🏃 <span class="nav-stat-val" id="stat-tracks">13,686</span> Tracks</div>
+      <div class="nav-stat-item">🧬 <span class="nav-stat-val">Gait3D + CLIP-FT</span></div>
+      <div class="nav-stat-item">⚡ <span class="nav-stat-val" id="stat-latency">&lt;100ms</span></div>
+    </div>
+
+    <div class="nav-actions">
+      <button class="btn-evidence" onclick="openEvidenceDrawer()">
+        📌 Evidence <span class="badge-count" id="evidence-count">0</span>
+      </button>
+      <button class="btn-icon" id="theme-btn" onclick="toggleTheme()" title="Toggle Theme">🌓</button>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <div class="search-hero">
+    <div class="search-tabs" role="tablist">
+      <button class="tab-btn active" data-kind="ask" onclick="setKind('ask')">✨ AI Query Agent</button>
+      <button class="tab-btn" data-kind="person" onclick="setKind('person')">🏃 People</button>
+      <button class="tab-btn" data-kind="vehicle" onclick="setKind('vehicle')">🚗 Vehicles</button>
+      <button class="tab-btn" data-kind="incident" onclick="setKind('incident')">🚨 Incidents</button>
+    </div>
+
+    <form id="search-form" onsubmit="event.preventDefault(); executeSearch();">
+      <div class="search-input-wrap">
+        <input type="text" id="query-input" class="search-input" placeholder="Describe a person, vehicle, or activity (e.g. 'person in red jacket walking left', 'black SUV')" autocomplete="off" autofocus>
+        <button type="submit" class="btn-submit">
+          <span>Search</span> ➔
+        </button>
+      </div>
+    </form>
+
+    <div class="query-chips" id="sample-chips"></div>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <span class="toolbar-label">Dataset:</span>
+        <select id="dataset-filter" class="select-filter" onchange="onDatasetChange()">
+          <option value="">All Datasets</option>
+        </select>
+
+        <span class="toolbar-label">Camera:</span>
+        <select id="cam-filter" class="select-filter" onchange="executeSearch()">
+          <option value="">All Cameras</option>
+        </select>
+
+        <span class="toolbar-label">Sort:</span>
+        <select id="sort-filter" class="select-filter" onchange="renderCurrentResults()">
+          <option value="score">Highest Match Score</option>
+          <option value="time-asc">Time (Earliest First)</option>
+          <option value="time-desc">Time (Latest First)</option>
+        </select>
+      </div>
+
+      <div class="toolbar-right" id="ask-toggles">
+        <label class="toggle-label" title="Use the LLM to split the query into requirements (slower; rules are used otherwise)"><input type="checkbox" id="llm-toggle"> LLM Query Planner</label>
+        <label class="toggle-label" title="Ask the vision model about each requirement for the top results (needs a GPU)"><input type="checkbox" id="rerank-toggle"> VLM Verify</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="results-meta">
+    <div class="results-count" id="results-count">Ready to search across 400 ingested surveillance archives.</div>
+    <button class="btn-export" onclick="exportFindingsJSON()">📥 Export Findings (JSON)</button>
+  </div>
+
+  <div id="query-banner" class="query-banner" hidden>
+    <div class="understood"></div>
+    <div class="notice"></div>
+  </div>
+
+  <div id="results-grid" class="grid">
+    <div class="empty-state" style="grid-column: 1/-1;">
+      <div class="empty-icon">🔍</div>
+      <p>Type a query or click any sample prompt above to retrieve surveillance tracklets.</p>
+    </div>
+  </div>
+</main>
+
+<!-- Video Playback Modal -->
+<dialog id="video-modal">
+  <div class="modal-head">
+    <div class="modal-title" id="video-modal-title">📹 CCTV Clip Playback</div>
+    <button class="btn-close" onclick="closeVideoModal()">✕</button>
+  </div>
+  <div class="modal-body">
+    <video id="cinema-player" class="cinema-player" controls preload="metadata"></video>
+    <div class="video-controls-bar">
+      <div>
+        <span>Playback Speed:</span>
+        <span class="speed-pills">
+          <button class="speed-pill" onclick="setSpeed(0.5)">0.5x</button>
+          <button class="speed-pill active" onclick="setSpeed(1.0)">1.0x</button>
+          <button class="speed-pill" onclick="setSpeed(1.5)">1.5x</button>
+          <button class="speed-pill" onclick="setSpeed(2.0)">2.0x</button>
+        </span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button id="btn-jump-event" class="btn-card" style="display:none; font-size:12px; padding:4px 10px;" onclick="jumpToEvent()">🎯 Jump to Detection</button>
+        <label class="toggle-label"><input type="checkbox" id="loop-toggle" onchange="cinemaPlayer.loop = this.checked"> Loop Clip</label>
+      </div>
+    </div>
+    <div id="video-metadata" style="margin-top:14px; font-size:13px; color:var(--text-secondary);"></div>
+  </div>
+</dialog>
+
+<!-- Cross-Camera Re-ID Modal -->
+<dialog id="reid-modal">
+  <div class="modal-head">
+    <div class="modal-title">🧬 Cross-Camera Re-ID (Appearance + Gait Biometrics)</div>
+    <button class="btn-close" onclick="reidModal.close()">✕</button>
+  </div>
+  <div class="modal-body">
+    <div class="reid-query-panel" id="reid-query-box"></div>
+    
+    <div class="reid-selector">
+      <button class="reid-mode-btn active" id="btn-mode-any" onclick="setReidMode('any')">
+        <div class="reid-mode-title">🌟 Fused (Appearance + Gait)</div>
+        <div class="reid-mode-desc">Best for general tracking across camera viewpoints.</div>
+      </button>
+      <button class="reid-mode-btn" id="btn-mode-cloth" onclick="setReidMode('cloth_change')">
+        <div class="reid-mode-title">🥋 Clothing Changed (Gait Only)</div>
+        <div class="reid-mode-desc">Silhouette biometrics when suspect has changed clothes.</div>
+      </button>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:13px;">
+      <label class="toggle-label"><input type="checkbox" id="fb-filter" checked onchange="loadReidMatches()"> Full-body tracklets only</label>
+      <span id="reid-status" style="color:var(--text-muted); font-size:12.5px;"></span>
+    </div>
+
+    <div id="reid-note-box" style="display:none; margin-bottom:14px; padding:10px 14px; border-radius:var(--radius-md); font-size:12.5px; background:rgba(234, 179, 8, 0.12); border:1px solid rgba(234, 179, 8, 0.3); color:#facc15;"></div>
+
+    <div id="reid-grid" class="grid"></div>
+  </div>
+</dialog>
+
+<!-- Evidence Dossier Modal -->
+<dialog id="evidence-modal">
+  <div class="modal-head">
+    <div class="modal-title">📌 Pinned Evidence Dossier</div>
+    <button class="btn-close" onclick="evidenceModal.close()">✕</button>
+  </div>
+  <div class="modal-body">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <span style="font-size:13px; color:var(--text-secondary);" id="evidence-stats-label">0 items saved.</span>
+      <button class="btn-export" onclick="clearEvidence()">Clear All</button>
+    </div>
+    <div id="evidence-grid" class="grid"></div>
+  </div>
+</dialog>
+
+<!-- Cross-Camera Vehicle Tracking Modal -->
+<dialog id="vreid">
+  <div class="modal-head">
+    <div class="modal-title">🚗 Multi-Camera Vehicle Re-ID & Route Tracking</div>
+    <button class="btn-close" onclick="vreid.close()">✕</button>
+  </div>
+  <div class="modal-body">
+    <div class="reid-query-panel" id="vrq"></div>
+    
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:13px; flex-wrap:wrap; gap:8px;">
+      <div style="display:flex; gap:16px;">
+        <label class="toggle-label"><input type="checkbox" id="v_st" checked onchange="loadVehicleReid()"> Spatio-temporal road topology</label>
+        <label class="toggle-label"><input type="checkbox" id="v_color" checked onchange="loadVehicleReid()"> Strict color consistency</label>
+      </div>
+      <span id="vrstatus" style="color:var(--text-muted); font-size:12.5px;"></span>
+    </div>
+
+    <div id="vrgrid" class="grid"></div>
+    <div style="margin-top:14px; font-size:12px; color:var(--text-muted); border-top:1px solid var(--border-color); padding-top:8px;">
+      Multi-camera vehicle tracking matches vehicle identity across cameras using fine-tuned visual features, color attribute gating, and spatio-temporal road physics.
+    </div>
+  </div>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const el = (tag, props = {}, ...kids) => {
+  const e = document.createElement(tag);
+  Object.assign(e, props);
+  e.append(...kids.filter(k => k != null));
+  return e;
+};
+
+const SAMPLE_PROMPTS = {
+  ask: [
+    "person wearing a red jacket walking left",
+    "white SUV parked near entrance",
+    "someone running on camera bus.G507",
+    "person carrying a heavy backpack"
+  ],
+  person: [
+    "person in red shirt walking",
+    "woman with a backpack",
+    "person wearing a dark hoodie and blue jeans",
+    "someone sprinting across camera"
+  ],
+  vehicle: [
+    "white SUV parked",
+    "silver minivan turning right",
+    "black sedan driving fast",
+    "pickup truck stopped"
+  ],
+  incident: [
+    "person loading vehicle",
+    "vehicle dropping off person",
+    "heavy carry package",
+    "person entering vehicle"
+  ]
+};
+
+let currentKind = "ask";
+let currentResults = [];
+let pinnedEvidence = [];
+let activeReidTrack = null;
+let activeReidMode = "any";
+
+const videoModal = $("#video-modal");
+const reidModal = $("#reid-modal");
+const evidenceModal = $("#evidence-modal");
+const cinemaPlayer = $("#cinema-player");
+
+// Theme Toggle
+function toggleTheme() {
+  const current = document.body.dataset.theme;
+  const next = current === "dark" ? "light" : "dark";
+  document.body.dataset.theme = next;
+  $("#theme-btn").textContent = next === "dark" ? "🌓" : "🌞";
+}
+
+// Kind Switching
+function setKind(k) {
+  currentKind = k;
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.kind === k));
+  $("#ask-toggles").style.display = k === "ask" ? "flex" : "none";
+  
+  // Render sample chips
+  const chips = $("#sample-chips");
+  chips.replaceChildren(
+    el("span", {className: "toolbar-label", textContent: "Try:"}),
+    ...SAMPLE_PROMPTS[k].map(prompt => el("button", {
+      type: "button",
+      className: "chip-sample",
+      textContent: prompt,
+      onclick: () => { $("#query-input").value = prompt; executeSearch(); }
+    }))
+  );
+
+  // Set placeholder and status
+  currentResults = [];
+  const friendlyNames = { ask: "AI Query Agent", person: "People", vehicle: "Vehicles", incident: "Incidents" };
+  $("#query-input").placeholder = `Search ${friendlyNames[k] || k} across 24 cameras...`;
+  $("#results-grid").replaceChildren(el("div", {className: "empty-state", style: "grid-column: 1/-1;"},
+    el("div", {className: "empty-icon", textContent: "🔍"}),
+    el("p", {textContent: `Switched to ${friendlyNames[k] || k} search. Enter a description or click a sample query above.`})
+  ));
+  $("#results-count").textContent = `Ready to search in ${friendlyNames[k] || k} mode.`;
+}
+
+// Vehicle Re-ID Modal Control
+let activeVehicleTrack = null;
+const vreidModal = $("#vreid");
+
+async function openVehicleReid(item) {
+  activeVehicleTrack = item;
+  vreidModal.showModal();
+
+  const qBox = $("#vrq");
+  qBox.replaceChildren(
+    item.thumb ? el("img", {src: item.thumb, className: "reid-query-img"}) : el("div", {className: "tag", textContent: "🚗 Vehicle"}),
+    el("div", {},
+      el("div", {style: "font-weight:800; font-size:15px; margin-bottom:4px;", textContent: `Query Vehicle #${item.id || item.chunk_id}`}),
+      el("div", {style: "font-size:13px; color:var(--text-secondary);", textContent: `Captured on Camera: ${item.camera}`}),
+      el("div", {style: "font-size:12.5px; color:var(--text-muted); font-family:var(--font-mono);", textContent: `Timestamp: ${fmtTime(item.start_s)} – ${fmtTime(item.end_s)}${item.attrs && item.attrs.color ? " · " + item.attrs.color : ""}`}),
+      el("div", {style: "margin-top:6px; font-size:13px;", textContent: item.caption || ""})
+    )
+  );
+
+  loadVehicleReid();
+}
+
+async function loadVehicleReid() {
+  if (!activeVehicleTrack) return;
+  const use_st = $("#v_st").checked;
+  const use_color = $("#v_color").checked;
+  const status = $("#vrstatus");
+  const grid = $("#vrgrid");
+
+  status.textContent = "Tracking vehicle across cameras…";
+  grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "Computing visual embeddings & spatio-temporal road physics…"})));
+
+  try {
+    const res = await fetch(`/api/reid/vehicle/${activeVehicleTrack.id}?use_st=${use_st}&use_color=${use_color}&k=12`);
+    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+    const data = await res.json();
+
+    const matches = data.results || [];
+    status.textContent = matches.length
+      ? `Found ${matches.length} cross-camera match(es) for this vehicle`
+      : "No matching vehicle found on other cameras within spatio-temporal constraints.";
+    
+    if (!matches.length) {
+      grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "No matching vehicle found on other cameras within constraints."})));
+    } else {
+      grid.replaceChildren(...matches.map(c => createCard(c, {vehicle_reid: true})));
+    }
+  } catch (err) {
+    status.textContent = "Tracking failed: " + err.message;
+    grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1; color:var(--danger);"}, el("p", {textContent: err.message})));
+  }
+}
+
+// Format seconds into MM:SS
+function fmtTime(s) {
+  s = Math.round(s);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+// Build Attribute Badges
+function buildTags(attrs) {
+  if (!attrs) return [];
+  const tags = [];
+  if (attrs.upper_color || attrs.upper_type) {
+    tags.push(el("span", {className: "tag top", textContent: `top: ${[attrs.upper_color, attrs.upper_type].filter(Boolean).join(" ")}`}));
+  }
+  if (attrs.lower_color) {
+    tags.push(el("span", {className: "tag bot", textContent: `bot: ${attrs.lower_color}`}));
+  }
+  if (attrs.motion) {
+    tags.push(el("span", {className: "tag mot", textContent: attrs.motion}));
+  }
+  if (attrs.bag && attrs.bag !== "none") {
+    tags.push(el("span", {className: "tag", textContent: `bag: ${attrs.bag}`}));
+  }
+  if (attrs.type || attrs.color) {
+    tags.push(el("span", {className: "tag", textContent: [attrs.color, attrs.type].filter(Boolean).join(" ")}));
+  }
+  if (attrs.turn && attrs.turn !== "straight" && attrs.turn !== "none") {
+    tags.push(el("span", {className: "tag", textContent: `turning ${attrs.turn}`}));
+  }
+  return tags;
+}
+
+// Render Card Component
+function createCard(item, opts = {}) {
+  const isIncident = item.kind === "incident";
+  
+  const mediaContainer = el("div", {
+    className: "card-media",
+    onclick: () => openVideoModal(item)
+  });
+
+  if (isIncident) {
+    mediaContainer.append(el("video", {
+      src: `${item.clip}#t=${item.clip_t0},${item.clip_t1}`,
+      preload: "metadata",
+      muted: true
+    }));
+  } else {
+    mediaContainer.append(el("img", {
+      src: item.thumb,
+      alt: item.caption || "Track",
+      loading: "lazy"
+    }));
+  }
+
+  mediaContainer.append(
+    el("div", {className: "overlay-badge", textContent: `${item.camera || "CAM"}${item.dataset ? " · " + item.dataset : ""}`}),
+    el("div", {className: "overlay-time", textContent: `${fmtTime(item.start_s)} – ${fmtTime(item.end_s)}`}
+  ));
+
+  let scorePct = null;
+  if (opts.reid) {
+    // Person Re-ID: fused Z-score (-1.0 to +4.0). Convert to sigmoid percentage:
+    // z = +3.0 -> 94%, z = +2.0 -> 86%, z = +1.0 -> 75%, z = 0.0 -> 50%
+    const z = item.score != null ? item.score : 0;
+    scorePct = Math.round(100 / (1 + Math.exp(-0.85 * z)));
+    scorePct = Math.min(99, Math.max(10, scorePct));
+  } else if (item.score != null) {
+    scorePct = Math.round(Math.min(Math.max(item.score, 0), 1) * 100);
+  }
+  const scoreLabel = scorePct != null ? `${scorePct}% match` : "";
+
+  const cardBody = el("div", {className: "card-body"});
+  cardBody.append(
+    el("div", {className: "card-header"},
+      el("span", {className: "card-title", textContent: `#${item.id || item.chunk_id}`}),
+      el("span", {className: "match-score", textContent: scoreLabel})
+    )
+  );
+
+  if (scorePct != null) {
+    cardBody.append(
+      el("div", {className: "score-bar-bg"}, el("div", {className: "score-bar-fill", style: `width: ${scorePct}%;`}))
+    );
+  }
+
+  if (item.caption) {
+    cardBody.append(el("div", {className: "card-caption", textContent: item.caption}));
+  }
+
+  const tags = buildTags(item.attrs);
+  if (item.match) {
+    for (const m of item.matched || []) tags.unshift(el("span", {className: "tag ok", textContent: `✓ ${m}`}));
+    for (const m of item.missing || []) tags.unshift(el("span", {className: "tag miss", textContent: `✗ ${m}`}));
+    if (item.verified) tags.unshift(el("span", {className: "tag ok", textContent: "VLM verified"}));
+  }
+  if (tags.length) {
+    cardBody.append(el("div", {className: "card-chips"}, ...tags));
+  }
+
+  if (opts.reid) {
+    const appZ = item.appearance_z != null ? (item.appearance_z > 0 ? `+${item.appearance_z}` : `${item.appearance_z}`) : "–";
+    const gaitZ = item.gait_z != null ? (item.gait_z > 0 ? `+${item.gait_z}` : `${item.gait_z}`) : "none";
+    const gaitColor = item.gait_z != null ? (item.gait_z > 0.5 ? "var(--success, #22c55e)" : "var(--text-secondary)") : "var(--text-muted)";
+    cardBody.append(el("div", {
+      style: "font-size:11.5px; font-family:var(--font-mono); margin-top:3px; display:flex; gap:8px; color:var(--text-secondary);"
+    },
+      el("span", {}, "App z: ", el("b", {textContent: appZ})),
+      el("span", {style: `color:${gaitColor};`}, "Gait z: ", el("b", {textContent: gaitZ}))
+    ));
+  } else if (opts.vehicle_reid) {
+    cardBody.append(el("div", {
+      style: "font-size:11.5px; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;",
+      textContent: `score: ${item.score ?? "–"} · visual: ${item.appearance_sim ?? "–"}${item.st_valid ? " · road topology verified" : ""}`
+    }));
+  }
+
+  const actions = el("div", {className: "card-actions"});
+  actions.append(
+    el("button", {
+      className: "btn-card",
+      textContent: "▶ Play",
+      onclick: () => openVideoModal(item)
+    })
+  );
+
+  if (item.kind === "person" && !opts.reid) {
+    actions.append(
+      el("button", {
+        className: "btn-card",
+        textContent: "🧬 Re-ID",
+        onclick: (e) => { e.stopPropagation(); openReidModal(item); }
+      })
+    );
+  }
+
+  if (item.kind === "vehicle" && !opts.vehicle_reid) {
+    actions.append(
+      el("button", {
+        className: "btn-card",
+        textContent: "🚗 Track",
+        onclick: (e) => { e.stopPropagation(); openVehicleReid(item); }
+      })
+    );
+  }
+
+  actions.append(
+    el("button", {
+      className: "btn-card pin",
+      textContent: "📌 Pin",
+      onclick: (e) => { e.stopPropagation(); togglePinEvidence(item); }
+    })
+  );
+
+  cardBody.append(actions);
+  return el("div", {className: "card"}, mediaContainer, cardBody);
+}
+
+// Search Execution
+async function executeSearch() {
+  const query = $("#query-input").value.trim();
+  if (!query) return;
+
+  const resultsGrid = $("#results-grid");
+  const countLabel = $("#results-count");
+  const camFilter = $("#cam-filter").value;
+
+  countLabel.textContent = "Searching vector embeddings & lexical index…";
+  resultsGrid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "Retrieving surveillance tracks…"})));
+
+  const t0 = performance.now();
+  try {
+    let data;
+    const datasetFilter = $("#dataset-filter").value;
+    if (currentKind === "ask") {
+      const useLlm = $("#llm-toggle").checked;
+      const rerank = $("#rerank-toggle").checked;
+      let url = `/api/ask?q=${encodeURIComponent(query)}&n=24&use_llm=${useLlm}&rerank=${rerank}`;
+      if (datasetFilter) url += `&dataset=${encodeURIComponent(datasetFilter)}`;
+      if (camFilter) url += `&camera=${encodeURIComponent(camFilter)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+      data = await res.json();
+    } else {
+      let url = `/api/search?kind=${currentKind}&q=${encodeURIComponent(query)}&k=24`;
+      if (datasetFilter) url += `&dataset=${encodeURIComponent(datasetFilter)}`;
+      if (camFilter) url += `&camera=${encodeURIComponent(camFilter)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+      data = await res.json();
+    }
+
+    currentResults = data.results || [];
+    showQueryBanner(data);
+    const elapsed = Math.round(performance.now() - t0);
+    $("#stat-latency").textContent = `${elapsed}ms`;
+
+    countLabel.innerHTML = `Found <strong>${currentResults.length}</strong> results in <strong>${elapsed}ms</strong>`;
+    renderCurrentResults();
+  } catch (err) {
+    countLabel.textContent = `Search error: ${err.message}`;
+    resultsGrid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1; color:var(--danger);"}, el("p", {textContent: `Error: ${err.message}`})));
+  }
+}
+
+// On a GPU server the LLM planner and VLM verification are fast: switch the planner on by default there
+fetch("/api/health").then(r => r.json()).then(h => {
+  if (h.gpu) { $("#llm-toggle").checked = true; }
+  else { $("#rerank-toggle").parentElement.title += " (this server has no GPU: slow)"; }
+}).catch(() => {});
+
+// What the planner understood, and any warning (unknown term, only partial matches, VLM rejections)
+function showQueryBanner(data) {
+  const banner = $("#query-banner");
+  if (!data || !data.understood) { banner.hidden = true; return; }
+  const full = (data.results || []).filter(r => r.match === "full").length;
+  banner.querySelector(".understood").replaceChildren("Understood as ", el("b", {textContent: data.understood}),
+    ` · ${full} full match${full === 1 ? "" : "es"}`);
+  banner.querySelector(".notice").textContent = data.notice || "";
+  banner.hidden = false;
+}
+
+// Render Results with Sorting
+function renderCurrentResults() {
+  const grid = $("#results-grid");
+  if (!currentResults.length) {
+    grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "No matching tracklets found."})));
+    return;
+  }
+
+  const sortMode = $("#sort-filter").value;
+  const sorted = [...currentResults].sort((a, b) => {
+    if (sortMode === "score") return (b.score || 0) - (a.score || 0);
+    if (sortMode === "time-asc") return (a.start_s || 0) - (b.start_s || 0);
+    if (sortMode === "time-desc") return (b.start_s || 0) - (a.start_s || 0);
+    return 0;
+  });
+
+  grid.className = (currentKind === "incident") ? "grid wide" : "grid";
+  grid.replaceChildren(...sorted.map(item => createCard(item)));
+}
+
+// Video Modal Control
+let activeModalItem = null;
+
+function openVideoModal(item) {
+  activeModalItem = item;
+  const title = $("#video-modal-title");
+  title.textContent = `📹 ${item.camera} · ${fmtTime(item.start_s)}–${fmtTime(item.end_s)} (#${item.id || item.chunk_id})`;
+  
+  const seekTime = (item.clip_t0 && item.clip_t0 > 0) ? item.clip_t0 : 0;
+
+  // Reset player before loading new clip
+  cinemaPlayer.pause();
+  cinemaPlayer.src = item.clip;
+
+  // Seek and play after metadata is loaded to prevent browser race conditions
+  cinemaPlayer.onloadedmetadata = () => {
+    if (seekTime > 0 && seekTime < (cinemaPlayer.duration || Infinity)) {
+      cinemaPlayer.currentTime = seekTime;
+    }
+    cinemaPlayer.play().catch(err => {
+      console.warn("Autoplay notice (user can click play):", err);
+    });
+  };
+
+  cinemaPlayer.onerror = () => {
+    console.error("Playback error:", cinemaPlayer.error);
+    const meta = $("#video-metadata");
+    if (meta) meta.textContent = "⚠️ Video decoding failed or format unsupported.";
+  };
+  
+  const jumpBtn = $("#btn-jump-event");
+  if (jumpBtn) {
+    jumpBtn.style.display = (item.is_full_video && seekTime > 0) ? "inline-block" : "none";
+    jumpBtn.textContent = `🎯 Jump to Detection (${fmtTime(item.start_s)})`;
+  }
+
+  const streamBadge = item.is_full_video ? " · 🎥 Full CCTV Recording (free scrubbing across timeline)" : " · ⏱️ CCTV Clip";
+  $("#video-metadata").textContent = `${item.caption ? `Description: "${item.caption}" ` : ""}${streamBadge}`;
+  videoModal.showModal();
+}
+
+function jumpToEvent() {
+  if (activeModalItem && cinemaPlayer) {
+    const t = activeModalItem.clip_t0 || 0;
+    cinemaPlayer.currentTime = t;
+    cinemaPlayer.play().catch(() => {});
+  }
+}
+
+function closeVideoModal() {
+  cinemaPlayer.pause();
+  videoModal.close();
+}
+
+function setSpeed(rate) {
+  cinemaPlayer.playbackRate = rate;
+  document.querySelectorAll(".speed-pill").forEach(p => p.classList.toggle("active", parseFloat(p.textContent) === rate));
+}
+
+// Cross-Camera Re-ID Modal
+function openReidModal(item) {
+  activeReidTrack = item;
+  activeReidMode = "any";
+  reidModal.showModal();
+  
+  const queryBox = $("#reid-query-box");
+  queryBox.replaceChildren(
+    el("img", {src: item.thumb, className: "reid-query-img"}),
+    el("div", {},
+      el("div", {style: "font-weight:800; font-size:15px; margin-bottom:4px;", textContent: `Query Subject #${item.id}`}),
+      el("div", {style: "font-size:13px; color:var(--text-secondary);", textContent: `Captured on Camera: ${item.camera}`}),
+      el("div", {style: "font-size:12.5px; color:var(--text-muted); font-family:var(--font-mono);", textContent: `Timestamp: ${fmtTime(item.start_s)} – ${fmtTime(item.end_s)}`}),
+      el("div", {style: "margin-top:6px; font-size:13px;", textContent: item.caption || ""})
+    )
+  );
+
+  loadReidMatches();
+}
+
+function setReidMode(mode) {
+  activeReidMode = mode;
+  $("#btn-mode-any").classList.toggle("active", mode === "any");
+  $("#btn-mode-cloth").classList.toggle("active", mode === "cloth_change");
+  loadReidMatches();
+}
+
+async function loadReidMatches() {
+  if (!activeReidTrack) return;
+  const status = $("#reid-status");
+  const noteBox = $("#reid-note-box");
+  const grid = $("#reid-grid");
+  const fullBody = $("#fb-filter").checked;
+
+  status.textContent = "Matching across other cameras…";
+  if (noteBox) noteBox.style.display = "none";
+  grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "Computing appearance & gait cosine metrics…"})));
+
+  try {
+    const res = await fetch(`/api/reid/${activeReidTrack.id}?mode=${activeReidMode}&k=16&full_body=${fullBody}`);
+    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+    const data = await res.json();
+
+    const appPct = Math.round(data.w_appearance * 100);
+    const gaitPct = Math.round((1 - data.w_appearance) * 100);
+    status.textContent = `${data.results.length} matches · Mode: ${data.mode === 'cloth_change' ? 'Gait Only' : 'Dual Fusion'} (${appPct}% App / ${gaitPct}% Gait)`;
+
+    if (noteBox && data.note) {
+      noteBox.textContent = `ℹ️ ${data.note}`;
+      noteBox.style.display = "block";
+    }
+
+    if (!data.results.length) {
+      grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "No cross-camera matches found matching the criteria."})));
+    } else {
+      grid.replaceChildren(...data.results.map(c => createCard(c, {reid: true})));
+    }
+  } catch (err) {
+    status.textContent = `Re-ID failed: ${err.message}`;
+    grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1; color:var(--danger);"}, el("p", {textContent: err.message})));
+  }
+}
+
+// Evidence Pinning Drawer
+function togglePinEvidence(item) {
+  const idx = pinnedEvidence.findIndex(p => p.id === item.id);
+  if (idx >= 0) {
+    pinnedEvidence.splice(idx, 1);
+  } else {
+    pinnedEvidence.push(item);
+  }
+  $("#evidence-count").textContent = pinnedEvidence.length;
+}
+
+function openEvidenceDrawer() {
+  const grid = $("#evidence-grid");
+  $("#evidence-stats-label").textContent = `${pinnedEvidence.length} suspect clips currently saved in evidence.`;
+  if (!pinnedEvidence.length) {
+    grid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "No items pinned to evidence yet. Click 'Pin' on any result card."})));
+  } else {
+    grid.replaceChildren(...pinnedEvidence.map(item => createCard(item)));
+  }
+  evidenceModal.showModal();
+}
+
+function clearEvidence() {
+  pinnedEvidence = [];
+  $("#evidence-count").textContent = "0";
+  $("#evidence-grid").replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1;"}, el("p", {textContent: "Evidence drawer cleared."})));
+}
+
+// Export Findings
+function exportFindingsJSON() {
+  if (!currentResults.length) return alert("No search results to export.");
+  const blob = new Blob([JSON.stringify(currentResults, null, 2)], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `cctv_findings_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Initialize on page load
+setKind("ask");
+
+let allCamerasByDataset = {};
+let allCamerasList = [];
+
+function onDatasetChange() {
+  const ds = $("#dataset-filter").value;
+  const camSelect = $("#cam-filter");
+  const cams = (ds && allCamerasByDataset[ds]) ? allCamerasByDataset[ds] : allCamerasList;
+  camSelect.replaceChildren(
+    el("option", {value: "", textContent: ds ? `All ${cams.length} Cameras in ${ds.toUpperCase()}` : `All ${cams.length} Cameras`}),
+    ...cams.map(c => el("option", {value: c, textContent: c}))
+  );
+  executeSearch();
+}
+
+// Fetch stats and cameras dynamically
+(async function initTelemetry() {
+  try {
+    const res = await fetch("/api/stats");
+    if (res.ok) {
+      const data = await res.json();
+      allCamerasList = data.cameras || [];
+      allCamerasByDataset = data.cameras_by_dataset || {};
+
+      if (data.datasets && data.datasets.length) {
+        const dsSelect = $("#dataset-filter");
+        dsSelect.replaceChildren(
+          el("option", {value: "", textContent: `All ${data.datasets.length} Datasets`}),
+          ...data.datasets.map(d => el("option", {value: d, textContent: d.toUpperCase()}))
+        );
+      }
+
+      if (allCamerasList.length) {
+        const select = $("#cam-filter");
+        select.replaceChildren(
+          el("option", {value: "", textContent: `All ${allCamerasList.length} Cameras`}),
+          ...allCamerasList.map(c => el("option", {value: c, textContent: c}))
+        );
+        $("#stat-cams").textContent = allCamerasList.length;
+      }
+      if (data.tracks && data.tracks.person) {
+        $("#stat-tracks").textContent = Number(data.tracks.person).toLocaleString();
+      }
+    }
+  } catch (e) {
+    console.warn("Telemetry init error:", e);
+  }
+})();
+</script>
+</body>
+</html>

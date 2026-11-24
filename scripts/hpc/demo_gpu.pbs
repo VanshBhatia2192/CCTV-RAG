@@ -1,0 +1,40 @@
+#!/bin/bash
+# Run the web demo on a GPU node, so the LLM query planner and VLM verification are fast.
+#   bash scripts/hpc/submit.sh scripts/hpc/demo_gpu.pbs          (or SR_HOST=gpu02 ...)
+#   then on your laptop:  ssh -N -L 8000:<node>:8000 hpc   and open http://localhost:8000
+#   the node name is printed in outputs/logs/demo_gpu.log; stop with qdel <jobid>
+# Uses the Qdrant server on mgmt01 (scripts/run_demo.sh starts it, port 6335), or a node-local copy if unreachable.
+#PBS -N cctv_demo_gpu
+#PBS -q gpu
+#PBS -l select=1:ncpus=8:ngpus=1:mem=64gb
+#PBS -l walltime=08:00:00
+#PBS -j oe
+#PBS -k oed
+cd "$PBS_O_WORKDIR"
+mkdir -p outputs/logs
+exec >> outputs/logs/demo_gpu.log 2>&1
+echo "== job $PBS_JOBID on $(hostname) at $(date)"
+source /home/soft/anaconda3/etc/profile.d/conda.sh && conda activate cctv
+export LD_PRELOAD=$CONDA_PREFIX/lib/libstdc++.so.6 PYTHONUNBUFFERED=1 TOKENIZERS_PARALLELISM=false OMP_NUM_THREADS=8
+export HF_HOME=$PWD/hf_cache HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1
+export NO_PROXY=localhost,127.0.0.1,mgmt01,10.17.1.5 no_proxy=localhost,127.0.0.1,mgmt01,10.17.1.5
+export CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=index,memory.free --format=csv,noheader,nounits | sort -t, -k2 -nr | head -1 | cut -d, -f1)
+for u in http://mgmt01:6335 http://10.17.1.5:6335; do
+  curl -s --max-time 4 "$u/collections" > /dev/null && { export QDRANT_URL=$u; break; }
+done
+if [ -z "${QDRANT_URL:-}" ]; then
+  QD=/tmp/qdrant_${USER}_${PBS_JOBID}; mkdir -p $QD && cp -r data/indexes/qdrant/. $QD/
+  (cd $QD && QDRANT__SERVICE__HTTP_PORT=6345 QDRANT__SERVICE__GRPC_PORT=6346 QDRANT__TELEMETRY_DISABLED=true \
+     nohup $PBS_O_WORKDIR/bin/qdrant > $PBS_O_WORKDIR/outputs/logs/qdrant_demo_gpu.log 2>&1 &)
+  export QDRANT_URL=http://localhost:6345
+  for i in $(seq 1 30); do sleep 2; curl -s --max-time 2 $QDRANT_URL/collections > /dev/null && break; done
+fi
+export DEMO_DB=/tmp/meta_demo_${USER}_${PBS_JOBID}.db
+python - <<'PY'
+import os, sqlite3
+src = sqlite3.connect("file:data/indexes/sqlite/meta.db?mode=ro&immutable=1", uri=True)
+dst = sqlite3.connect(os.environ["DEMO_DB"]); src.backup(dst); dst.close()
+PY
+echo "qdrant: $QDRANT_URL"
+echo "DEMO READY SOON on $(hostname):8000  ->  on your laptop: ssh -N -L 8000:$(hostname):8000 hpc"
+uvicorn app.main:app --host 0.0.0.0 --port 8000
