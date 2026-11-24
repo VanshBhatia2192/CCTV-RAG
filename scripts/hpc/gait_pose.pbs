@@ -1,0 +1,50 @@
+#!/bin/bash
+# Skeleton gait (ST-GCN) on MEVID: keypoints -> training -> test eval, on 1 GPU of a shared node.
+#   bash scripts/hpc/submit.sh scripts/hpc/gait_pose.pbs
+#   bash scripts/hpc/submit.sh scripts/hpc/gait_pose.pbs -v STEPS=40000,ARGS="--lr 5e-4"
+#   bash scripts/hpc/submit.sh scripts/hpc/gait_pose.pbs -v STAGES="train eval"      # skip extraction
+# Keypoint extraction is resumable (finished tracklets are skipped), so re-submitting after a kill continues.
+# Outputs: data/processed/mevid_pose/{train,test}/, models/finetuned/gait/stgcn_pose_mevid.pt,
+#          outputs/reports/gait_pose_train.json, outputs/reports/eval_mevid_pose.json, log outputs/logs/gait_pose.log
+#PBS -N gait_pose
+#PBS -q gpu
+#PBS -l select=1:ncpus=5:ngpus=1:mem=32gb
+#PBS -l walltime=12:00:00
+#PBS -j oe
+#PBS -k oed
+cd "$PBS_O_WORKDIR"
+mkdir -p outputs/logs
+exec >> outputs/logs/gait_pose.log 2>&1      # PBS output copy-back does not work here
+echo "== job $PBS_JOBID on $(hostname) at $(date)"
+source /home/soft/anaconda3/etc/profile.d/conda.sh
+conda activate cctv
+export LD_PRELOAD=$CONDA_PREFIX/lib/libstdc++.so.6
+export PYTHONUNBUFFERED=1 HF_HOME=$PWD/hf_cache HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 OMP_NUM_THREADS=1
+STAGES=${STAGES:-"extract train eval"}
+WORKERS=$(( ${NCPUS:-5} > 2 ? ${NCPUS:-5} - 1 : 1 ))
+
+pick_gpu() {   # the job sees every GPU on the node: use the one with the most free memory (need >= 8 GB)
+  local start=$(date +%s)
+  while :; do
+    read -r G F < <(nvidia-smi --query-gpu=index,memory.free --format=csv,noheader,nounits | tr -d ' ' |
+      awk -F, '{print $1, int($2/1024)}' | sort -k2,2nr | head -1)
+    [ "${F:-0}" -ge 8 ] && { export CUDA_VISIBLE_DEVICES=$G; echo "$(date +%H:%M) GPU $G (${F} GB free)"; return 0; }
+    [ $(( $(date +%s) - start )) -gt 14400 ] && { echo "no GPU with 8 GB free after 4 h"; exit 1; }
+    echo "$(date +%H:%M) waiting for a GPU with 8 GB free (best: ${F:-0} GB)"; sleep 300
+  done
+}
+
+set -e
+for s in $STAGES; do
+  pick_gpu
+  case $s in
+    extract)
+      python -m training.gait.extract_pose --split train --workers $WORKERS
+      python -m training.gait.extract_pose --split test --workers $WORKERS ;;
+    train)
+      python -m training.gait.train_pose --steps ${STEPS:-30000} ${ARGS:-} ;;
+    eval)
+      python -m eval.gait.eval_pose_mevid ;;
+  esac
+done
+echo "== finished at $(date)"

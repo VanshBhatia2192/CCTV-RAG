@@ -1,13 +1,13 @@
-"""Skeleton-based 2D Pose-Guided Gait Biometrics.
-Extracts 17 COCO skeletal keypoints per frame using YOLOv8-pose, normalizes
-them for scale and translation, and encodes temporal gait dynamics via a
-Spatial-Temporal Graph Convolutional Network (ST-GCN).
+"""Skeleton (2D pose) gait biometrics.
 
-Key features:
-1. Invariant to clothing changes, color, lighting, and loose garments.
-2. Models spatial bone connectivity (ankles, knees, hips, torso, arms).
-3. Models temporal kinematics: stride cadence, step length, knee flexion, body sway.
-4. Produces normalized 256-d pose-gait biometric embeddings.
+Pipeline: person crops -> 17 COCO keypoints per frame (ViTPose, top-down on the crop) ->
+normalised skeleton sequence (pelvis-centred, torso-scaled, plus per-frame velocity) ->
+ST-GCN encoder trained on MEVID (training/gait/train_pose.py) -> L2-normalised 256-d embedding
+(compare with cosine similarity).
+
+The encoder only produces embeddings when trained weights exist (models/finetuned/gait/stgcn_pose_mevid.pt,
+or MODELS["gait_pose"]["weights"]); without them `encode_pose_gait` returns None instead of a meaningless
+random-network vector.
 """
 
 from pathlib import Path
@@ -17,321 +17,301 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# 17 COCO Keypoints:
-# 0: nose, 1: l_eye, 2: r_eye, 3: l_ear, 4: r_ear
-# 5: l_shoulder, 6: r_shoulder, 7: l_elbow, 8: r_elbow, 9: l_wrist, 10: r_wrist
-# 11: l_hip, 12: r_hip, 13: l_knee, 14: r_knee, 15: l_ankle, 16: r_ankle
-
+# 17 COCO keypoints:
+# 0 nose, 1 l_eye, 2 r_eye, 3 l_ear, 4 r_ear, 5 l_shoulder, 6 r_shoulder, 7 l_elbow, 8 r_elbow,
+# 9 l_wrist, 10 r_wrist, 11 l_hip, 12 r_hip, 13 l_knee, 14 r_knee, 15 l_ankle, 16 r_ankle
 COCO_NAMES = [
     "nose", "l_eye", "r_eye", "l_ear", "r_ear",
     "l_shoulder", "r_shoulder", "l_elbow", "r_elbow", "l_wrist", "r_wrist",
-    "l_hip", "r_hip", "l_knee", "r_knee", "l_ankle", "r_ankle"
+    "l_hip", "r_hip", "l_knee", "r_knee", "l_ankle", "r_ankle",
 ]
-
 COCO_PAIRS = [
-    (0, 1), (0, 2), (1, 3), (2, 4),           # Head
-    (5, 6), (5, 11), (6, 12), (11, 12),       # Torso
-    (5, 7), (7, 9), (6, 8), (8, 10),           # Arms
-    (11, 13), (13, 15), (12, 14), (14, 16),   # Legs
+    (0, 1), (0, 2), (1, 3), (2, 4),           # head
+    (5, 6), (5, 11), (6, 12), (11, 12),       # torso
+    (5, 7), (7, 9), (6, 8), (8, 10),          # arms
+    (11, 13), (13, 15), (12, 14), (14, 16),   # legs
 ]
+FLIP_PERM = [0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15]   # left <-> right
+IN_CHANNELS = 5          # x, y, dx, dy, confidence
+MIN_FRAMES = 16          # shortest sequence that gets an embedding
+DEFAULT_WEIGHTS = "models/finetuned/gait/stgcn_pose_mevid.pt"
+DEFAULT_POSE_MODEL = "usyd-community/vitpose-base-simple"
 
+
+# ----------------------------------------------------------------------------- model
 
 def build_adjacency_matrix(num_nodes: int = 17, edges: List[Tuple[int, int]] = COCO_PAIRS) -> torch.Tensor:
-    """Build normalized adjacency matrix with self-loops."""
-    A = np.zeros((num_nodes, num_nodes), dtype=np.float32)
+    """Symmetric-normalised adjacency with self-loops: D^-1/2 (A + I) D^-1/2."""
+    A = np.eye(num_nodes, dtype=np.float32)
     for i, j in edges:
-        A[i, j] = 1.0
-        A[j, i] = 1.0
-    A = A + np.eye(num_nodes, dtype=np.float32)  # self-loops
-    # Degree-normalized: D^(-1/2) A D^(-1/2)
-    D = np.sum(A, axis=1)
-    D_inv_sqrt = np.power(D, -0.5)
-    D_inv_sqrt[np.isinf(D_inv_sqrt)] = 0.0
-    A_norm = D_inv_sqrt[:, None] * A * D_inv_sqrt[None, :]
-    return torch.from_numpy(A_norm)
+        A[i, j] = A[j, i] = 1.0
+    d = 1.0 / np.sqrt(A.sum(1))
+    return torch.from_numpy(d[:, None] * A * d[None, :])
 
 
 class SpatialGraphConv(nn.Module):
-    """Graph convolution operating along skeletal anatomical connections."""
+    """Graph convolution along the skeleton, with a learnable edge-importance mask."""
 
     def __init__(self, in_channels: int, out_channels: int, num_nodes: int = 17):
         super().__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
-        A = build_adjacency_matrix(num_nodes, COCO_PAIRS)
-        self.register_buffer("A", A)
-        # Learnable edge weight mask initialized to ones
+        self.register_buffer("A", build_adjacency_matrix(num_nodes))
         self.edge_importance = nn.Parameter(torch.ones(num_nodes, num_nodes))
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x shape: (B, C, T, V)
-        b, c, t, v = x.shape
-        x_reshaped = x.permute(0, 2, 1, 3).reshape(b * t, c, v)
-        # Apply adjacency with learned importance
-        adj = self.A * self.edge_importance
-        x_prop = torch.matmul(x_reshaped, adj)  # (B*T, C, V)
-        x_prop = x_prop.reshape(b, t, c, v).permute(0, 2, 1, 3)
-        return self.conv(x_prop)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:     # x: (B, C, T, V)
+        return self.conv(torch.einsum("bctv,vw->bctw", x, self.A * self.edge_importance))
 
 
 class STGCNBlock(nn.Module):
-    """Spatial-Temporal Graph Convolution Block with residual connection."""
-
-    def __init__(self, in_channels: int, out_channels: int, temporal_kernel: int = 7, stride: int = 1):
+    def __init__(self, in_channels: int, out_channels: int, temporal_kernel: int = 9, stride: int = 1, dropout: float = 0.1):
         super().__init__()
         self.sgcn = SpatialGraphConv(in_channels, out_channels)
         self.bn_s = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
-
-        padding = (temporal_kernel - 1) // 2
+        pad = (temporal_kernel - 1) // 2
         self.tgcn = nn.Sequential(
-            nn.Conv2d(out_channels, out_channels, (temporal_kernel, 1), (stride, 1), (padding, 0)),
+            nn.Conv2d(out_channels, out_channels, (temporal_kernel, 1), (stride, 1), (pad, 0)),
             nn.BatchNorm2d(out_channels),
-            nn.Dropout(0.1),
+            nn.Dropout(dropout),
         )
-
         if in_channels != out_channels or stride != 1:
-            self.residual = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, 1, (stride, 1)),
-                nn.BatchNorm2d(out_channels),
-            )
+            self.residual = nn.Sequential(nn.Conv2d(in_channels, out_channels, 1, (stride, 1)), nn.BatchNorm2d(out_channels))
         else:
             self.residual = nn.Identity()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         res = self.residual(x)
-        x = self.relu(self.bn_s(self.sgcn(x)))
-        x = self.tgcn(x)
-        return self.relu(x + res)
+        x = F.relu(self.bn_s(self.sgcn(x)))
+        return F.relu(self.tgcn(x) + res)
 
 
 class STGCNPoseGait(nn.Module):
-    """Deep Spatial-Temporal Graph Convolutional Gait Recognition Network.
+    """(B, 5, T, 17) skeleton sequence -> L2-normalised embedding (B, out_dim).
 
-    Takes normalized 2D skeleton sequences (B, 3, T, 17) -> 256-d embedding.
-    Channels: (x_norm, y_norm, confidence).
-    """
+    Trained with a BNNeck: `forward(x, return_logits=True)` also returns identity logits
+    (only when built with num_classes > 0)."""
 
-    def __init__(self, in_channels: int = 3, out_dim: int = 256, num_nodes: int = 17):
+    def __init__(self, in_channels: int = IN_CHANNELS, out_dim: int = 256, num_nodes: int = 17,
+                 widths: Tuple[int, ...] = (64, 64, 128, 128, 256, 256), strides: Tuple[int, ...] = (1, 1, 2, 1, 2, 1),
+                 num_classes: int = 0, dropout: float = 0.1):
         super().__init__()
         self.data_bn = nn.BatchNorm1d(in_channels * num_nodes)
+        blocks, c = [], in_channels
+        for w, s in zip(widths, strides):
+            blocks.append(STGCNBlock(c, w, stride=s, dropout=dropout)); c = w
+        self.blocks = nn.Sequential(*blocks)
+        self.fc = nn.Linear(c, out_dim)
+        self.bnneck = nn.BatchNorm1d(out_dim)
+        self.bnneck.bias.requires_grad_(False)
+        self.classifier = nn.Linear(out_dim, num_classes, bias=False) if num_classes > 0 else None
 
-        self.layer1 = STGCNBlock(in_channels, 64, stride=1)
-        self.layer2 = STGCNBlock(64, 128, stride=2)
-        self.layer3 = STGCNBlock(128, 256, stride=2)
-
-        self.head = nn.Sequential(
-            nn.Linear(256, out_dim),
-            nn.BatchNorm1d(out_dim),
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x: (B, C, T, V)
+    def forward(self, x: torch.Tensor, return_logits: bool = False):
         b, c, t, v = x.shape
-        # Input batchnorm across vertices
-        x_norm = x.permute(0, 1, 3, 2).reshape(b, c * v, t)
-        x_norm = self.data_bn(x_norm).reshape(b, c, v, t).permute(0, 1, 3, 2)
-
-        feat = self.layer1(x_norm)
-        feat = self.layer2(feat)
-        feat = self.layer3(feat)
-
-        # Global average pool over Time and Vertices
-        pooled = feat.mean(dim=(2, 3))  # (B, 256)
-        out = self.head(pooled)
-        return F.normalize(out, p=2, dim=-1)
+        x = self.data_bn(x.permute(0, 1, 3, 2).reshape(b, c * v, t)).reshape(b, c, v, t).permute(0, 1, 3, 2)
+        feat = self.blocks(x).mean(dim=(2, 3))
+        raw = self.fc(feat)                     # metric-loss feature
+        bn = self.bnneck(raw)
+        emb = F.normalize(bn, dim=-1)
+        if return_logits:
+            return emb, raw, (self.classifier(bn) if self.classifier is not None else None)
+        return emb
 
 
-def normalize_skeleton_sequence(kpts: np.ndarray, min_conf: float = 0.25) -> np.ndarray:
-    """Normalize skeleton sequence: center on pelvis, scale by torso height.
+# ----------------------------------------------------------------------------- skeleton features
 
-    Args:
-        kpts: array of shape (T, 17, 3) where columns are [x, y, conf].
-    Returns:
-        Array of shape (3, T, 17) normalized, float32.
-    """
-    T, V, C = kpts.shape
-    out = kpts.copy().astype(np.float32)
+def normalize_skeleton_sequence(kpts: np.ndarray, min_conf: float = 0.3) -> np.ndarray:
+    """(T, 17, 3) [x, y, conf] in pixels -> (5, T, 17) float32: x, y (pelvis-centred, torso-scaled), dx, dy, conf.
 
-    # Pelvis center = midpoint of left hip (11) and right hip (12)
-    l_hip, r_hip = out[:, 11, :2], out[:, 12, :2]
-    pelvis = (l_hip + r_hip) / 2.0  # (T, 2)
+    Low-confidence joints get zero coordinates/velocity and keep their (low) confidence, so the network
+    can learn to ignore them."""
+    k = np.asarray(kpts, dtype=np.float32)
+    T = len(k)
+    xy, conf = k[:, :, :2].copy(), k[:, :, 2].copy()
+    ok = conf >= min_conf
+    hips_ok = ok[:, 11] & ok[:, 12]
+    pelvis = (xy[:, 11] + xy[:, 12]) / 2.0
+    if hips_ok.any():   # frames with unreliable hips borrow the nearest reliable pelvis
+        idx = np.where(hips_ok)[0]
+        near = idx[np.abs(np.arange(T)[:, None] - idx[None]).argmin(1)]
+        pelvis = pelvis[near]
+    else:
+        pelvis = np.repeat(np.nanmedian(np.where(ok[..., None], xy, np.nan), axis=(0, 1))[None], T, 0)
+        pelvis = np.nan_to_num(pelvis)
+    neck = (xy[:, 5] + xy[:, 6]) / 2.0
+    torso = np.linalg.norm(neck - pelvis, axis=1)
+    good = torso[hips_ok & ok[:, 5] & ok[:, 6]]
+    scale = float(np.median(good)) if len(good) else float(np.median(torso[torso > 1e-3])) if (torso > 1e-3).any() else 1.0
+    xy = (xy - pelvis[:, None]) / max(scale, 1e-3)
+    xy[~ok] = 0.0
+    vel = np.zeros_like(xy)
+    vel[1:] = xy[1:] - xy[:-1]
+    vel[1:][~(ok[1:] & ok[:-1])] = 0.0
+    out = np.concatenate([xy, vel, conf[..., None]], axis=2)       # (T, 17, 5)
+    return np.ascontiguousarray(out.transpose(2, 0, 1))
 
-    # Neck/Shoulder center = midpoint of left shoulder (5) and right shoulder (6)
-    l_sh, r_sh = out[:, 5, :2], out[:, 6, :2]
-    neck = (l_sh + r_sh) / 2.0  # (T, 2)
 
-    # Torso height = distance from pelvis to neck
-    torso_len = np.linalg.norm(neck - pelvis, axis=1)  # (T,)
-    valid_torso = torso_len[torso_len > 1e-3]
-    scale = float(np.median(valid_torso)) if len(valid_torso) > 0 else 1.0
-    scale = max(scale, 1e-3)
-
-    # Translation: center on pelvis per frame
-    out[:, :, 0] -= pelvis[:, 0, None]
-    out[:, :, 1] -= pelvis[:, 1, None]
-
-    # Scale: divide by torso length
-    out[:, :, :2] /= scale
-
-    # Zero-out coordinates with confidence below threshold
-    low_conf = out[:, :, 2] < min_conf
-    out[low_conf, :2] = 0.0
-
-    # Reshape to (C, T, V)
-    return out.transpose(2, 0, 1)
+def flip_keypoints(kpts: np.ndarray, width: float) -> np.ndarray:
+    """Mirror a (T, 17, 3) pixel-space sequence horizontally (swaps left/right joints)."""
+    out = kpts[:, FLIP_PERM].copy()
+    out[:, :, 0] = width - out[:, :, 0]
+    return out
 
 
 def compute_kinematic_gait_metrics(kpts: np.ndarray, fps: float = 25.0) -> Dict[str, float]:
-    """Calculate interpretable biomechanical gait parameters.
-
-    Metrics:
-    - cadence_bpm: Estimated steps per minute from ankle stride oscillations
-    - step_length_norm: Average peak-to-peak ankle separation normalized by leg length
-    - knee_flexion_range_deg: Max - min knee angle during gait cycle
-    - gait_symmetry: Left vs right leg movement symmetry (1.0 = perfect symmetry)
-    - body_sway: Lateral oscillation of upper torso relative to hips
-    """
+    """Interpretable gait descriptors (for display only; retrieval uses the embedding):
+    cadence_bpm, step_length_norm (ankle separation / torso), knee_flexion_range_deg, gait_symmetry, body_sway."""
+    kpts = np.asarray(kpts, dtype=np.float32)
     T = len(kpts)
     if T < 10:
-        return {
-            "cadence_bpm": 0.0,
-            "step_length_norm": 0.0,
-            "knee_flexion_range_deg": 0.0,
-            "gait_symmetry": 1.0,
-            "body_sway": 0.0,
-        }
+        return {"cadence_bpm": 0.0, "step_length_norm": 0.0, "knee_flexion_range_deg": 0.0, "gait_symmetry": 1.0, "body_sway": 0.0}
+    pelvis = (kpts[:, 11, :2] + kpts[:, 12, :2]) / 2.0
+    neck = (kpts[:, 5, :2] + kpts[:, 6, :2]) / 2.0
+    torso = float(np.median(np.linalg.norm(neck - pelvis, axis=1))) or 1.0
+    stride = np.linalg.norm(kpts[:, 15, :2] - kpts[:, 16, :2], axis=1)
+    step_len = float(np.percentile(stride, 75)) / torso
+    det = stride - stride.mean()
+    fft = np.abs(np.fft.rfft(det)); freqs = np.fft.rfftfreq(T, d=1.0 / fps)
+    band = (freqs >= 1.0) & (freqs <= 3.5)      # ankle separation peaks twice per stride: 60-210 steps/min
+    cadence = float(freqs[band][np.argmax(fft[band])] * 60.0) if band.any() else 0.0
 
-    # Left & right ankles: 15, 16
-    la = kpts[:, 15, :2]
-    ra = kpts[:, 16, :2]
-    # Ankle separation distance over time
-    stride_dist = np.linalg.norm(la - ra, axis=1)
+    def knee_angle(h, k, a):
+        v1, v2 = kpts[:, h, :2] - kpts[:, k, :2], kpts[:, a, :2] - kpts[:, k, :2]
+        cos = (v1 * v2).sum(1) / (np.linalg.norm(v1, axis=1) * np.linalg.norm(v2, axis=1) + 1e-8)
+        return np.degrees(np.arccos(np.clip(cos, -1, 1)))
 
-    # Step length: median of top 25% peak separation
-    step_len = float(np.percentile(stride_dist, 75))
-
-    # FFT-based cadence estimation
-    detrended = stride_dist - np.mean(stride_dist)
-    fft_vals = np.abs(np.fft.rfft(detrended))
-    freqs = np.fft.rfftfreq(T, d=1.0 / fps)
-    # Human step frequency typically 1.0 Hz - 3.5 Hz (60 - 210 steps/min)
-    valid_mask = (freqs >= 1.0) & (freqs <= 3.5)
-    if np.any(valid_mask):
-        peak_freq = freqs[valid_mask][np.argmax(fft_vals[valid_mask])]
-        cadence = float(peak_freq * 60.0)
-    else:
-        cadence = 0.0
-
-    # Knee flexion angles (Hip-Knee-Ankle) for left and right legs
-    def knee_angle(hip_idx, knee_idx, ankle_idx):
-        h = kpts[:, hip_idx, :2]
-        k = kpts[:, knee_idx, :2]
-        a = kpts[:, ankle_idx, :2]
-        v1 = h - k
-        v2 = a - k
-        dot = np.sum(v1 * v2, axis=1)
-        norm = np.linalg.norm(v1, axis=1) * np.linalg.norm(v2, axis=1) + 1e-8
-        cos_ang = np.clip(dot / norm, -1.0, 1.0)
-        return np.degrees(np.arccos(cos_ang))
-
-    l_knee_angles = knee_angle(11, 13, 15)
-    r_knee_angles = knee_angle(12, 14, 16)
-    l_range = float(np.percentile(l_knee_angles, 90) - np.percentile(l_knee_angles, 10))
-    r_range = float(np.percentile(r_knee_angles, 90) - np.percentile(r_knee_angles, 10))
-    flexion_range = round((l_range + r_range) / 2.0, 1)
-
-    # Gait symmetry index (ratio of left/right knee flexion range)
-    ratio = min(l_range, r_range) / max(l_range, r_range, 1e-3)
-    symmetry = round(float(np.clip(ratio, 0.0, 1.0)), 2)
-
-    # Body sway: standard deviation of torso center X-offset
-    torso_x = (kpts[:, 5, 0] + kpts[:, 6, 0]) / 2.0 - (kpts[:, 11, 0] + kpts[:, 12, 0]) / 2.0
-    sway = round(float(np.std(torso_x)), 2)
-
+    lr = [float(np.percentile(x, 90) - np.percentile(x, 10)) for x in (knee_angle(11, 13, 15), knee_angle(12, 14, 16))]
+    sway = (kpts[:, 5, 0] + kpts[:, 6, 0]) / 2.0 - pelvis[:, 0]
     return {
         "cadence_bpm": round(cadence, 1),
         "step_length_norm": round(step_len, 2),
-        "knee_flexion_range_deg": flexion_range,
-        "gait_symmetry": symmetry,
-        "body_sway": sway,
+        "knee_flexion_range_deg": round(sum(lr) / 2.0, 1),
+        "gait_symmetry": round(float(np.clip(min(lr) / max(max(lr), 1e-3), 0, 1)), 2),
+        "body_sway": round(float(np.std(sway)) / torso, 3),
     }
 
 
+# ----------------------------------------------------------------------------- keypoint extraction
+
+_CROP_POSE = None      # (processor, model, device) for ViTPose
 _YOLO_POSE = None
-_STGCN_MODEL = None
+
+
+def _pose_model_name() -> str:
+    try:
+        from src.common.config import MODELS
+        return MODELS.get("gait_pose", {}).get("keypoints", DEFAULT_POSE_MODEL)
+    except Exception:
+        return DEFAULT_POSE_MODEL
+
+
+def get_crop_pose_model(device: Optional[str] = None):
+    """ViTPose (top-down): each image is one person crop and the whole crop is the person box."""
+    global _CROP_POSE
+    device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    if _CROP_POSE is None or _CROP_POSE[2] != device:
+        from transformers import AutoProcessor, VitPoseForPoseEstimation
+        name = _pose_model_name()
+        proc = AutoProcessor.from_pretrained(name)
+        model = VitPoseForPoseEstimation.from_pretrained(name).to(device).eval()
+        if device.startswith("cuda"):
+            model = model.half()
+        _CROP_POSE = (proc, model, device)
+    return _CROP_POSE
 
 
 def get_pose_detector():
-    """Load or cache YOLOv8-pose model."""
+    """YOLOv8-pose for full frames (detects and poses several people at once; used by demo_showcase)."""
     global _YOLO_POSE
     if _YOLO_POSE is None:
         from ultralytics import YOLO
-        _YOLO_POSE = YOLO("yolov8n-pose.pt")
+        p = Path("models/pretrained/yolov8m-pose.pt")
+        _YOLO_POSE = YOLO(str(p) if p.exists() else "yolov8m-pose.pt")
     return _YOLO_POSE
 
 
-def get_stgcn_encoder(device: str = "cpu") -> STGCNPoseGait:
-    """Load or initialize ST-GCN Pose Gait model."""
-    global _STGCN_MODEL
-    if _STGCN_MODEL is None:
-        model = STGCNPoseGait(in_channels=3, out_dim=256)
-        model.eval()
-        _STGCN_MODEL = model.to(device)
-    return _STGCN_MODEL
-
-
-def extract_keypoints_from_images(
-    images: List[np.ndarray],
-    conf_thresh: float = 0.25,
-) -> np.ndarray:
-    """Extract (T, 17, 3) keypoints from list of BGR image crops using YOLOv8-pose."""
-    if not images:
+@torch.no_grad()
+def extract_keypoints_from_images(images: List[np.ndarray], device: Optional[str] = None, batch: int = 64,
+                                  bgr: bool = True) -> np.ndarray:
+    """Person crops (H, W, 3 uint8; BGR by default) -> (T, 17, 3) keypoints [x, y, score] in crop pixels."""
+    if not len(images):
         return np.zeros((0, 17, 3), dtype=np.float32)
-
-    detector = get_pose_detector()
-    results = detector.predict(images, imgsz=256, verbose=False, conf=conf_thresh)
-
-    kpts_list = []
-    for r in results:
-        if r.keypoints is not None and len(r.keypoints.data) > 0:
-            # Pick highest confidence person detection in crop
-            kp = r.keypoints.data[0].cpu().numpy()  # (17, 3) -> [x, y, conf]
-            kpts_list.append(kp)
-        else:
-            kpts_list.append(np.zeros((17, 3), dtype=np.float32))
-
-    return np.array(kpts_list, dtype=np.float32)
+    proc, model, dev = get_crop_pose_model(device)
+    out = []
+    for i in range(0, len(images), batch):
+        ims = [im[:, :, ::-1] if bgr else im for im in images[i:i + batch]]
+        boxes = [[[0.0, 0.0, float(im.shape[1]), float(im.shape[0])]] for im in ims]
+        inp = proc(ims, boxes=boxes, return_tensors="pt").to(dev)
+        if dev.startswith("cuda"):
+            inp["pixel_values"] = inp["pixel_values"].half()
+        res = proc.post_process_pose_estimation(model(**inp), boxes=boxes)
+        for r in res:
+            out.append(np.concatenate([r[0]["keypoints"].float().cpu().numpy(), r[0]["scores"].float().cpu().numpy()[:, None]], 1))
+    return np.asarray(out, dtype=np.float32)
 
 
-def encode_pose_gait(
-    images_or_kpts: Union[List[np.ndarray], np.ndarray],
-    device: str = "cpu",
-    fps: float = 25.0,
-) -> Tuple[Optional[np.ndarray], Dict[str, float]]:
-    """End-to-end extraction: Input crops -> 256-d ST-GCN Embedding + Kinematics.
+# ----------------------------------------------------------------------------- encoder
 
-    Returns:
-        (embedding_256d, kinematic_metrics_dict)
-    """
-    if isinstance(images_or_kpts, list):
-        kpts = extract_keypoints_from_images(images_or_kpts)
-    else:
-        kpts = images_or_kpts
+_ENCODER = None    # (model, device, meta)
 
-    if len(kpts) < 8:
-        return None, compute_kinematic_gait_metrics(kpts, fps)
 
-    # 1. Kinematic biomechanical summary
+def _weights_path() -> Path:
+    try:
+        from src.common.config import MODELS
+        return Path(MODELS.get("gait_pose", {}).get("weights", DEFAULT_WEIGHTS))
+    except Exception:
+        return Path(DEFAULT_WEIGHTS)
+
+
+def load_encoder(device: str = "cpu", ckpt: Optional[str] = None):
+    """Trained ST-GCN encoder, or None (with a warning) if no checkpoint is found."""
+    global _ENCODER
+    path = Path(ckpt) if ckpt else _weights_path()
+    if _ENCODER is not None and _ENCODER[1] == device and _ENCODER[2].get("path") == str(path):
+        return _ENCODER[0]
+    if not path.exists():
+        print(f"[pose_gait] no trained ST-GCN weights at {path}: skeleton gait embeddings are disabled "
+              "(train with training/gait/train_pose.py)", flush=True)
+        return None
+    ck = torch.load(path, map_location="cpu", weights_only=False)
+    cfg = ck.get("model_cfg", {})
+    model = STGCNPoseGait(**cfg)
+    model.load_state_dict({k: v for k, v in ck["model"].items() if not k.startswith("classifier.")}, strict=False)
+    model.eval().to(device)
+    _ENCODER = (model, device, dict(path=str(path), seq_len=int(ck.get("seq_len", 64)), min_conf=float(ck.get("min_conf", 0.3))))
+    return model
+
+
+def get_stgcn_encoder(device: str = "cpu"):
+    return load_encoder(device)
+
+
+@torch.no_grad()
+def embed_keypoints(kpts: np.ndarray, device: str = "cpu", model=None, seq_len: Optional[int] = None,
+                    min_conf: Optional[float] = None) -> Optional[np.ndarray]:
+    """(T, 17, 3) keypoints of one tracklet -> 256-d embedding (mean over sliding windows), or None."""
+    if model is None:
+        model = load_encoder(device)
+        if model is None:
+            return None
+    meta = _ENCODER[2] if _ENCODER is not None and _ENCODER[0] is model else {}
+    L = seq_len or meta.get("seq_len", 64)
+    mc = min_conf if min_conf is not None else meta.get("min_conf", 0.3)
+    kpts = np.asarray(kpts, dtype=np.float32)
+    if len(kpts) < MIN_FRAMES:
+        return None
+    x = normalize_skeleton_sequence(kpts, mc)                 # (5, T, 17)
+    T = x.shape[1]
+    starts = [0] if T <= L else list(range(0, T - L + 1, max(1, L // 2)))
+    if T > L and starts[-1] != T - L:
+        starts.append(T - L)
+    wins = np.stack([x[:, s:s + L] for s in starts])
+    dev = next(model.parameters()).device
+    e = model(torch.from_numpy(wins).to(dev)).float().mean(0)
+    return F.normalize(e, dim=0).cpu().numpy()
+
+
+def encode_pose_gait(images_or_kpts: Union[List[np.ndarray], np.ndarray], device: str = "cpu",
+                     fps: float = 25.0) -> Tuple[Optional[np.ndarray], Dict[str, float]]:
+    """Consecutive person crops (list of BGR arrays) or (T, 17, 3) keypoints -> (embedding or None, kinematics)."""
+    kpts = extract_keypoints_from_images(images_or_kpts, device=device) if isinstance(images_or_kpts, list) else np.asarray(images_or_kpts)
     metrics = compute_kinematic_gait_metrics(kpts, fps)
-
-    # 2. Normalize skeleton sequence: (3, T, 17)
-    norm_kpts = normalize_skeleton_sequence(kpts)
-
-    # 3. ST-GCN forward pass
-    encoder = get_stgcn_encoder(device)
-    x_tensor = torch.from_numpy(norm_kpts).unsqueeze(0).to(device)  # (1, 3, T, 17)
-
-    with torch.no_grad():
-        emb = encoder(x_tensor).cpu().numpy()[0]  # (256,)
-
-    return emb, metrics
+    return embed_keypoints(kpts, device=device), metrics
