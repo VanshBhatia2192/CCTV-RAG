@@ -109,7 +109,8 @@ def main():
             if dev == "cuda":
                 pv = pv.half()
             boxes = [[[0.0, 0.0, float(w), float(h)]] for w, h in zip(Wd, Hd)]
-            res = proc.post_process_pose_estimation(model(pixel_values=pv), boxes=boxes)
+            o = model(pixel_values=pv); o.heatmaps = o.heatmaps.float()   # post-processing (scipy) needs float32
+            res = proc.post_process_pose_estimation(o, boxes=boxes)
             for i, j, w, h, r in zip(I, J, Wd, Hd, res):
                 k = np.concatenate([r[0]["keypoints"].float().cpu().numpy(), r[0]["scores"].float().cpu().numpy()[:, None]], 1)
                 d = acc.setdefault(i, dict(k=[], idx=[], wh=[]))

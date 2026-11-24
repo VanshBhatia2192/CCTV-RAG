@@ -242,7 +242,8 @@ def extract_keypoints_from_images(images: List[np.ndarray], device: Optional[str
         inp = proc(ims, boxes=boxes, return_tensors="pt").to(dev)
         if dev.startswith("cuda"):
             inp["pixel_values"] = inp["pixel_values"].half()
-        res = proc.post_process_pose_estimation(model(**inp), boxes=boxes)
+        o = model(**inp); o.heatmaps = o.heatmaps.float()   # post-processing (scipy) needs float32
+        res = proc.post_process_pose_estimation(o, boxes=boxes)
         for r in res:
             out.append(np.concatenate([r[0]["keypoints"].float().cpu().numpy(), r[0]["scores"].float().cpu().numpy()[:, None]], 1))
     return np.asarray(out, dtype=np.float32)
