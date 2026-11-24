@@ -4,7 +4,7 @@ sr: {name: basicvsrpp, weights: models/finetuned/sr_v2/basicvsrpp_meva.pth, pret
 text_video: {name: xclip, path: models/pretrained/xclip}
 vlm: {name: qwen2.5-vl, path: models/pretrained/qwen2.5-vl}
 parser_llm: Qwen/Qwen2.5-3B-Instruct
-gait: {repo: models/pretrained/OpenGait, model: GaitBase}
+gait_pose: {keypoints: usyd-community/vitpose-base-simple, weights: models/finetuned/gait/stgcn_pose_mevid.pt}
 finetuned:
   text2vehicle: models/finetuned/text2vehicle
   text2person: models/finetuned/text2person

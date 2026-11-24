@@ -70,10 +70,10 @@ def rank(track_row: int, k: int = 20, mode: str = "any", w_app: Optional[float] 
     q_moving = A[track_row][1].get("motion") in WALK
 
     # 2D Skeleton ST-GCN gait vector
-    qg = _vec("person_gait", track_row) or _vec("person_pose_gait", track_row)
+    qg = _vec("person_gait", track_row)
     G = {}
     if qg is not None and q_moving:
-        G = _all_scores("person_gait", qg) or _all_scores("person_pose_gait", qg)
+        G = _all_scores("person_gait", qg)
         G = {i: v for i, v in G.items() if i == track_row or v[1].get("motion") in WALK}
 
     note = None

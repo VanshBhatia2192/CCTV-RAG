@@ -27,22 +27,7 @@ def main(kind, limit):
                    "start_s": r["start_s"], "end_s": r["end_s"], **attrs}
         vector_db.upsert(kind, [r["id"]], [v.tolist()], [payload])
         
-        # Extract 2D skeleton pose gait if enough frames exist
-        if kind == "person" and len(imgs) >= 8:
-            try:
-                import cv2
-                from src.gait.pose_gait import encode_pose_gait
-                im_arrays = [cv2.imread(str(f)) for f in imgs]
-                im_arrays = [im for im in im_arrays if im is not None]
-                if len(im_arrays) >= 8:
-                    pose_emb, bio_metrics = encode_pose_gait(im_arrays, fps=r["fps"] or 25.0)
-                    if pose_emb is not None:
-                        attrs.update(bio_metrics)
-                        payload.update(bio_metrics)
-                        vector_db.upsert("person_gait", [r["id"]], [pose_emb.tolist()], [payload])
-                        vector_db.upsert("person_pose_gait", [r["id"]], [pose_emb.tolist()], [payload])
-            except Exception:
-                pass
+        # skeleton gait vectors need consecutive frames: built separately by src/gait/index_gait.py
 
         # Populate descriptive caption from detected attributes if not already present
         r_dict = dict(r)

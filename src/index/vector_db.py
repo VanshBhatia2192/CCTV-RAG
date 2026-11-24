@@ -3,7 +3,7 @@ from pathlib import Path
 from qdrant_client import QdrantClient, models
 from src.common.config import PATHS
 
-DIMS = {"vehicle": 512, "vehicle_ft": 512, "person": 512, "person_ft": 512, "incident": 512, "person_gait": 256, "person_pose_gait": 256, "text_person": 384, "text_vehicle": 384, "text_incident": 384}
+DIMS = {"vehicle": 512, "vehicle_ft": 512, "person": 512, "person_ft": 512, "incident": 512, "person_gait": 256, "text_person": 384, "text_vehicle": 384, "text_incident": 384}
 _client = None
 _lock = threading.Lock()
 EUCLID = set()   # Skeleton ST-GCN and CLIP embeddings all use Cosine similarity
