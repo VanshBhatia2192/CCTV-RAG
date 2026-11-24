@@ -81,7 +81,7 @@ def pick(tl, K, rng):
 
 def batch(data, pids, lab, a, rng):
     xs, ys = [], []
-    for pid in rng.choice(pids, a.P, replace=False):
+    for pid in rng.choice(pids, a.P, replace=len(pids) < a.P):
         tl = data[pid]
         for j in pick(tl, a.K, rng):
             s = tl[j]["seqs"][rng.randint(len(tl[j]["seqs"]))]
