@@ -53,14 +53,19 @@ data/
 
 # Binaries & Compiled Executables
 bin/
+third_party/
 
 # Logs & Job Outputs
 outputs/logs/
 outputs/clips/
+outputs/web_videos/
 outputs/jobs/
 outputs/gait_prep/
 outputs/gait_ft/
 outputs/gait_ft_smoke/
+outputs/gait_prep_smoke/
+outputs/reports/vehicle_*.json
+outputs/reports/*.smoke
 outputs/*.log
 outputs/*.txt
 outputs/*.png
@@ -69,6 +74,7 @@ cctv_*.o*
 cctv_*.e*
 
 # OS & Editor Metadata
+_archive_old/
 .DS_Store
 .DS_Store?
 ._*

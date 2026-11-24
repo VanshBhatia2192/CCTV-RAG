@@ -11,7 +11,7 @@ def client():
     global _client
     if _client is None:
         Path(PATHS["qdrant_path"]).mkdir(parents=True, exist_ok=True)
-        _client = QdrantClient(url=os.getenv("QDRANT_URL")) if os.getenv("QDRANT_URL") else QdrantClient(path=PATHS["qdrant_path"])
+        _client = QdrantClient(url=os.getenv("QDRANT_URL"), timeout=60.0) if os.getenv("QDRANT_URL") else QdrantClient(path=PATHS["qdrant_path"])
         have = {c.name for c in _client.get_collections().collections}
         for name, d in DIMS.items():
             if name not in have:

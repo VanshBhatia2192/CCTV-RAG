@@ -13,7 +13,7 @@ from src.gait.track_crops import read_crops, windows
 def segment(seg, crops, bs=64):
     out = []
     for b in range(0, len(crops), bs):
-        for r in seg.predict(crops[b:b + bs], imgsz=320, classes=[0], retina_masks=True, half=True, verbose=False):
+        for r in seg.predict(crops[b:b + bs], imgsz=480, classes=[0], retina_masks=True, half=True, verbose=False):
             if r.masks is None or len(r.masks.data) == 0:
                 out.append(None); continue
             d = r.masks.data; k = int(d.flatten(1).sum(1).argmax())
@@ -37,9 +37,9 @@ def main():
     from src.gait import og
     from src.index import vector_db
     ap = argparse.ArgumentParser()
-    ap.add_argument("--fmt", default="cxcywh", choices=["cxcywh", "tlwh", "cxcyhw", "tlhw"])
+    ap.add_argument("--fmt", default="cxcyhw", choices=["cxcywh", "tlwh", "cxcyhw", "tlhw"])
     ap.add_argument("--K", type=int, default=3); ap.add_argument("--min-asp", type=float, default=1.0)
-    ap.add_argument("--min-clean", type=int, default=20); ap.add_argument("--prefetch", type=int, default=3)
+    ap.add_argument("--min-clean", type=int, default=12); ap.add_argument("--prefetch", type=int, default=3)
     ap.add_argument("--model", default="deepgaitv2_gait3d"); ap.add_argument("--ckpt", default="models/finetuned/gait/deepgaitv2_gait3d_ft.pt")
     ap.add_argument("--limit-chunks", type=int, default=0, help="sample N evenly spaced chunks (throughput test)")
     ap.add_argument("--no-upsert", action="store_true"); ap.add_argument("--recreate", action="store_true")
@@ -111,7 +111,9 @@ def main():
             if not embs:
                 continue
             st["embedded"] += 1; st["clean"] += n_clean
-            ids.append(t["id"]); vecs.append(np.mean(embs, 0).reshape(-1).tolist())
+            v = np.mean(embs, 0).reshape(-1)
+            v = v / (np.linalg.norm(v) + 1e-9)
+            ids.append(t["id"]); vecs.append(v.tolist())
             pays.append({"track_row": t["id"], "chunk_id": t["chunk_id"], "camera": t["camera"], "start_s": t["start_s"],
                          "end_s": t["end_s"], "gait_n": n_clean, **json.loads(t["attrs_json"] or "{}")})
         if len(ids) >= 256 and not a.no_upsert:

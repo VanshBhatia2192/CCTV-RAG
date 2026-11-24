@@ -14,9 +14,14 @@ _m = _t = None
 def _llm(q):
     global _m, _t
     if _m is None:
-        from transformers import AutoModelForCausalLM, AutoTokenizer
-        _t = AutoTokenizer.from_pretrained(MODELS["parser_llm"])
-        _m = AutoModelForCausalLM.from_pretrained(MODELS["parser_llm"], torch_dtype="auto").to(DEV).eval()
+        from transformers import AutoModelForCausalLM, AutoTokenizer, logging as hf_logging
+        hf_logging.set_verbosity_error()
+        try:
+            _t = AutoTokenizer.from_pretrained(MODELS["parser_llm"], local_files_only=True)
+            _m = AutoModelForCausalLM.from_pretrained(MODELS["parser_llm"], torch_dtype="auto", local_files_only=True).to(DEV).eval()
+        except Exception:
+            _t = AutoTokenizer.from_pretrained(MODELS["parser_llm"])
+            _m = AutoModelForCausalLM.from_pretrained(MODELS["parser_llm"], torch_dtype="auto").to(DEV).eval()
     msgs = [{"role": "system", "content": SYS}, {"role": "user", "content": q}]
     ids = _t.apply_chat_template(msgs, add_generation_prompt=True, return_tensors="pt", return_dict=True).to(DEV)
     with torch.no_grad():

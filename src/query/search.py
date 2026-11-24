@@ -19,7 +19,7 @@ def search(query, rerank=False, use_llm=True, n_clips=3, ft=True):
     db = connect()
     q = parser.parse(query, use_llm); kind, text = q["type"], q["text"]
     T["parse"] = time.time() - t0
-    mode = "hybrid_ft" if (kind == "person" and ft and FT.exists()) else "hybrid"
+    mode = "hybrid_ft" if (kind in ("person", "vehicle") and ft and (FT if kind == "person" else Path("models/finetuned/vehicle/clip_vehicle.pt")).exists()) else "hybrid"
     where = {"camera": q["camera"]} if q["camera"] else None
     t = time.time()
     cands = hybrid.retrieve(kind, text, PIPE["retrieval"]["top_k"], mode, where, w=_weights(kind))

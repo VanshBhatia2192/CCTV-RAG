@@ -13,8 +13,12 @@ def _load():
     global _m, _t
     if _m is None:
         from transformers import AutoModel, AutoTokenizer
-        _t = AutoTokenizer.from_pretrained(NAME)
-        _m = AutoModel.from_pretrained(NAME).to(DEV).eval()
+        try:
+            _t = AutoTokenizer.from_pretrained(NAME, local_files_only=True)
+            _m = AutoModel.from_pretrained(NAME, local_files_only=True).to(DEV).eval()
+        except Exception:
+            _t = AutoTokenizer.from_pretrained(NAME)
+            _m = AutoModel.from_pretrained(NAME).to(DEV).eval()
     return _m, _t
 
 @torch.no_grad()
