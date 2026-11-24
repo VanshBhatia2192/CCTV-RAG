@@ -14,7 +14,7 @@ def main(kind, limit):
     except sqlite3.OperationalError:
         pass
     mot = motion.person_motion if kind == "person" else motion.vehicle_motion
-    rows = db.execute("SELECT t.*, c.camera FROM tracks t JOIN chunks c ON c.id=t.chunk_id "
+    rows = db.execute("SELECT t.*, c.camera, coalesce(c.dataset, 'meva') as dataset FROM tracks t JOIN chunks c ON c.id=t.chunk_id "
                       "WHERE t.kind=? AND t.attrs_json IS NULL LIMIT ?", (kind, limit)).fetchall()
     for r in tqdm(rows, desc=f"{kind} embed"):
         imgs = sorted(Path(r["crops_dir"]).glob("*.jpg"))
@@ -23,7 +23,7 @@ def main(kind, limit):
         v = clip.embed_images(imgs).mean(0); v /= np.linalg.norm(v)
         attrs = attributes.zero_shot(kind, v)
         attrs.update(mot(json.loads(r["path_json"]), r["fps"]))
-        payload = {"track_row": r["id"], "chunk_id": r["chunk_id"], "camera": r["camera"],
+        payload = {"track_row": r["id"], "chunk_id": r["chunk_id"], "camera": r["camera"], "dataset": r["dataset"],
                    "start_s": r["start_s"], "end_s": r["end_s"], **attrs}
         vector_db.upsert(kind, [r["id"]], [v.tolist()], [payload])
         

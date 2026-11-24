@@ -70,6 +70,41 @@ def get_travel_window(topology: Dict, src_cam: str, dst_cam: str) -> Tuple[bool,
     return False, 0.0, 0.0
 
 
+VEHICLE_CLASSES = {
+    "truck": "truck",
+    "pickup": "truck",
+    "pickup truck": "truck",
+    "car": "car",
+    "sedan": "car",
+    "coupe": "car",
+    "hatchback": "car",
+    "suv": "suv",
+    "crossover": "suv",
+    "jeep": "suv",
+    "van": "van",
+    "minivan": "van",
+    "bus": "bus",
+    "motorcycle": "motorcycle",
+    "bike": "motorcycle",
+}
+
+
+def extract_type(attrs: Dict, caption: Optional[str] = None) -> Optional[str]:
+    """Extract canonical vehicle type class."""
+    t = (attrs.get("type") or "").lower().strip()
+    if t in VEHICLE_CLASSES:
+        return VEHICLE_CLASSES[t]
+    for k, v in VEHICLE_CLASSES.items():
+        if k in t:
+            return v
+    if caption:
+        cap_low = caption.lower()
+        for k, v in VEHICLE_CLASSES.items():
+            if re.search(r"\b" + re.escape(k) + r"\b", cap_low):
+                return v
+    return None
+
+
 def extract_color(attrs: Dict, caption: Optional[str] = None) -> Optional[str]:
     """Extract canonical vehicle color from attributes or caption."""
     c = attrs.get("color")
@@ -77,6 +112,9 @@ def extract_color(attrs: Dict, caption: Optional[str] = None) -> Optional[str]:
         return COLOR_MAP[c.lower()]
     if caption:
         cap_low = caption.lower()
+        m = re.search(r"\b(red|blue|green|white|black|yellow|silver|grey|gray|orange|brown)\s+(?:pickup|truck|car|sedan|suv|van|vehicle|minivan|bus|automobile)\b", cap_low)
+        if m:
+            return COLOR_MAP[m.group(1)]
         for word in cap_low.split():
             clean = re.sub(r"[^a-z]", "", word)
             if clean in COLOR_MAP:
@@ -85,6 +123,22 @@ def extract_color(attrs: Dict, caption: Optional[str] = None) -> Optional[str]:
 
 
 _EMB_CACHE: Dict[str, np.ndarray] = {}
+
+
+_VEHICLE_MODEL = None
+
+
+def _load_vehicle_model():
+    global _VEHICLE_MODEL
+    if _VEHICLE_MODEL is None:
+        from src.person import t2p
+        from src.common.clip import DEV
+        ckpt = "models/finetuned/vehicle/clip_vehicle.pt"
+        if Path(ckpt).exists():
+            m, tok = t2p.load(ckpt, DEV)
+            m.eval()
+            _VEHICLE_MODEL = (m, tok, DEV)
+    return _VEHICLE_MODEL
 
 
 def get_track_crop_embedding(crops_dir: str) -> Optional[np.ndarray]:
@@ -105,11 +159,21 @@ def get_track_crop_embedding(crops_dir: str) -> Optional[np.ndarray]:
     mid_file = str(files[len(files) // 2])
 
     try:
-        from src.common import clip as cutil
-        embs = cutil.embed_images([mid_file])
-        vec = embs[0]
-        norm = np.linalg.norm(vec) + 1e-9
-        vec = vec / norm
+        from PIL import Image
+        import torch, torch.nn.functional as F
+        vmod = _load_vehicle_model()
+        if vmod is not None:
+            m, _, dev = vmod
+            from src.person import t2p
+            with torch.no_grad():
+                im = t2p.prep(Image.open(mid_file)).unsqueeze(0).to(dev)
+                vec = F.normalize(t2p.img_feat(m, im).float(), dim=-1)[0].cpu().numpy()
+        else:
+            from src.common import clip as cutil
+            embs = cutil.embed_images([mid_file])
+            vec = embs[0]
+            norm = np.linalg.norm(vec) + 1e-9
+            vec = vec / norm
         _EMB_CACHE[crops_dir] = vec
         return vec
     except Exception as e:
@@ -161,6 +225,7 @@ def rank(
         q_end = float(q_row["end_s"])
         q_attrs = json.loads(q_row["attrs_json"] or "{}")
         q_color = extract_color(q_attrs, q_row["caption"])
+        q_type = extract_type(q_attrs, q_row["caption"])
         q_crop_dir = q_row["crops_dir"]
 
         # Thumbnail path for query
@@ -211,6 +276,7 @@ def rank(
             c_end = float(c["end_s"])
             c_attrs = json.loads(c["attrs_json"] or "{}")
             c_color = extract_color(c_attrs, c["caption"])
+            c_type = extract_type(c_attrs, c["caption"])
 
             # A. Color consistency gating
             color_match = True
@@ -223,6 +289,18 @@ def rank(
                         continue
                     else:
                         color_penalty = 0.4
+
+            # B. Body type consistency gating
+            type_match = True
+            type_penalty = 0.0
+            if q_type and c_type and q_type != c_type:
+                type_match = False
+                # Distinct classes: truck vs SUV/car/bus
+                is_distinct = (q_type in ("truck", "bus", "motorcycle") or c_type in ("truck", "bus", "motorcycle"))
+                if use_color_gate and is_distinct:
+                    # Skip candidate outright if conflicting body type
+                    continue
+                type_penalty = 0.40 if is_distinct else 0.20
 
             # B. Spatio-temporal feasibility (Bidirectional transition check)
             st_valid = True
@@ -280,8 +358,8 @@ def rank(
                 # If embeddings not available, fall back to attribute and motion overlap
                 vis_sim = 0.5
 
-            # Combined score: visual + spatio-temporal - color penalty
-            final_score = (0.75 * max(0.0, vis_sim) + 0.25 * st_score) - color_penalty
+            # Combined score: visual + spatio-temporal - color penalty - type penalty
+            final_score = (0.75 * max(0.0, vis_sim) + 0.25 * st_score) - color_penalty - type_penalty
             final_score = max(0.0, min(1.0, final_score))
 
             # Clip-relative times for video playback
@@ -299,6 +377,7 @@ def rank(
                 "appearance_sim": round(max(0.0, vis_sim), 3),
                 "st_valid": st_valid,
                 "color_match": color_match,
+                "type_match": type_match,
                 "attrs": c_attrs,
                 "caption": c["caption"],
                 "thumb": f"/api/thumb/{cid}",
@@ -310,6 +389,19 @@ def rank(
         # Sort matches by score descending
         matches.sort(key=lambda m: -m["score"])
 
+        # Deduplicate candidate tracks from the same destination camera (keep best match per camera event)
+        deduped_matches = []
+        seen_cam_times = {}
+        for m in matches:
+            cam = m["camera"]
+            st = m["start_s"]
+            # If candidate is from same camera within 180s, it's the same vehicle track in adjacent chunks
+            existing = seen_cam_times.get(cam, [])
+            if any(abs(st - prev) < 180.0 for prev in existing):
+                continue
+            seen_cam_times.setdefault(cam, []).append(st)
+            deduped_matches.append(m)
+
         return {
             "query": {
                 "track_row": track_row,
@@ -318,13 +410,14 @@ def rank(
                 "end_s": round(q_end, 1),
                 "attrs": q_attrs,
                 "color": q_color,
+                "type": q_type,
                 "caption": q_row["caption"],
                 "thumb": q_thumb,
             },
             "k": k,
             "use_st_filter": use_st_filter,
             "use_color_gate": use_color_gate,
-            "results": matches[:k],
+            "results": deduped_matches[:k],
         }
 
     finally:

@@ -9,10 +9,15 @@ MEAN = torch.tensor([0.48145466, 0.4578275, 0.40821073]).view(3, 1, 1)
 STD = torch.tensor([0.26862954, 0.26130258, 0.27577711]).view(3, 1, 1)
 
 def load(ckpt=None, dev="cuda"):
-    m = CLIPModel.from_pretrained(NAME)
+    try:
+        m = CLIPModel.from_pretrained(NAME, local_files_only=True)
+        tok = CLIPTokenizer.from_pretrained(NAME, local_files_only=True)
+    except Exception:
+        m = CLIPModel.from_pretrained(NAME)
+        tok = CLIPTokenizer.from_pretrained(NAME)
     if ckpt:
         m.load_state_dict(torch.load(ckpt, map_location="cpu"))
-    return m.to(dev), CLIPTokenizer.from_pretrained(NAME)
+    return m.to(dev), tok
 
 def prep(img):
     img = img.convert("RGB").resize((224, 224), Image.BICUBIC)   # whole image, no center crop

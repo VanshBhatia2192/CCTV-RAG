@@ -57,19 +57,27 @@ def _visual(kind, text, k, where, ids=None):
         print(f"[hybrid] visual search for {kind} unavailable ({type(e).__name__}: {e})", flush=True)
         return []
 
-def _visual_ft(text, k, where, ids=None):
+FT_MODELS = {
+    "person": ("models/finetuned/text2person/clip_t2p.pt", "person_ft"),
+    "vehicle": ("models/finetuned/vehicle/clip_vehicle.pt", "vehicle_ft"),
+}
+
+def _visual_ft(kind, text, k, where, ids=None):
     from pathlib import Path
-    ckpt = Path("models/finetuned/text2person/clip_t2p.pt")
-    if not ckpt.exists():
-        return _visual("person", text, k, where, ids)
+    ckpt_path, coll = FT_MODELS.get(kind, (None, None))
+    if not ckpt_path or not Path(ckpt_path).exists():
+        return _visual(kind, text, k, where, ids)
     from src.person import t2p
     dev = "cuda" if torch.cuda.is_available() else "cpu"
-    if "m" not in _ft:
-        _ft["m"], _ft["tok"] = t2p.load(str(ckpt), dev); _ft["m"].eval()
+    if kind not in _ft:
+        m, tok = t2p.load(str(ckpt_path), dev)
+        m.eval()
+        _ft[kind] = (m, tok)
+    m, tok = _ft[kind]
     with torch.no_grad():
-        f = t2p.txt_feat(_ft["m"], _ft["tok"], [text], dev)
+        f = t2p.txt_feat(m, tok, [text], dev)
         v = torch.nn.functional.normalize(f.float(), dim=-1)[0].cpu().numpy()
-    return [(h.id, h.score, h.payload) for h in vector_db.search("person_ft", v.tolist(), k, where, ids)]
+    return [(h.id, h.score, h.payload) for h in vector_db.search(coll, v.tolist(), k, where, ids)]
 
 _MOT = {}
 RUN_WORDS = {"running", "runs", "run", "jogging", "sprinting"}
@@ -85,7 +93,10 @@ def _motion_ids(kind, label):
         from pathlib import Path
         from src.common.config import PATHS
         db = Path(PATHS["qdrant_path"]).parent / "sqlite" / "meta.db"
-        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        try:
+            con = sqlite3.connect(f"file:{db.resolve()}?mode=ro&nolock=1", uri=True)
+        except Exception:
+            con = sqlite3.connect(str(db))
         _MOT[(kind, label)] = [r[0] for r in con.execute(
             "select id from tracks where kind=? and json_extract(attrs_json,'$.motion')=? and coalesce(json_extract(attrs_json,'$.speed'),0)<=3.0", (kind, label))]
         con.close()
@@ -107,7 +118,7 @@ def retrieve(kind, text, k=50, mode="hybrid", where=None, pool=100, w=(1.0, 1.0,
     if mode in ("visual", "hybrid"):
         vis = _visual(kind, text, pool, where, ids)
     elif mode in ("visual_ft", "hybrid_ft"):
-        vis = _visual_ft(text, pool, where, ids)
+        vis = _visual_ft(kind, text, pool, where, ids)
     payload = {i: p for i, _, p in vis}
     lists, ws = [], []
     if vis:
