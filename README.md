@@ -258,9 +258,11 @@ Then open [`http://localhost:8000`](http://localhost:8000) in your browser.
 On the cluster the login node has no GPU, so the LLM query planner and VLM verification are slow there. To run the
 demo on a GPU node instead (Qdrant from `run_demo.sh` must be up on mgmt01):
 ```bash
-bash scripts/hpc/submit.sh scripts/hpc/demo_gpu.pbs        # node name is printed in outputs/logs/demo_gpu.log
-ssh -N -L 8000:<gpu-node>:8000 hpc                          # on your laptop
+bash scripts/hpc/submit.sh scripts/hpc/demo_gpu.pbs        # PBS picks a node; the job takes the least busy GPU and a free port
+bash scripts/hpc/demo_url.sh                                # waits until the app answers, prints the tunnel command
+ssh -N -L 8000:<gpu-node>:<port> hpc                        # on your laptop (exact line printed above)
 ```
+`SR_HOST=gpu01` pins a node, `NEED_MB` sets the minimum free GPU memory (default 24000), stop with `qdel <jobid>`.
 
 ---
 

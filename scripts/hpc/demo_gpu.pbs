@@ -1,8 +1,10 @@
 #!/bin/bash
 # Run the web demo on a GPU node, so the LLM query planner and VLM verification are fast.
-#   bash scripts/hpc/submit.sh scripts/hpc/demo_gpu.pbs          (or SR_HOST=gpu02 ...)
-#   then on your laptop:  ssh -N -L 8000:<node>:8000 hpc   and open http://localhost:8000
-#   the node name is printed in outputs/logs/demo_gpu.log; stop with qdel <jobid>
+#   bash scripts/hpc/submit.sh scripts/hpc/demo_gpu.pbs   (PBS picks a node; SR_HOST=gpu01 pins one)
+#   bash scripts/hpc/demo_url.sh                           prints the tunnel command once it is up
+#   then open http://localhost:8000 on your laptop; stop with qdel <jobid>
+# On the node the job takes the least busy GPU with at least NEED_MB free (default 24000) and the first
+# free port from 8000 up.
 # Uses the Qdrant server on mgmt01 (scripts/run_demo.sh starts it, port 6335), or a node-local copy if unreachable.
 #PBS -N cctv_demo_gpu
 #PBS -q gpu
@@ -18,7 +20,17 @@ source /home/soft/anaconda3/etc/profile.d/conda.sh && conda activate cctv
 export LD_PRELOAD=$CONDA_PREFIX/lib/libstdc++.so.6 PYTHONUNBUFFERED=1 TOKENIZERS_PARALLELISM=false OMP_NUM_THREADS=8
 export HF_HOME=$PWD/hf_cache HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1
 export NO_PROXY=localhost,127.0.0.1,mgmt01,10.17.1.5 no_proxy=localhost,127.0.0.1,mgmt01,10.17.1.5
-export CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=index,memory.free --format=csv,noheader,nounits | sort -t, -k2 -nr | head -1 | cut -d, -f1)
+# nodes are shared and jobs see every GPU: claim the freest one with an atomic per-GPU lock (same as captions_v2.pbs)
+CUDA_VISIBLE_DEVICES=""
+# among GPUs with enough free memory prefer the least busy one (other users' jobs share these GPUs), then the emptiest
+for g in $(nvidia-smi --query-gpu=index,memory.free,utilization.gpu --format=csv,noheader,nounits | awk -F', ' -v need=${NEED_MB:-24000} '$2 > need' | sort -t, -k3,3n -k2,2nr | cut -d, -f1); do
+  if mkdir "/tmp/gpu_claim_${g}" 2>/dev/null; then CUDA_VISIBLE_DEVICES=$g; trap 'rmdir /tmp/gpu_claim_'$g EXIT; break; fi
+done
+[ -n "$CUDA_VISIBLE_DEVICES" ] || { echo "no GPU with ${NEED_MB:-24000} MB free on $(hostname); resubmit or set SR_HOST to the other node"; exit 1; }
+export CUDA_VISIBLE_DEVICES
+nvidia-smi --query-gpu=index,name,memory.free,utilization.gpu --format=csv,noheader -i $CUDA_VISIBLE_DEVICES
+PORT=${PORT:-8000}
+while ss -ltn | grep -q ":$PORT "; do PORT=$((PORT + 1)); done
 for u in http://mgmt01:6335 http://10.17.1.5:6335; do
   curl -s --max-time 4 "$u/collections" > /dev/null && { export QDRANT_URL=$u; break; }
 done
@@ -36,5 +48,6 @@ src = sqlite3.connect("file:data/indexes/sqlite/meta.db?mode=ro&immutable=1", ur
 dst = sqlite3.connect(os.environ["DEMO_DB"]); src.backup(dst); dst.close()
 PY
 echo "qdrant: $QDRANT_URL"
-echo "DEMO READY SOON on $(hostname):8000  ->  on your laptop: ssh -N -L 8000:$(hostname):8000 hpc"
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+echo "DEMO_AT $(hostname):$PORT gpu=$CUDA_VISIBLE_DEVICES job=$PBS_JOBID"
+echo "on your laptop: ssh -N -L 8000:$(hostname):$PORT hpc   then open http://localhost:8000"
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
