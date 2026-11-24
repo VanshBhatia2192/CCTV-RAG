@@ -15,9 +15,10 @@ def _images(kind, c):
     return ims
 
 @torch.no_grad()
-def yes_score(ims, text):
+def ask_yes(ims, question):
+    """Logit margin yes - no for a yes/no question about the images (> 0 means the VLM leans yes)."""
     m, p = caption._load()
-    prompt = f'Does this match the description: "{text}"? Answer yes or no.'
+    prompt = f"{question} Answer yes or no."
     msg = [{"role": "user", "content": [{"type": "image"} for _ in ims] + [{"type": "text", "text": prompt}]}]
     t = p.apply_chat_template(msg, tokenize=False, add_generation_prompt=True)
     inp = p(text=[t], images=ims, return_tensors="pt").to(DEV)
@@ -26,6 +27,9 @@ def yes_score(ims, text):
     y = max(lg[tok.encode(w)[0]] for w in ("yes", "Yes"))
     n = max(lg[tok.encode(w)[0]] for w in ("no", "No"))
     return float(y - n)
+
+def yes_score(ims, text):
+    return ask_yes(ims, f'Does this match the description: "{text}"?')
 
 def rerank(kind, text, cands):
     for c in cands:

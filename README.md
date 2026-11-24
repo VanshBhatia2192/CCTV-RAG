@@ -204,7 +204,7 @@ cctv-search/
 │   ├── index/                  # Database connectors (SQLite WAL + Qdrant)
 │   ├── ingest/                 # Video chunking & motion gate filtering
 │   ├── person/                 # Person detection, tracking & CLIP fine-tuning
-│   ├── query/                  # Natural language query parsing & reranking
+│   ├── query/                  # Query planner, per-requirement scoring, VLM verification
 │   ├── scale/                  # Batch embedding & cluster scaling utilities
 │   ├── ui/                     # Alternative Gradio interface
 │   └── vehicle/                # Vehicle representation & contrastive learning
@@ -254,6 +254,34 @@ If running on a remote server, create an SSH tunnel from your local machine:
 ssh -L 8000:localhost:8000 user@server_ip
 ```
 Then open [`http://localhost:8000`](http://localhost:8000) in your browser.
+
+---
+
+## 🧠 Context-Aware Search (`/api/ask`)
+
+Plain hybrid matching treats a query as a bag of words, so `red bluewhale` returned anything red. The Ask endpoint
+now understands the query before searching (`src/query/contextual.py`):
+
+1. **Plan** (`src/query/plan.py`): the query becomes separate requirements, e.g. `red bluewhale` ->
+   text `"bluewhale"` (required) + color `red` on `bluewhale`; `woman in a black coat without a bag` -> black coat,
+   *not* bag. Unknown words are treated as names/brands/visible text, typos of domain words are fixed
+   (`persn in a blu hoodie`), camera names become filters. Rules run in milliseconds; the "LLM Query Planner"
+   toggle fills the same schema with the parser LLM.
+2. **Retrieve**: the existing RRF hybrid search, plus captions that contain rare named terms and captions that
+   already satisfy every requirement, so exact matches outside the embedding top-k are not missed.
+3. **Score each requirement** (`src/query/constraints.py`): a result is a *full* match only if it satisfies every
+   required part (colors must sit on the named garment/vehicle); others are labelled *partial* with what is
+   missing, negations are excluded. A required term no caption mentions is reported instead of silently ignored.
+4. **Verify** (optional, "VLM Verify" toggle, needs a GPU; `src/query/verify.py`): Qwen2.5-VL answers one yes/no
+   question per requirement for the top results; any "no" rejects the result.
+
+The response carries `understood`, `notice` and per-result `match` / `matched` / `missing`, which the UI shows.
+`strict=true` returns full or verified matches only. Before/after comparison on a fixed query list:
+
+```bash
+DEMO_DB=/tmp/meta_demo_$USER.db QDRANT_URL=http://localhost:6335 python -m eval.search.compare_queries   # CPU, rules planner
+bash scripts/hpc/submit.sh scripts/hpc/search_compare.pbs                                              # GPU: rules, LLM, VLM verify
+```
 
 ---
 

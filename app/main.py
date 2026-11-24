@@ -179,45 +179,18 @@ def media(tok: str, request: Request):
 
 
 @app.get("/api/ask")
-def ask(q: str, n: int = 24, use_llm: bool = False, rerank: bool = False, camera: str | None = None, dataset: str | None = None):
-    """Unified AI Query Agent: natural language parsing, fast hybrid retrieval, score calibration, deduplication, and full-length video streaming."""
+def ask(q: str, n: int = 24, use_llm: bool = False, rerank: bool = False, camera: str | None = None,
+        dataset: str | None = None, strict: bool = False):
+    """Context-aware query: plan the query into separate requirements, retrieve, score each requirement, optionally
+    VLM-verify (rerank=true), then deduplicate into cards. Results that miss a requirement are labelled partial."""
     if not q.strip():
         raise HTTPException(400, "empty query")
     t0 = time.time()
-    from src.query import parser as pr
-    from src.captions import hybrid
-
-    # 1. Parse natural language query
-    parsed = pr.parse(q.strip(), use_llm=use_llm)
-    kind = parsed.get("type") or "person"
-    if kind not in MODES:
-        kind = "person"
-    search_text = parsed.get("text") or q.strip()
-    cam = camera or parsed.get("camera")
-    mode = MODES.get(kind, "hybrid")
-
-    where = {}
-    if cam:
-        where["camera"] = cam
-    if dataset:
-        where["dataset"] = dataset.lower()
-    where_arg = where if where else None
-
-    # 2. Fast multi-modal retrieval
-    hits = hybrid.retrieve(kind, search_text, k=min(max(n * 4, 48), 150), mode=mode, where=where_arg, w=_fusion_weights(kind))
-    # If filtered dataset yielded no results (e.g. aicity selected but raw chunks are tagged meva), fallback gracefully
+    from src.query import contextual
+    r = contextual.search(q.strip(), n=n, use_llm=use_llm, verify=rerank, camera=camera, dataset=dataset, strict=strict)
+    plan, hits = r["plan"], r["hits"]
+    kind, search_text, cam, mode = plan["kind"], plan["text"], plan["camera"], "contextual"
     fallback_dataset = False
-    if not hits and dataset:
-        fallback_where = {"camera": cam} if cam else None
-        hits = hybrid.retrieve(kind, search_text, k=min(max(n * 4, 48), 150), mode=mode, where=fallback_where, w=_fusion_weights(kind))
-        fallback_dataset = True
-
-    if rerank and hits:
-        try:
-            from src.query import rerank as rr
-            hits = rr.rerank(kind, search_text, hits[:24])
-        except Exception:
-            pass
 
     # 3. Deduplicate across cameras, throttle stationary hits, and build full-stream cards
     db = _db(); out = []; seen_clips = set()
@@ -228,9 +201,12 @@ def ask(q: str, n: int = 24, use_llm: bool = False, rerank: bool = False, camera
 
     try:
         for h in hits:
-            card = _card_window(db, h) if kind == "incident" else (lambda t: _card_track(t, h["score"]) if t else None)(_track(db, h["id"]))
+            hk = h.get("kind", kind)
+            card = _card_window(db, h) if hk == "incident" else (lambda t: _card_track(t, h["score"]) if t else None)(_track(db, h["id"]))
             if not card:
                 continue
+            card.update(match=h.get("match"), matched=h.get("matched", []), missing=h.get("missing", []),
+                        coverage=h.get("coverage"), verified=h.get("verified"), verify=h.get("verify"))
             if dataset and not fallback_dataset and card.get("dataset") != dataset:
                 continue
 
@@ -257,7 +233,7 @@ def ask(q: str, n: int = 24, use_llm: bool = False, rerank: bool = False, camera
                 seen_stationary.add((c_cam, stat_bin))
 
             # Camera diversity: avoid flooding the screen with one camera when user hasn't selected a camera
-            if not cam and cam_counts.get(c_cam, 0) >= 3:
+            if not cam and cam_counts.get(c_cam, 0) >= 3 and card.get("match") != "full":
                 deferred_overflow.append(card)
                 continue
 
@@ -281,21 +257,23 @@ def ask(q: str, n: int = 24, use_llm: bool = False, rerank: bool = False, camera
                 if len(out) >= n:
                     break
 
-        # Calibrate raw RRF scores to intuitive percentage confidence (98% down to 72%)
+        # Displayed confidence: how much of the query the result satisfies, nudged by retrieval rank.
+        # Partial matches can no longer show 90%+ just because the fused score of a single word was high.
         if out:
-            max_raw = max((c.get("score") or 0.0 for c in out), default=0.0)
-            if 0.0 < max_raw < 0.25:  # Raw RRF fusion scores
-                for card in out:
-                    if card.get("score") is not None:
-                        rel = max(0.0, card["score"]) / max_raw
-                        calibrated = round(0.68 + 0.30 * (rel ** 1.3), 3)
-                        card["score"] = min(0.98, max(0.50, calibrated))
+            max_raw = max((c.get("score") or 0.0 for c in out), default=0.0) or 1.0
+            for card in out:
+                rel = max(0.0, card.get("score") or 0.0) / max_raw
+                cov = card.get("coverage") if card.get("coverage") is not None else 1.0
+                conf = 0.30 + 0.45 * cov + 0.15 * rel + (0.08 if card.get("verified") else 0.0)
+                card["score"] = round(min(0.98, conf), 3)
 
     finally:
         db.close()
 
     elapsed = round(time.time() - t0, 2)
-    return dict(query={"type": kind, "text": search_text, "camera": cam}, kind=kind, mode=mode, dataset=dataset, latency_s=elapsed, took_s=elapsed, n=len(out), results=out)
+    return dict(query={"type": kind, "text": search_text, "camera": cam}, kind=kind, mode=mode, dataset=dataset,
+                plan=plan, understood=r["understood"], notice=r["notice"], unsupported=r["unsupported"],
+                timings=r["timings"], latency_s=elapsed, took_s=elapsed, n=len(out), results=out)
 
 
 @app.get("/api/health")
@@ -669,8 +647,11 @@ def preload_all_models():
     # 5. Warm up Natural Language Query Parser
     try:
         from src.query import parser as pr
+        from src.query import constraints as qc, contextual
+        cp = qc.corpus()
+        _ = contextual.cameras()
         _ = pr.parse("person wearing a blue jacket walking left", use_llm=False)
-        print("  ✓ [Query Parser] Regex & rules engine primed.")
+        print(f"  ✓ [Query Planner] {sum(len(d) for d in cp.docs.values())} captions loaded for constraint checks.")
     except Exception as e:
         print(f"  ⚠️ [Query Parser] Note: {e}")
 

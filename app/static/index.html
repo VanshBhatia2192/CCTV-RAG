@@ -528,6 +528,13 @@
   .tag.top { border-color: rgba(56, 189, 248, 0.3); color: #7dd3fc; }
   .tag.bot { border-color: rgba(16, 185, 129, 0.3); color: #6ee7b7; }
   .tag.mot { border-color: rgba(245, 158, 11, 0.3); color: #fcd34d; }
+  .tag.ok { border-color: var(--success); color: var(--success); background: var(--success-bg); }
+  .tag.miss { border-color: var(--warning); color: var(--warning); background: var(--warning-bg); }
+  .query-banner { margin: -6px 4px 14px; padding: 10px 14px; border-radius: 10px; font-size: 13px;
+    border: 1px solid var(--border); color: var(--text-secondary); display: flex; flex-direction: column; gap: 4px; }
+  .query-banner[hidden] { display: none; }
+  .query-banner .understood b { color: var(--text-primary); font-family: var(--font-mono); font-weight: 600; }
+  .query-banner .notice { color: var(--warning); }
 
   .card-actions {
     margin-top: auto;
@@ -768,8 +775,8 @@
       </div>
 
       <div class="toolbar-right" id="ask-toggles">
-        <label class="toggle-label"><input type="checkbox" id="llm-toggle"> LLM Query Decomposer</label>
-        <label class="toggle-label"><input type="checkbox" id="rerank-toggle"> Cross-Modal Re-rank</label>
+        <label class="toggle-label" title="Use the LLM to split the query into requirements (slower; rules are used otherwise)"><input type="checkbox" id="llm-toggle"> LLM Query Planner</label>
+        <label class="toggle-label" title="Ask the vision model about each requirement for the top results (needs a GPU)"><input type="checkbox" id="rerank-toggle"> VLM Verify</label>
       </div>
     </div>
   </div>
@@ -777,6 +784,11 @@
   <div class="results-meta">
     <div class="results-count" id="results-count">Ready to search across 400 ingested surveillance archives.</div>
     <button class="btn-export" onclick="exportFindingsJSON()">📥 Export Findings (JSON)</button>
+  </div>
+
+  <div id="query-banner" class="query-banner" hidden>
+    <div class="understood"></div>
+    <div class="notice"></div>
   </div>
 
   <div id="results-grid" class="grid">
@@ -1111,6 +1123,11 @@ function createCard(item, opts = {}) {
   }
 
   const tags = buildTags(item.attrs);
+  if (item.match) {
+    for (const m of item.matched || []) tags.unshift(el("span", {className: "tag ok", textContent: `✓ ${m}`}));
+    for (const m of item.missing || []) tags.unshift(el("span", {className: "tag miss", textContent: `✗ ${m}`}));
+    if (item.verified) tags.unshift(el("span", {className: "tag ok", textContent: "VLM verified"}));
+  }
   if (tags.length) {
     cardBody.append(el("div", {className: "card-chips"}, ...tags));
   }
@@ -1208,6 +1225,7 @@ async function executeSearch() {
     }
 
     currentResults = data.results || [];
+    showQueryBanner(data);
     const elapsed = Math.round(performance.now() - t0);
     $("#stat-latency").textContent = `${elapsed}ms`;
 
@@ -1217,6 +1235,17 @@ async function executeSearch() {
     countLabel.textContent = `Search error: ${err.message}`;
     resultsGrid.replaceChildren(el("div", {className: "empty-state", style: "grid-column:1/-1; color:var(--danger);"}, el("p", {textContent: `Error: ${err.message}`})));
   }
+}
+
+// What the planner understood, and any warning (unknown term, only partial matches, VLM rejections)
+function showQueryBanner(data) {
+  const banner = $("#query-banner");
+  if (!data || !data.understood) { banner.hidden = true; return; }
+  const full = (data.results || []).filter(r => r.match === "full").length;
+  banner.querySelector(".understood").replaceChildren("Understood as ", el("b", {textContent: data.understood}),
+    ` · ${full} full match${full === 1 ? "" : "es"}`);
+  banner.querySelector(".notice").textContent = data.notice || "";
+  banner.hidden = false;
 }
 
 // Render Results with Sorting
