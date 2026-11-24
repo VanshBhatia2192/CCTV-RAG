@@ -100,10 +100,16 @@ def rrf(lists, weights=None, k=60):
             s[i] = s.get(i, 0) + w / (k + r + 1)
     return s
 
-def retrieve(kind, text, k=50, mode="hybrid", where=None, pool=100, w=(1.0, 1.0, 1.0), boost=True, extra=()):
-    """extra: additional ranked id lists (e.g. captions containing a required term) fused with weight 1."""
+def retrieve(kind, text, k=50, mode="hybrid", where=None, pool=100, w=(1.0, 1.0, 1.0), boost=True, extra=(),
+             restrict=None):
+    """extra: additional ranked id lists (e.g. captions containing a required term) fused with weight 1.
+    restrict: only these ids are eligible (e.g. a time-of-day filter); applied inside every search."""
     ml = query_motion(kind, text) if boost else None
     ids = (_motion_ids(kind, ml) or None) if ml else None
+    if restrict is not None:
+        ids = [i for i in ids if i in restrict] if ids is not None else list(restrict)
+        if not ids:
+            return []
     aset = set(ids) if ids else None
     vis = []
     if mode in ("visual", "hybrid"):

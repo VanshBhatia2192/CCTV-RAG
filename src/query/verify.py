@@ -19,6 +19,9 @@ def question(c, kind):
         return f'Is the text, logo or brand name "{v}" visible on {s} or anything {s} has?'
     if t == "term":
         return f'Does this image show {s} matching "{v}"?'
+    if t == "attribute":
+        return {"woman": f"Is {s} a woman?", "man": f"Is {s} a man?", "child": f"Is {s} a child?",
+                "teen": f"Is {s} a teenager?", "elderly": f"Is {s} an elderly person?"}.get(v, f"Is {s} {v}?")
     if t == "object":
         return (f"Is {s} a {v}?" if kind == "vehicle" else f"Does {s} have, wear or carry a {v}?")
     if t == "action":

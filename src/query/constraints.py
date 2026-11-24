@@ -16,7 +16,13 @@ OBJ_SYN = {"bag": {"bag", "backpack", "handbag", "purse", "tote", "satchel", "br
            "jacket": {"jacket", "coat", "puffer", "parka", "windbreaker"}, "coat": {"coat", "jacket", "parka"},
            "shirt": {"shirt", "t-shirt", "tshirt", "top", "blouse"}, "hoodie": {"hoodie", "hooded", "sweatshirt"},
            "pants": {"pants", "trousers", "jeans", "slacks"}, "jeans": {"jeans", "denim"},
-           "phone": {"phone", "cellphone", "smartphone"}, "suitcase": {"suitcase", "luggage"}}
+           "phone": {"phone", "cellphone", "smartphone"}, "suitcase": {"suitcase", "luggage", "rolling"},
+           "package": {"package", "box", "parcel", "carton", "boxes"}, "box": {"box", "package", "parcel", "carton"},
+           "uniform": {"uniform", "police", "security", "sheriff"}, "vest": {"vest", "hi-vis", "reflective"},
+           "umbrella": {"umbrella"}}
+ATTR_SYN = {"woman": {"woman", "women", "lady", "girl", "female"}, "man": {"man", "men", "guy", "boy", "male"},
+            "child": {"child", "children", "kid", "kids", "boy", "girl", "toddler"},
+            "teen": {"teen", "teenage", "teenager"}, "elderly": {"elderly", "old", "senior"}}
 ACT_SYN = {"walking": {"walk", "walks", "walking"}, "running": {"run", "runs", "running", "jogging", "jogs"},
            "standing": {"standing", "stands", "stationary", "still", "waiting", "idle"},
            "sitting": {"sitting", "sits", "seated"}, "carrying": {"carrying", "carries", "holding", "holds"},
@@ -131,6 +137,8 @@ def evidence(c, kind, caption, attrs):
     t, v, at = c["type"], c["value"], c.get("applies_to")
     if t in ("text", "term"):
         return 1.0 if has(ncap, v) else 0.0
+    if t == "attribute":
+        return 1.0 if any(w in ATTR_SYN.get(v, {v}) for w in words) else 0.0
     if t == "object":
         syn = OBJ_SYN.get(v, {v})
         if any(has(ncap, s) for s in syn):

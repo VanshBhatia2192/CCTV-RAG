@@ -58,7 +58,28 @@ STOP = {"a", "an", "the", "with", "in", "on", "at", "of", "and", "or", "to", "fr
 NEG = {"without", "no", "not", "never", "except"}
 
 KINDS = ("person", "vehicle", "incident", "any")
-TYPES = ("color", "object", "action", "text", "term")
+TYPES = ("color", "object", "action", "text", "term", "attribute")
+GENDER = {"woman": "woman", "women": "woman", "lady": "woman", "ladies": "woman", "girl": "woman", "girls": "woman",
+          "female": "woman", "man": "man", "men": "man", "guy": "man", "guys": "man", "boy": "man", "boys": "man",
+          "male": "man"}
+AGE = {"kid": "child", "kids": "child", "child": "child", "children": "child", "boy": "child", "girl": "child",
+       "teenager": "teen", "teen": "teen"}
+
+# phrase -> what it implies in a CCTV description (all soft unless the phrase IS the requirement)
+CONCEPTS = [
+    (r"\b(?:police(?: officers?)?|cops?|policem[ae]n|security guards?|guards?|officers?)\b",
+     [("object", "uniform", None, False)], "person"),
+    (r"\bconstruction workers?\b|\bworkers? in (?:a |an )?(?:safety|hi-?vis|high-?vis(?:ibility)?|reflective) vests?\b",
+     [("object", "vest", None, True)], "person"),
+    (r"\bdelivery (?:guy|man|men|person|people|driver|worker)s?\b", [("object", "package", None, False)], "person"),
+    (r"\b(?:old|elderly|senior) (?:man|men|woman|women|lady|ladies|person|people)\b",
+     [("attribute", "elderly", None, False)], None),
+    (r"\b(?:cyclists?|bikers?|bicyclists?)\b", [("object", "bicycle", None, True), ("action", "riding", None, False)], "person"),
+    (r"\b(?:travell?ers?|tourists?)\b", [("object", "suitcase", None, False)], "person"),
+    (r"\bjoggers?\b", [("action", "running", None, True)], "person"),
+    (r"\b(?:smoking|smoker)\b", [("term", "cigarette", None, False)], "person"),
+    (r"\b(?:on (?:the|a|his|her|their) phone|phone call|texting)\b", [("action", "using phone", None, True)], "person"),
+]
 
 
 def _c(type_, value, applies_to=None, required=True, note=None):
@@ -122,6 +143,120 @@ def tokens(q):
     return re.findall(r"[a-z0-9]+(?:-[a-z0-9]+)*", q.lower())
 
 
+PARTS_OF_DAY = {"morning": ("05:00", "12:00"), "noon": ("11:30", "13:30"), "afternoon": ("12:00", "17:00"),
+                "evening": ("17:00", "21:00"), "night": ("20:00", "05:00"), "midnight": ("23:00", "01:00")}
+MONTHS = {m: i + 1 for i, m in enumerate(("january", "february", "march", "april", "may", "june", "july", "august",
+                                          "september", "october", "november", "december"))}
+_T = r"(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?"
+
+
+def _hhmm(h, m, ap):
+    h, m = int(h), int(m or 0)
+    ap = (ap or "").replace(".", "")
+    if ap == "pm" and h < 12: h += 12
+    if ap == "am" and h == 12: h = 0
+    return f"{h % 24:02d}:{m:02d}" if 0 <= h < 25 and 0 <= m < 60 else None
+
+
+def parse_time(low):
+    """Time-of-day / date filters: 'after 5pm', 'before 17:30', 'between 4 and 5 pm', 'around 5:15pm',
+    'in the morning', 'on march 7', '2018-03-07'. Returns ({start, end, date} or None, text without them)."""
+    t = {}
+    def cut(m):
+        nonlocal low
+        low = low[:m.start()] + " " + low[m.end():]
+    m = re.search(r"\bbetween\s+" + _T + r"\s+(?:and|-|to)\s+" + _T, low)
+    if m:
+        ap2 = m.group(6)
+        a, b = _hhmm(m.group(1), m.group(2), m.group(3) or ap2), _hhmm(m.group(4), m.group(5), ap2)
+        if a and b: t["start"], t["end"] = a, b; cut(m)
+    for word, key in (("after|since|from", "start"), ("before|until|till|by", "end")):
+        m = re.search(rf"\b(?:{word})\s+" + _T + r"(?![\w:])", low)
+        if m and (m.group(2) or m.group(3)):
+            v = _hhmm(m.group(1), m.group(2), m.group(3))
+            if v: t[key] = v; cut(m)
+    m = re.search(r"\b(?:around|about|at|near)\s+" + _T + r"(?![\w:])", low)
+    if m and (m.group(2) or m.group(3)) and "start" not in t:
+        v = _hhmm(m.group(1), m.group(2), m.group(3))
+        if v:
+            h, mi = map(int, v.split(":")); a, b = h * 60 + mi - 30, h * 60 + mi + 30
+            t["start"], t["end"] = f"{a // 60 % 24:02d}:{a % 60:02d}", f"{b // 60 % 24:02d}:{b % 60:02d}"; cut(m)
+    m = re.search(r"\b(?:in the |this |at |during the )?(morning|noon|afternoon|evening|night|midnight)\b", low)
+    if m and "start" not in t and "end" not in t:
+        t["start"], t["end"] = PARTS_OF_DAY[m.group(1)]; cut(m)
+    m = re.search(r"\b(20\d\d)-(\d\d)-(\d\d)\b", low)
+    if m:
+        t["date"] = m.group(0); cut(m)
+    else:
+        m = re.search(r"\b(?:on\s+)?(" + "|".join(MONTHS) + r")\s+(\d{1,2})(?:st|nd|rd|th)?\b", low)
+        if m:
+            t["date"] = f"*-{MONTHS[m.group(1)]:02d}-{int(m.group(2)):02d}"; cut(m)
+    return (t or None), low
+
+
+def apply_concepts(low):
+    cons, kind = [], None
+    for pat, implied, k in CONCEPTS:
+        m = re.search(pat, low)
+        if m:
+            for t_, v, at, req in implied:
+                cons.append(_c(t_, v, at, req))
+            kind = kind or k
+            if t_ == "attribute":       # "old man": keep the noun for gender
+                low = low[:m.start()] + " " + " ".join(m.group(0).split()[1:]) + " " + low[m.end():]
+            else:
+                low = low[:m.start()] + " " + low[m.end():]
+    return cons, kind, low
+
+
+def rewrite(p):
+    """The plan as a caption-style sentence (the wording v2 captions use), for the embedding/BM25 search."""
+    cons = p["constraints"]
+    if not cons:
+        return p["text"]
+    by = lambda t: [c for c in cons if c["type"] == t]
+    attrs = {c["value"] for c in by("attribute")}
+    colored = {}
+    for c in by("color"):
+        colored.setdefault(c["applies_to"] or "any", []).append(c["value"])
+    objs = [c["value"] for c in by("object")]
+    if p["kind"] == "vehicle":
+        typ = next((o for o in objs if o in set(VEHICLES.values())), "vehicle")
+        col = " and ".join(colored.get("vehicle", []) + colored.get("any", []))
+        s = f"A {col + ' ' if col else ''}{typ}"
+        extra = [o for o in objs if o != typ]
+        if extra: s += " with " + ", ".join(extra)
+    elif p["kind"] in ("incident", "any"):
+        return p["text"]
+    else:
+        who = "woman" if "woman" in attrs else "man" if "man" in attrs else "person"
+        if "child" in attrs: who = "child"
+        if "elderly" in attrs: who = f"elderly {who}"
+        wear, carry, ride = [], [], []
+        for o in objs:
+            ph = " ".join(colored.pop(o, []) + [o])
+            (ride if o in VEHICLES else wear if o in UPPER | LOWER | HEAD | FEET or o in ("uniform", "vest")
+             else carry).append(ph)
+        for at, cols in colored.items():
+            if at in ("any", None, "upper", "lower"):
+                wear.append(" ".join(cols) + (" clothing" if at in ("any", None) else f" {at}-body clothing"))
+            else:
+                carry.append(" ".join(cols) + f" {at}")
+        art = lambda x: ("an " if x[:1] in "aeiou" else "a ") + x
+        s = art(who).capitalize()
+        if wear: s += " wearing " + ", ".join(art(w) if not w.endswith("s") else w for w in wear)
+        if carry: s += (", " if wear else " ") + "carrying " + " and ".join(art(c) for c in carry)
+        if ride: s += (", " if wear or carry else " ") + "riding " + " and ".join(art(r) for r in ride)
+    s += "."
+    txt = [c["value"] for c in by("text")]
+    if txt: s += " Visible text: " + ", ".join(f'"{t}"' for t in txt) + "."
+    acts = [c["value"] for c in by("action")]
+    if acts: s += " " + ", ".join(acts).capitalize() + "."
+    terms = [c["value"] for c in by("term")]
+    if terms: s += " " + " ".join(terms) + "."
+    return s
+
+
 def rules_plan(q, cameras=(), vocab=None):
     """Deterministic planner. vocab: set of words seen in captions (enables typo fixes and unknown-term detection)."""
     raw = q.strip()
@@ -133,9 +268,14 @@ def rules_plan(q, cameras=(), vocab=None):
     for m in re.finditer(r'"([^"]+)"|“([^”]+)”', low):           # quoted -> visible text / logo
         cons.append(_c("text", (m.group(1) or m.group(2)).strip()))
     low = re.sub(r'"[^"]*"|“[^”]*”', " ", low)
+    when, low = parse_time(low)
+    implied, concept_kind, low = apply_concepts(low)
+    cons += implied
 
     w = tokens(low)
     kind_votes = {"person": 0, "vehicle": 0}
+    if concept_kind:
+        kind_votes[concept_kind] += 2
     neg_left = 0                      # words still under a "without/no/not"
     pending_color = []                # colors waiting for the noun they describe
     i = 0
@@ -172,6 +312,10 @@ def rules_plan(q, cameras=(), vocab=None):
                     w[i] = noun; continue          # re-run this word through the action branch
         if noun in PEOPLE:
             kind_votes["person"] += 2
+            if noun in GENDER:
+                target.append(_c("attribute", GENDER[noun], required=False))
+            if noun in AGE:
+                target.append(_c("attribute", AGE[noun], required=False))
             for col in pending_color: target.append(_c("color", col, "any"))
             pending_color = []; i += 1; continue
         if _is_noun(noun):
@@ -205,6 +349,12 @@ def rules_plan(q, cameras=(), vocab=None):
     for col in pending_color:          # trailing colors: "the car was red"
         cons.append(_c("color", col, "vehicle" if kind_votes["vehicle"] > kind_votes["person"] else "any"))
 
+    if cons and not any(c["required"] for c in cons):
+        # nothing hard in the query ("cop", "delivery guy"): what it implies is the requirement, else every person
+        # would count as an exact match. Gender/age stay preferences.
+        for c in cons:
+            if c["type"] != "attribute":
+                c["required"] = True
     if INCIDENT.search(low) or any(c["type"] == "action" and INCIDENT.fullmatch(c["value"].split()[0]) for c in cons):
         kind = "incident"
     elif kind_votes["vehicle"] > kind_votes["person"]:
@@ -214,7 +364,7 @@ def rules_plan(q, cameras=(), vocab=None):
     else:
         kind = "any"
     return finalize({"kind": kind, "text": _visual_text(raw, camera, negs), "constraints": cons, "negations": negs,
-                     "camera": camera, "notes": notes, "planner": "rules"})
+                     "camera": camera, "time": when, "notes": notes, "planner": "rules"})
 
 
 def _visual_text(raw, camera, negs=()):
@@ -226,6 +376,7 @@ def _visual_text(raw, camera, negs=()):
     if camera:
         t = re.sub(re.escape(camera), " ", t, flags=re.I)
     t = re.sub(r"\b(show me|find|search for|footage of|video of|clips? of|on camera|cameras?)\b", " ", t, flags=re.I)
+    t = parse_time(t.lower())[1] if parse_time(t.lower())[0] else t
     return re.sub(r"\s+", " ", t).strip() or raw
 
 
@@ -233,7 +384,8 @@ def finalize(p):
     """Validate/normalise any plan (rules or LLM) into the schema; drop duplicates and junk."""
     out = {"kind": p.get("kind") if p.get("kind") in KINDS else "any",
            "text": (p.get("text") or "").strip(), "camera": p.get("camera"),
-           "notes": list(p.get("notes") or []), "planner": p.get("planner", "rules")}
+           "notes": list(p.get("notes") or []), "planner": p.get("planner", "rules"),
+           "time": p.get("time") if isinstance(p.get("time"), dict) else None}
     for key in ("constraints", "negations"):
         seen, lst = set(), []
         for c in p.get(key) or []:
@@ -259,6 +411,11 @@ def describe(p):
                      else v)
     parts += [f'not {c["value"]}' for c in p["negations"]]
     who = {"any": "anything", "incident": "event"}.get(p["kind"], p["kind"])
+    t = p.get("time") or {}
+    if t:
+        span = (f'{t.get("start", "")}-{t.get("end", "")}' if t.get("start") and t.get("end") else
+                f'after {t["start"]}' if t.get("start") else f'before {t["end"]}' if t.get("end") else "")
+        parts.append(" ".join(x for x in (span, f'on {t["date"].replace("*-", "")}' if t.get("date") else "") if x))
     return f'{who}: ' + ", ".join(parts) if parts else who
 
 
@@ -277,8 +434,13 @@ Example: "woman in a black coat without a bag walking left" -> {"kind":"person",
 
 
 def llm_plan(q, cameras=(), vocab=None):
-    from src.query import parser            # reuses its lazily loaded parser LLM
-    p = parser.chat_json(SYS, q, max_new_tokens=220)
+    import torch
+    if torch.cuda.is_available():            # the 7B Qwen2.5-VL already loaded for captions/verification
+        from src.captions import v2
+        p = v2.chat_json(SYS, q, max_new_tokens=260)
+    else:                                    # CPU: the small parser LLM
+        from src.query import parser
+        p = parser.chat_json(SYS, q, max_new_tokens=220)
     p["planner"] = "llm"
     if p.get("camera") not in set(cameras):
         p["camera"] = next((c for c in cameras if c and c.lower() in q.lower()), None)
@@ -312,6 +474,7 @@ def merge(llm, rules):
     if llm["kind"] == "any" and rules["kind"] != "any":
         llm["kind"] = rules["kind"]
     llm["camera"] = llm["camera"] or rules["camera"]
+    llm["time"] = llm.get("time") or rules.get("time")
     llm["notes"] += rules["notes"]
     return finalize(llm)
 

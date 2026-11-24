@@ -164,3 +164,30 @@ def test_vlm_is_not_asked_about_motion_or_text_the_caption_already_reads():
     assert not V.checkable(P._c("action", "turning right"), "vehicle", h)
     assert not V.checkable(P._c("text", "catalyst"), "person", h)
     assert V.checkable(P._c("color", "blue", "bag"), "person", h)
+
+
+def test_time_filters():
+    assert P.parse_time("red car after 5pm")[0] == {"start": "17:00"}
+    assert P.parse_time("between 4 and 5 pm on march 7")[0] == {"start": "16:00", "end": "17:00", "date": "*-03-07"}
+    assert P.parse_time("around 5:15pm")[0] == {"start": "16:45", "end": "17:45"}
+    assert P.parse_time("in the evening")[0] == {"start": "17:00", "end": "21:00"}
+    assert P.parse_time("before 09:30 on 2018-03-07")[0] == {"end": "09:30", "date": "2018-03-07"}
+    p = plan("red car after 5pm")
+    assert p["time"] == {"start": "17:00"} and "5pm" not in p["text"] and p["kind"] == "vehicle"
+
+
+def test_concepts_and_attributes():
+    p = plan("cop")
+    assert P._c("object", "uniform") in p["constraints"] and p["kind"] == "person"   # only implied -> required
+    p = plan("old woman with a suitcase")
+    assert P._c("attribute", "elderly", required=False) in p["constraints"]
+    assert P._c("attribute", "woman", required=False) in p["constraints"]
+    p = plan("cyclist in a yellow vest")
+    assert P._c("object", "bicycle") in p["constraints"] and P._c("color", "yellow", "vest") in p["constraints"]
+    assert C.evidence(P._c("attribute", "woman"), "person", "A woman wearing a black coat.", {}) == 1.0
+
+
+def test_rewrite_matches_caption_style():
+    assert P.rewrite(plan("man in a red jacket with a backpack")) == "A man wearing a red jacket, carrying a backpack."
+    assert P.rewrite(plan("white truck turning right")).startswith("A white truck")
+    assert P.rewrite(plan("red bluewhale")) == "red bluewhale"

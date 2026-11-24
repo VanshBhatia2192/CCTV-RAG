@@ -1,0 +1,210 @@
+{
+ "all": {
+  "main any (0.6 app + 0.4 gait)": {
+   "R1": 41.3,
+   "mAP": 16.1,
+   "d_mAP_vs_main": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "n": 293
+  },
+  "main cloth-change (gait only)": {
+   "R1": 22.2,
+   "mAP": 9.2,
+   "d_mAP_vs_main": [
+    -6.9,
+    -8.8,
+    -5.0
+   ],
+   "n": 293
+  },
+  "branch any (0.75 app + 0.25 gait + 0.1 kin)": {
+   "R1": 43.7,
+   "mAP": 16.5,
+   "d_mAP_vs_main": [
+    0.4,
+    -0.2,
+    0.9
+   ],
+   "n": 293
+  },
+  "branch any, without kin": {
+   "R1": 45.1,
+   "mAP": 17.1,
+   "d_mAP_vs_main": [
+    0.9,
+    0.4,
+    1.5
+   ],
+   "n": 293
+  },
+  "main any + 0.1 kin": {
+   "R1": 37.2,
+   "mAP": 15.6,
+   "d_mAP_vs_main": [
+    -0.5,
+    -0.7,
+    -0.3
+   ],
+   "n": 293
+  },
+  "branch cloth-change (0.5 gait + 0.2 app + 0.15 kin, strict reject)": {
+   "R1": 29.7,
+   "mAP": 10.9,
+   "d_mAP_vs_main": [
+    -5.2,
+    -6.6,
+    -4.0
+   ],
+   "n": 293
+  },
+  "branch cloth-change, soft kin (no reject)": {
+   "R1": 29.7,
+   "mAP": 11.8,
+   "d_mAP_vs_main": [
+    -4.3,
+    -5.6,
+    -3.1
+   ],
+   "n": 293
+  },
+  "branch cloth-change, no kin": {
+   "R1": 33.4,
+   "mAP": 12.6,
+   "d_mAP_vs_main": [
+    -3.5,
+    -4.7,
+    -2.3
+   ],
+   "n": 293
+  },
+  "kin only": {
+   "R1": 2.0,
+   "mAP": 2.6,
+   "d_mAP_vs_main": [
+    -13.5,
+    -16.5,
+    -11.1
+   ],
+   "n": 293
+  },
+  "random": {
+   "R1": 2.0,
+   "mAP": 2.2,
+   "d_mAP_vs_main": [
+    -13.9,
+    -17.0,
+    -11.2
+   ],
+   "n": 293
+  }
+ },
+ "cc": {
+  "main any (0.6 app + 0.4 gait)": {
+   "R1": 3.8,
+   "mAP": 4.2,
+   "d_mAP_vs_main": [
+    -0.0,
+    -1.0,
+    0.8
+   ],
+   "n": 261
+  },
+  "main cloth-change (gait only)": {
+   "R1": 5.7,
+   "mAP": 4.2,
+   "d_mAP_vs_main": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "n": 261
+  },
+  "branch any (0.75 app + 0.25 gait + 0.1 kin)": {
+   "R1": 5.0,
+   "mAP": 4.0,
+   "d_mAP_vs_main": [
+    -0.2,
+    -1.2,
+    0.8
+   ],
+   "n": 261
+  },
+  "branch any, without kin": {
+   "R1": 4.2,
+   "mAP": 4.0,
+   "d_mAP_vs_main": [
+    -0.2,
+    -1.2,
+    0.8
+   ],
+   "n": 261
+  },
+  "main any + 0.1 kin": {
+   "R1": 3.8,
+   "mAP": 4.1,
+   "d_mAP_vs_main": [
+    -0.1,
+    -1.0,
+    0.7
+   ],
+   "n": 261
+  },
+  "branch cloth-change (0.5 gait + 0.2 app + 0.15 kin, strict reject)": {
+   "R1": 4.2,
+   "mAP": 3.9,
+   "d_mAP_vs_main": [
+    -0.2,
+    -0.8,
+    0.4
+   ],
+   "n": 261
+  },
+  "branch cloth-change, soft kin (no reject)": {
+   "R1": 4.6,
+   "mAP": 4.2,
+   "d_mAP_vs_main": [
+    -0.0,
+    -0.6,
+    0.5
+   ],
+   "n": 261
+  },
+  "branch cloth-change, no kin": {
+   "R1": 4.6,
+   "mAP": 4.2,
+   "d_mAP_vs_main": [
+    0.1,
+    -0.6,
+    0.6
+   ],
+   "n": 261
+  },
+  "kin only": {
+   "R1": 0.8,
+   "mAP": 1.7,
+   "d_mAP_vs_main": [
+    -2.5,
+    -4.9,
+    -1.0
+   ],
+   "n": 261
+  },
+  "random": {
+   "R1": 0.8,
+   "mAP": 1.1,
+   "d_mAP_vs_main": [
+    -3.1,
+    -5.4,
+    -1.6
+   ],
+   "n": 261
+  }
+ },
+ "strict_reject": {
+  "all_pairs": 0.322,
+  "true_cc_matches": 0.312
+ }
+}

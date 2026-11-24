@@ -7,8 +7,10 @@ import numpy as np
 from qdrant_client import models
 from src.index import vector_db
 
-# weight on appearance. 'any': 0.6 (balanced dual biometrics), 'cloth_change': 0.0 (gait only)
-MODES = {"any": 0.6, "cloth_change": 0.0}
+# weight on appearance. 'any': 0.8 (MEVID cross-camera R1/mAP 46.1/17.4 vs 41.3/16.1 at 0.6; the weight the
+# cross-validated eval in eval/gait/eval_mevid.py picks), 'cloth_change': 0.0 (gait only, best on the cloth-changing
+# split). Cadence / aspect-ratio gating was tested and does not help: eval/gait/eval_reid_cues.py.
+MODES = {"any": 0.8, "cloth_change": 0.0}
 FIELDS = ["camera", "chunk_id", "start_s", "end_s", "motion"]
 WALK = {"walking", "running"}   # gait is most informative for people who are moving
 

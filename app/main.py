@@ -71,6 +71,19 @@ def _clip_times(start, end, chunk_start):
     return round(t0, 1), round(t1, 1)
 
 
+_STAMP = re.compile(r"(20\d\d)-(\d\d)-(\d\d)\.(\d\d)-(\d\d)-(\d\d)")
+
+
+def _recorded_at(source, offset_s):
+    """Wall-clock time of an event from the MEVA file name (2018-03-07.17-00-00...) plus its offset, ISO string."""
+    m = _STAMP.search(source or "")
+    if not m:
+        return None
+    import datetime as dt
+    t0 = dt.datetime(*map(int, m.groups()))
+    return (t0 + dt.timedelta(seconds=float(offset_s or 0))).isoformat(timespec="seconds")
+
+
 def _card_track(t, score=None):
     src_path = _resolve_video_path(t.get("video_source"))
     if src_path and src_path.exists():
@@ -84,6 +97,7 @@ def _card_track(t, score=None):
     return dict(id=t["id"], kind=t["kind"], camera=t["camera"], dataset=t.get("dataset") or "meva",
                 start_s=round(t["start_s"], 1), end_s=round(t["end_s"], 1),
                 caption=t["caption"], attrs=json.loads(t.get("attrs_json") or "{}"), thumb=f"/api/thumb/{t['id']}",
+                recorded_at=_recorded_at(t.get("video_source"), t["start_s"]),
                 clip=f"/api/clip/{t['chunk_id']}", clip_t0=t0, clip_t1=t1, is_full_video=is_full,
                 score=None if score is None else round(float(score), 4))
 
@@ -110,7 +124,8 @@ def _card_window(db, hit):
 
     return dict(id=w["id"], kind="incident", camera=w["camera"], dataset=w.get("dataset") or "meva",
                 start_s=round(w["start_s"], 1), end_s=round(w["end_s"], 1),
-                caption=w["caption"], attrs={}, thumb=None, clip=f"/api/clip/{w['chunk_id']}", clip_t0=t0, clip_t1=t1,
+                caption=w["caption"], attrs={}, thumb=f"/api/wthumb/{w['id']}", clip=f"/api/clip/{w['chunk_id']}", clip_t0=t0, clip_t1=t1,
+                recorded_at=_recorded_at(w.get("video_source"), w["start_s"]),
                 is_full_video=is_full, score=round(float(hit["score"]), 4))
 
 
@@ -278,7 +293,12 @@ def ask(q: str, n: int = 24, use_llm: bool = False, rerank: bool = False, camera
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, **WARM}
+    try:
+        import torch
+        gpu = torch.cuda.is_available()
+    except Exception:
+        gpu = False
+    return {"ok": True, "gpu": gpu, **WARM}
 
 
 @app.get("/api/stats")
@@ -437,6 +457,36 @@ def thumb(tid: int):
     return FileResponse(files[len(files) // 2], media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
 
 
+@app.api_route("/api/wthumb/{wid}", methods=["GET", "HEAD"])
+def window_thumb(wid: int):
+    """JPEG of the middle frame of a scene window (cached in outputs/web_thumbs), so event cards do not have to load
+    the whole recording just to show a picture."""
+    out = Path("outputs/web_thumbs") / f"w{wid}.jpg"
+    if not out.exists():
+        db = _db()
+        try:
+            w = _row(db, "select w.rel_start, w.rel_end, c.path from windows w join chunks c on c.id=w.chunk_id where w.id=?", wid)
+        finally:
+            db.close()
+        p = _resolve_video_path(w["path"]) if w else None
+        if not p:
+            raise HTTPException(404, "no video")
+        import cv2
+        cap = cv2.VideoCapture(str(p))
+        cap.set(cv2.CAP_PROP_POS_MSEC, 1000 * (float(w["rel_start"]) + float(w["rel_end"])) / 2)
+        ok, fr = cap.read()
+        cap.release()
+        if not ok:
+            raise HTTPException(404, "could not read frame")
+        h_, w_ = fr.shape[:2]
+        s = min(1.0, 640 / max(h_, w_))
+        if s < 1:
+            fr = cv2.resize(fr, (int(w_ * s), int(h_ * s)), interpolation=cv2.INTER_AREA)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        cv2.imwrite(str(out), fr, [cv2.IMWRITE_JPEG_QUALITY, 82])
+    return FileResponse(out, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
+
+
 def _ensure_web_playable(path: Path) -> Path:
     """Ensure the video file is an MP4 playable by web browsers (Chrome/Safari/Firefox).
     If it's an .avi (like raw MEVID recordings), fast-remux it without re-encoding
@@ -475,6 +525,43 @@ def _ensure_web_playable(path: Path) -> Path:
         print(f"⚠️ [Web Remux] Could not remux {path} to MP4: {e}")
         
     return path
+
+
+_DIMS = {}
+
+
+def _video_dims(path):
+    """(width, height) of a video file, cached."""
+    if path not in _DIMS:
+        import cv2
+        cap = cv2.VideoCapture(str(path))
+        _DIMS[path] = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        cap.release()
+    return _DIMS[path]
+
+
+@app.get("/api/track/{tid}/boxes")
+def track_boxes(tid: int):
+    """Per-frame boxes of a track on the timeline of the video /api/clip serves for it, so the UI can draw them.
+    path_json boxes are [frame, cx, cy, h, w] in chunk-video pixels; time = chunk start (full recording) + frame/fps."""
+    db = _db()
+    try:
+        t = _row(db, "select t.path_json, t.fps, t.kind, ch.start_s as chunk_start, ch.path as chunk_path, ch.source "
+                     "from tracks t join chunks ch on ch.id=t.chunk_id where t.id=?", tid)
+    finally:
+        db.close()
+    if not t:
+        raise HTTPException(404, "no such track")
+    chunk = _resolve_video_path(t["chunk_path"])
+    if not chunk:
+        raise HTTPException(404, "chunk video missing")
+    src = _resolve_video_path(t["source"])
+    offset = float(t["chunk_start"] or 0) if src and src.exists() else 0.0
+    fps = float(t["fps"] or 25.0)
+    w, h = _video_dims(chunk)
+    boxes = [[round(offset + f / fps, 3), round(cx - bw / 2, 1), round(cy - bh / 2, 1), round(bw, 1), round(bh, 1)]
+             for f, cx, cy, bh, bw in json.loads(t["path_json"] or "[]")]
+    return {"kind": t["kind"], "fps": fps, "width": w, "height": h, "boxes": boxes}
 
 
 @app.api_route("/api/clip/{chunk_id}", methods=["GET", "HEAD"])
@@ -588,7 +675,8 @@ def reid_api(tid: int, mode: str = "any", k: int = 12, full_body: bool = True, u
 
 @app.get("/")
 def index():
-    return FileResponse(STATIC / "index.html")
+    # revalidate every load so a redeployed UI is never served stale from the browser cache
+    return FileResponse(STATIC / "index.html", headers={"Cache-Control": "no-cache"})
 
 
 def preload_all_models():
@@ -671,6 +759,16 @@ def preload_all_models():
         print(f"  ✓ [Qdrant Vector DB] Connected. Active collections: {', '.join(collections)}")
     except Exception as e:
         print(f"  ⚠️ [Qdrant Vector DB] Note: {e}")
+
+    # 8. On a GPU node: load the shared Qwen2.5-VL (LLM query planner + per-requirement VLM verification)
+    try:
+        import torch
+        if torch.cuda.is_available() and os.environ.get("PRELOAD_VLM", "1") == "1":
+            from src.captions import v2
+            v2.load()
+            print("  ✓ [Qwen2.5-VL] loaded on GPU for the LLM query planner and VLM verification.")
+    except Exception as e:
+        print(f"  ⚠️ [Qwen2.5-VL] Note: {e}")
 
     total_s = round(time.time() - t0, 2)
     WARM["done"] = True

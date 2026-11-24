@@ -17,11 +17,12 @@ def _images(kind, c):
 @torch.no_grad()
 def ask_yes(ims, question):
     """Logit margin yes - no for a yes/no question about the images (> 0 means the VLM leans yes)."""
-    m, p = caption._load()
+    from src.captions import v2
+    m, p = v2.load("cuda" if torch.cuda.is_available() else "cpu")   # one shared Qwen2.5-VL instance
     prompt = f"{question} Answer yes or no."
     msg = [{"role": "user", "content": [{"type": "image"} for _ in ims] + [{"type": "text", "text": prompt}]}]
     t = p.apply_chat_template(msg, tokenize=False, add_generation_prompt=True)
-    inp = p(text=[t], images=ims, return_tensors="pt").to(DEV)
+    inp = p(text=[t], images=ims, return_tensors="pt").to(m.device)
     lg = m(**inp).logits[0, -1].float()
     tok = p.tokenizer
     y = max(lg[tok.encode(w)[0]] for w in ("yes", "Yes"))
