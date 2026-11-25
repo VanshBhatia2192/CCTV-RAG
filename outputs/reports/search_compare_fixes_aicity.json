@@ -3,7 +3,7 @@
  "llm": false,
  "verify": false,
  "total_before": 119,
- "total_after": 181,
+ "total_after": 171,
  "queries": [
   {
    "query": "red bluewhale",
@@ -38,11 +38,11 @@
    ],
    "before_full": 0,
    "after_full": 0,
-   "latency_after": 1.74,
+   "latency_after": 1.9,
    "timings": {
     "plan": 0.01,
-    "retrieve": 1.666,
-    "score": 0.002
+    "retrieve": 1.833,
+    "score": 0.004
    },
    "before": [
     {
@@ -272,10 +272,10 @@
    "unsupported": [],
    "before_full": 10,
    "after_full": 10,
-   "latency_after": 0.45,
+   "latency_after": 0.49,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.445,
+    "retrieve": 0.489,
     "score": 0.001
    },
    "before": [
@@ -513,11 +513,11 @@
    "unsupported": [],
    "before_full": 10,
    "after_full": 10,
-   "latency_after": 0.24,
+   "latency_after": 0.25,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.239,
-    "score": 0.001
+    "retrieve": 0.251,
+    "score": 0.002
    },
    "before": [
     {
@@ -761,10 +761,10 @@
    "unsupported": [],
    "before_full": 8,
    "after_full": 10,
-   "latency_after": 0.21,
+   "latency_after": 0.22,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.206,
+    "retrieve": 0.222,
     "score": 0.001
    },
    "before": [
@@ -991,10 +991,10 @@
    "unsupported": [],
    "before_full": 1,
    "after_full": 10,
-   "latency_after": 0.2,
+   "latency_after": 0.23,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.195,
+    "retrieve": 0.226,
     "score": 0.001
    },
    "before": [
@@ -1219,10 +1219,10 @@
    "unsupported": [],
    "before_full": 8,
    "after_full": 10,
-   "latency_after": 0.23,
+   "latency_after": 0.24,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.162,
+    "retrieve": 0.169,
     "score": 0.001
    },
    "before": [
@@ -1457,8 +1457,8 @@
    "latency_after": 0.25,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.246,
-    "score": 0.001
+    "retrieve": 0.245,
+    "score": 0.002
    },
    "before": [
     {
@@ -1696,10 +1696,10 @@
    "unsupported": [],
    "before_full": 10,
    "after_full": 10,
-   "latency_after": 0.17,
+   "latency_after": 0.2,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.17,
+    "retrieve": 0.199,
     "score": 0.001
    },
    "before": [
@@ -1930,10 +1930,10 @@
    ],
    "before_full": 0,
    "after_full": 0,
-   "latency_after": 0.35,
+   "latency_after": 0.44,
    "timings": {
     "plan": 0.001,
-    "retrieve": 0.298,
+    "retrieve": 0.364,
     "score": 0.002
    },
    "before": [
@@ -2180,10 +2180,10 @@
    "unsupported": [],
    "before_full": 3,
    "after_full": 10,
-   "latency_after": 0.3,
+   "latency_after": 0.28,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.294,
+    "retrieve": 0.278,
     "score": 0.002
    },
    "before": [
@@ -2432,10 +2432,10 @@
    "unsupported": [],
    "before_full": 2,
    "after_full": 10,
-   "latency_after": 0.31,
+   "latency_after": 0.29,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.307,
+    "retrieve": 0.289,
     "score": 0.001
    },
    "before": [
@@ -2670,10 +2670,10 @@
    "unsupported": [],
    "before_full": 9,
    "after_full": 10,
-   "latency_after": 0.24,
+   "latency_after": 0.23,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.237,
+    "retrieve": 0.229,
     "score": 0.001
    },
    "before": [
@@ -2912,10 +2912,10 @@
    "unsupported": [],
    "before_full": 1,
    "after_full": 1,
-   "latency_after": 0.24,
+   "latency_after": 0.27,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.184,
+    "retrieve": 0.209,
     "score": 0.001
    },
    "before": [
@@ -3161,10 +3161,10 @@
    ],
    "before_full": 0,
    "after_full": 0,
-   "latency_after": 0.2,
+   "latency_after": 0.24,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.147,
+    "retrieve": 0.179,
     "score": 0.002
    },
    "before": [
@@ -3426,10 +3426,10 @@
    "unsupported": [],
    "before_full": 2,
    "after_full": 10,
-   "latency_after": 0.23,
+   "latency_after": 0.28,
    "timings": {
     "plan": 0.001,
-    "retrieve": 0.232,
+    "retrieve": 0.279,
     "score": 0.002
    },
    "before": [
@@ -3662,10 +3662,10 @@
    "unsupported": [],
    "before_full": 10,
    "after_full": 10,
-   "latency_after": 0.12,
+   "latency_after": 0.17,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.123,
+    "retrieve": 0.167,
     "score": 0.001
    },
    "before": [
@@ -3890,10 +3890,10 @@
    "unsupported": [],
    "before_full": 10,
    "after_full": 10,
-   "latency_after": 0.25,
+   "latency_after": 0.42,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.253,
+    "retrieve": 0.415,
     "score": 0.001
    },
    "before": [
@@ -4132,11 +4132,11 @@
    "unsupported": [],
    "before_full": 0,
    "after_full": 10,
-   "latency_after": 0.21,
+   "latency_after": 0.27,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.21,
-    "score": 0.001
+    "retrieve": 0.271,
+    "score": 0.002
    },
    "before": [
     {
@@ -4364,10 +4364,10 @@
    "unsupported": [],
    "before_full": 0,
    "after_full": 0,
-   "latency_after": 0.16,
+   "latency_after": 0.19,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.157,
+    "retrieve": 0.189,
     "score": 0.001
    },
    "before": [
@@ -4609,7 +4609,7 @@
    "latency_after": 0.15,
    "timings": {
     "plan": 0.0,
-    "retrieve": 0.146,
+    "retrieve": 0.148,
     "score": 0.001
    },
    "before": [
@@ -5060,14 +5060,14 @@
     "search_text": "people fighting"
    },
    "understood": "event: fighting",
-   "notice": null,
+   "notice": "No result matches every part of the query. Showing partial matches.",
    "unsupported": [],
    "before_full": 0,
-   "after_full": 10,
-   "latency_after": 0.47,
+   "after_full": 0,
+   "latency_after": 0.44,
    "timings": {
     "plan": 0.002,
-    "retrieve": 0.465,
+    "retrieve": 0.434,
     "score": 0.002
    },
    "before": [
@@ -5124,134 +5124,134 @@
    ],
    "after": [
     {
-     "id": 4064,
+     "id": 9610,
      "kind": "incident",
-     "match": "full",
-     "matched": [
+     "match": "partial",
+     "matched": [],
+     "missing": [
       "fighting"
      ],
-     "missing": [],
-     "coverage": 1.0,
+     "coverage": 0.0,
      "verified": null,
      "verify": null,
-     "caption": "A person walks on the grass. A group of people are playing soccer in the parking lot. Events: man in yellow shirt kicking ball soccer ball; man in white shirt kicking ball soccer ball; man in black shirt kicking ball soccer ball; man in blue shirt kicking ball soccer ball; man in green shirt kicking ball soccer ball. Setting: parking lot."
+     "caption": "A person is walking on the sidewalk. A person is running on the grass. A group of people walk along the sidewalk and eventually disperse. Events: man in blue shirt walks away sidewalk; man in green shirt walks away sidewalk; man in black shirt walks away sidewalk; man in white shirt walks away sidewalk. Setting: parking lot."
     },
     {
-     "id": 6134,
+     "id": 927,
      "kind": "incident",
-     "match": "full",
-     "matched": [
+     "match": "partial",
+     "matched": [],
+     "missing": [
       "fighting"
      ],
-     "missing": [],
-     "coverage": 1.0,
+     "coverage": 0.0,
      "verified": null,
      "verify": null,
-     "caption": "A black car drives down the road. A group of people are playing soccer in the parking lot. A man in a white shirt is kicking the ball back and forth with another player. Events: man in yellow shirt kicks ball soccer ball; man in white shirt runs towards soccer ball; man in white shirt kicks ball soccer ball. Setting: parking lot."
+     "caption": "A person walks on the sidewalk. A person walks on the grass. A group of people walk along the sidewalk and eventually disperse. Events: man in red shirt walks away sidewalk; man in blue shirt walks away sidewalk; man in black shirt walks away sidewalk; man in white shirt walks away sidewalk. Setting: parking lot."
     },
     {
-     "id": 6096,
+     "id": 929,
      "kind": "incident",
-     "match": "full",
-     "matched": [
+     "match": "partial",
+     "matched": [],
+     "missing": [
       "fighting"
      ],
-     "missing": [],
-     "coverage": 1.0,
+     "coverage": 0.0,
      "verified": null,
      "verify": null,
-     "caption": "A man in a blue shirt walks on the sidewalk. A man in a yellow shirt runs towards the grass. A group of people are playing soccer in the parking lot. A man in a blue shirt is actively kicking the ball and running after it. Events: man in yellow shirt kicks ball soccer ball; man in blue shirt runs towards soccer ball; man in blue shirt kicks ball soccer ball. Setting: parking lot."
+     "caption": "A person walks on the sidewalk. A person walks on the grass. A group of people walk along the sidewalk and eventually disperse. Events: man in red shirt walks away sidewalk; man in blue shirt walks away sidewalk; man in black shirt walks away sidewalk; man in white shirt walks away sidewalk. Setting: parking lot."
     },
     {
-     "id": 87,
+     "id": 8502,
      "kind": "incident",
-     "match": "full",
-     "matched": [
+     "match": "partial",
+     "matched": [],
+     "missing": [
       "fighting"
      ],
-     "missing": [],
-     "coverage": 1.0,
+     "coverage": 0.0,
      "verified": null,
      "verify": null,
-     "caption": "A man is kicking a ball on the ground. A woman walks towards the man with the ball. A man in a black jacket kicks a ball around the courtyard. Events: man in black jacket kicks ball; man in black jacket runs after ball. Setting: building entrance."
+     "caption": "A person walks on the sidewalk. A group of people walk along the sidewalk. Events: person in white dress walks away sidewalk; person in red shirt walks away sidewalk; person in blue shirt walks away sidewalk; person in black shirt walks away sidewalk; person in white shirt walks away sidewalk. Setting: sidewalk."
     },
     {
-     "id": 88,
+     "id": 688,
      "kind": "incident",
-     "match": "full",
-     "matched": [
+     "match": "partial",
+     "matched": [],
+     "missing": [
       "fighting"
      ],
-     "missing": [],
-     "coverage": 1.0,
+     "coverage": 0.0,
      "verified": null,
      "verify": null,
-     "caption": "A dog runs past the man on the left side of the courtyard. A man in a blue shirt kicks a ball back and forth with another man. Events: man in blue shirt kicks ball; man in blue shirt walks towards ball. Setting: building entrance."
+     "caption": "A group of people walk on the sidewalk. A person in a green shirt and a person in a white shirt walk away from the group. Events: person in green shirt walks away sidewalk; person in white shirt walks away sidewalk. Setting: sidewalk."
     },
     {
-     "id": 6131,
+     "id": 932,
      "kind": "incident",
-     "match": "full",
-     "matched": [
+     "match": "partial",
+     "matched": [],
+     "missing": [
       "fighting"
      ],
-     "missing": [],
-     "coverage": 1.0,
+     "coverage": 0.0,
      "verified": null,
      "verify": null,
-     "caption": "A person walks on the grass. A man in a yellow shirt kicks a ball and another man in a white shirt runs towards the ball. Events: man in yellow shirt kicks ball; man in white shirt runs towards ball. Setting: parking lot."
+     "caption": "A group of people walk on the grass. A group of people walk along the sidewalk and eventually disperse. Events: man in red shirt walks away sidewalk; man in blue shirt walks away sidewalk; man in black shirt walks away sidewalk; man in white shirt walks away sidewalk. Setting: parking lot."
     },
     {
-     "id": 8539,
+     "id": 10334,
      "kind": "incident",
-     "match": "full",
-     "matched": [
+     "match": "partial",
+     "matched": [],
+     "missing": [
       "fighting"
      ],
-     "missing": [],
-     "coverage": 1.0,
+     "coverage": 0.0,
      "verified": null,
      "verify": null,
-     "caption": "A person in an orange shirt is walking on the sidewalk. A man in an orange shirt kicks a ball, while another man in a black shirt and a man in a white shirt run after it. Events: man in orange shirt kicks ball; man in black shirt runs after ball; man in white shirt runs after ball. Setting: parking lot."
+     "caption": "A person walks on the sidewalk. A group of people walk along the sidewalk and eventually disperse. Events: man in white shirt walks away sidewalk; man in yellow shirt walks away sidewalk; man in black shirt walks away sidewalk. Setting: parking lot."
     },
     {
-     "id": 8572,
+     "id": 12794,
      "kind": "incident",
-     "match": "full",
-     "matched": [
+     "match": "partial",
+     "matched": [],
+     "missing": [
       "fighting"
      ],
-     "missing": [],
-     "coverage": 1.0,
+     "coverage": 0.0,
      "verified": null,
      "verify": null,
-     "caption": "A person walks on the grass. A man in a black shirt kicks a ball and runs after it. Events: man in black shirt kicks ball; man in black shirt runs after ball; man in black shirt throws ball. Setting: parking lot."
+     "caption": "A person walks across the street. A person crosses the street while another person walks across the street. Events: a person walks across the street sidewalk; a person crosses the street. Setting: street."
     },
     {
-     "id": 8574,
+     "id": 10822,
      "kind": "incident",
-     "match": "full",
-     "matched": [
+     "match": "partial",
+     "matched": [],
+     "missing": [
       "fighting"
      ],
-     "missing": [],
-     "coverage": 1.0,
+     "coverage": 0.0,
      "verified": null,
      "verify": null,
-     "caption": "A man walks into the frame from the left side of the image. A man in a white shirt and black pants runs towards a soccer ball, kicks it, and then stops running as another man walks away from the scene. Events: man in blue jeans and black shirt walks away sidewalk; man in white shirt and black pants runs towards the ball soccer ball; man in white shirt and black pants kicks the ball soccer ball; man in white shirt and black pants runs after the ball soccer ball; man in white shirt and black pants stops running soccer ball. Setting: parking lot."
+     "caption": "A group of people walk on the sidewalk. A group of people stands on the sidewalk while one man in a red shirt walks towards them and then stands next to the group. Events: man in red shirt walks away sidewalk; woman in white shirt walks away sidewalk; man in red shirt walks towards group; man in red shirt stands next to group. Setting: sidewalk."
     },
     {
-     "id": 9535,
+     "id": 10836,
      "kind": "incident",
-     "match": "full",
-     "matched": [
+     "match": "partial",
+     "matched": [],
+     "missing": [
       "fighting"
      ],
-     "missing": [],
-     "coverage": 1.0,
+     "coverage": 0.0,
      "verified": null,
      "verify": null,
-     "caption": "A man in an orange shirt is walking on the sidewalk. A man in a red shirt is running towards the man in the orange shirt. A man in an orange shirt kicks a ball and a man in a red shirt walks away. Events: man in orange shirt kicks ball; man in red shirt walks away sidewalk. Setting: parking lot."
+     "caption": "A group of people walk down the sidewalk. A group of people walk along the sidewalk, gradually dispersing as they move away. Events: person in red shirt walks away sidewalk; person in blue shirt walks away sidewalk; person in green shirt walks away sidewalk; person in white shirt walks away sidewalk; person in black shirt walks away sidewalk. Setting: sidewalk."
     }
    ]
   },
@@ -5300,10 +5300,10 @@
    ],
    "before_full": 0,
    "after_full": 0,
-   "latency_after": 0.29,
+   "latency_after": 0.27,
    "timings": {
     "plan": 0.002,
-    "retrieve": 0.175,
+    "retrieve": 0.163,
     "score": 0.002
    },
    "before": [
@@ -5563,10 +5563,10 @@
    "unsupported": [],
    "before_full": 5,
    "after_full": 10,
-   "latency_after": 0.21,
+   "latency_after": 0.22,
    "timings": {
-    "plan": 0.001,
-    "retrieve": 0.208,
+    "plan": 0.002,
+    "retrieve": 0.218,
     "score": 0.001
    },
    "before": [
