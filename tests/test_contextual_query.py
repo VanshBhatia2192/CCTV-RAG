@@ -191,3 +191,28 @@ def test_rewrite_matches_caption_style():
     assert P.rewrite(plan("man in a red jacket with a backpack")) == "A man wearing a red jacket, carrying a backpack."
     assert P.rewrite(plan("white truck turning right")).startswith("A white truck")
     assert P.rewrite(plan("red bluewhale")) == "red bluewhale"
+
+
+def test_negation_trusts_the_caption_over_zero_shot_attributes():
+    # zero-shot attrs say "bag" for most people; a caption that lists the outfit and no bag must not be excluded
+    p = plan("person in a black coat without a bag")
+    hits = C.score(p, [{"id": 4, "kind": "person", "bag": "backpack"}, {"id": 3, "kind": "person", "bag": "none"}], CP)
+    by = {h["id"]: h for h in hits}
+    assert by[4]["match"] != "excluded"
+    assert by[3]["match"] == "excluded"          # its caption says it carries a bag
+
+
+def test_event_words_match_their_usual_wordings():
+    p = P.rules_plan("people fighting", cameras=[], vocab=CP.vocab)
+    act = [c for c in p["constraints"] if c["type"] == "action"][0]
+    assert C.evidence(act, "incident", "Two men punch each other near the door.", {}) >= C.SAT
+    assert C.evidence(act, "incident", "A brief scuffle breaks out by the car.", {}) >= C.SAT
+    assert C.evidence(act, "incident", "A woman pushing a stroller walks past.", {}) < C.SAT
+    assert C.evidence(act, "incident", "A man in a yellow shirt is kicking a soccer ball.", {}) < C.SAT
+
+
+def test_school_bus_is_a_bus_not_a_school_logo():
+    p = plan("yellow school bus")
+    assert p["kind"] == "vehicle"
+    assert not [c for c in p["constraints"] if c["type"] in ("text", "term") and "school" in c["value"]]
+    assert [c for c in p["constraints"] if c["type"] == "object" and c["value"] == "bus"]

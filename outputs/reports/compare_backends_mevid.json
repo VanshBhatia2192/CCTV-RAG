@@ -1,0 +1,54 @@
+{
+ "mevid": {
+  "app_ft/all/cosine": {
+   "n": 293,
+   "R1": 44.7,
+   "R5": 60.8,
+   "mAP": 15.8
+  },
+  "app_ft/all/resonance": {
+   "n": 293,
+   "R1": 44.7,
+   "R5": 60.8,
+   "mAP": 15.8
+  },
+  "app_ft/cc/cosine": {
+   "n": 261,
+   "R1": 1.5,
+   "R5": 6.1,
+   "mAP": 2.7
+  },
+  "app_ft/cc/resonance": {
+   "n": 261,
+   "R1": 1.5,
+   "R5": 6.1,
+   "mAP": 2.7
+  },
+  "app_ft/resonance_median_latency_ms": 454.8,
+  "app_zs/all/cosine": {
+   "n": 293,
+   "R1": 10.9,
+   "R5": 24.9,
+   "mAP": 4.4
+  },
+  "app_zs/all/resonance": {
+   "n": 293,
+   "R1": 10.9,
+   "R5": 24.9,
+   "mAP": 4.4
+  },
+  "app_zs/cc/cosine": {
+   "n": 261,
+   "R1": 1.5,
+   "R5": 3.8,
+   "mAP": 1.8
+  },
+  "app_zs/cc/resonance": {
+   "n": 261,
+   "R1": 1.5,
+   "R5": 3.8,
+   "mAP": 1.8
+  },
+  "app_zs/resonance_median_latency_ms": 464.7
+ }
+}

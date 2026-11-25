@@ -42,7 +42,8 @@ def main(src, camera, dataset="meva"):
         if db.execute("SELECT 1 FROM chunks WHERE source=? LIMIT 1", (str(v),)).fetchone():
             continue
         cam = camera or cam_name(v)
-        out = Path(P["processed"]) / "chunks" / cam / v.stem
+        stem = f"{v.parent.parent.name}_{v.parent.name}" if v.stem == "vdo" else v.stem   # CityFlow: S05/c010/vdo.avi
+        out = Path(P["processed"]) / "chunks" / cam / stem
         try:
             parts = split(v, out, C["chunk_sec"])
         except subprocess.CalledProcessError:

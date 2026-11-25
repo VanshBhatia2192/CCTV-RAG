@@ -1,0 +1,119 @@
+#!/bin/bash
+# Add the AI City (CityFlow) footage to the live index, tagged dataset=aicity. Submit the whole chain with
+#   bash scripts/hpc/ingest_aicity.sh
+# STAGE=ingest (default): back up meta.db + Qdrant, chunk, track, scene windows, CLIP / fine-tuned / X-CLIP embeddings,
+#                         v1 scene captions.
+# STAGE=import:           load the v2 captions (captions_v2.pbs jobs in between), caption v2 failures with v1,
+#                         rebuild the caption text index.
+# Every step only picks up work that is not done yet, so a failed stage can simply be resubmitted. SQLite is written
+# on a node-local copy and copied back after each step (WAL is unreliable on the shared filesystem). Qdrant is the
+# live server on mgmt01; this job never starts its own (two servers on one storage folder corrupt it).
+# Undo: cp data/indexes/sqlite/meta.db.bak-pre-aicity data/indexes/sqlite/meta.db and restore the Qdrant snapshots
+#       listed in outputs/logs/aicity_snapshots.txt (or delete points whose payload has dataset=aicity).
+#PBS -N aicity_ingest
+#PBS -q gpu
+#PBS -l select=1:ncpus=16:ngpus=1:mem=96gb
+#PBS -l walltime=12:00:00
+#PBS -j oe
+#PBS -k oed
+cd "$PBS_O_WORKDIR"
+mkdir -p outputs/logs
+STAGE=${STAGE:-ingest}
+exec >> outputs/logs/aicity_${STAGE}.log 2>&1
+echo "== job $PBS_JOBID stage=$STAGE on $(hostname) at $(date)"
+source /home/soft/anaconda3/etc/profile.d/conda.sh && conda activate cctv
+export LD_PRELOAD=$CONDA_PREFIX/lib/libstdc++.so.6 PYTHONUNBUFFERED=1 TOKENIZERS_PARALLELISM=false
+export HF_HOME=$PWD/hf_cache HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 YOLO_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export NO_PROXY=localhost,127.0.0.1,mgmt01,10.17.1.5 no_proxy=localhost,127.0.0.1,mgmt01,10.17.1.5
+unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+SRC=data/raw/cityflow_nl/AICity22_Track1_MTMC_Tracking
+DB=data/indexes/sqlite/meta.db
+COLLS="person vehicle person_ft vehicle_ft incident text_person text_vehicle text_incident"
+
+QDRANT_URL=""
+for u in http://mgmt01:6335 http://10.17.1.5:6335; do
+  curl -s --max-time 5 "$u/collections" > /dev/null && { QDRANT_URL=$u; break; }
+done
+[ -n "$QDRANT_URL" ] || { echo "live Qdrant on mgmt01:6335 is not reachable; start it with scripts/run_demo.sh on mgmt01"; exit 1; }
+export QDRANT_URL; echo "qdrant: $QDRANT_URL"
+
+CUDA_VISIBLE_DEVICES=""
+for g in $(nvidia-smi --query-gpu=index,memory.free,utilization.gpu --format=csv,noheader,nounits | awk -F', ' -v need=${NEED_MB:-24000} '$2 > need' | sort -t, -k3,3n -k2,2nr | cut -d, -f1); do
+  if mkdir "/tmp/gpu_claim_${g}" 2>/dev/null; then CUDA_VISIBLE_DEVICES=$g; trap 'rmdir /tmp/gpu_claim_'$g EXIT; break; fi
+done
+[ -n "$CUDA_VISIBLE_DEVICES" ] || { echo "no GPU with ${NEED_MB:-24000} MB free on $(hostname)"; exit 1; }
+export CUDA_VISIBLE_DEVICES; nvidia-smi --query-gpu=index,name,memory.free,utilization.gpu --format=csv,noheader -i $CUDA_VISIBLE_DEVICES
+
+copy_db() {   # copy_db SRC DST via the SQLite backup API (consistent copy, no WAL leftovers)
+  python - "$1" "$2" <<'PY'
+import sqlite3, sys
+src = sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True); dst = sqlite3.connect(sys.argv[2])
+src.backup(dst); dst.close(); src.close()
+PY
+}
+export CCTV_DB=/tmp/meta_aicity_${USER}_${PBS_JOBID%%.*}.db
+copy_db $DB $CCTV_DB || exit 1
+save() { copy_db $CCTV_DB $DB && echo "-- saved index after: $1 ($(date +%T))"; }
+tally() {
+  python - <<'PY2'
+from src.index.sql_db import connect
+d = connect()
+J = "join chunks c on c.id={}.chunk_id where coalesce(c.dataset, 'meva')=?"
+Q = {"chunks": "select count(*) from chunks c where coalesce(c.dataset, 'meva')=?",
+     "person": "select count(*) from tracks t " + J.format("t") + " and t.kind='person'",
+     "vehicle": "select count(*) from tracks t " + J.format("t") + " and t.kind='vehicle'",
+     "windows": "select count(*) from windows w " + J.format("w"),
+     "uncaptioned tracks": "select count(*) from tracks t " + J.format("t") + " and t.caption is null",
+     "uncaptioned windows": "select count(*) from windows w " + J.format("w") + " and w.caption is null"}
+for ds in ("meva", "aicity"):
+    print(f"  {ds}: " + " | ".join(f"{k} {d.execute(q, (ds,)).fetchone()[0]}" for k, q in Q.items()))
+PY2
+}
+
+if [ "$STAGE" = ingest ]; then
+  if [ ! -f $DB.bak-pre-aicity ]; then
+    copy_db $DB $DB.bak-pre-aicity && echo "backup: $DB.bak-pre-aicity"
+    for c in $COLLS; do
+      echo "$c $(curl -s --max-time 600 -X POST "$QDRANT_URL/collections/$c/snapshots" | python -c 'import sys,json; print(json.load(sys.stdin)["result"]["name"])')"
+    done | tee outputs/logs/aicity_snapshots.txt
+  fi
+  tally
+  echo "== chunking (scene-qualified chunk folders, camera = CityFlow camera id)"
+  find $SRC -name vdo.avi | sort | xargs -P 6 -I{} sh -c 'python -m src.ingest.chunk "{}" --camera "$(basename "$(dirname "{}")")" --dataset aicity' \
+    > outputs/logs/aicity_chunk.log 2>&1
+  grep -c "^chunked" outputs/logs/aicity_chunk.log | sed 's/^/videos chunked: /'; grep "SKIP bad" outputs/logs/aicity_chunk.log
+  save chunking
+  echo "== tracking (2 shards per kind)"
+  for k in person vehicle; do for s in 0 1; do
+    SHARD=$s NSHARDS=2 python -m src.person.detect_track --kind $k --limit 1000000 > outputs/logs/aicity_track_${k}_$s.log 2>&1 &
+  done; done; wait
+  tail -qn 1 outputs/logs/aicity_track_*.log; save tracking
+  echo "== scene windows + embeddings"
+  python -m src.incident.windows --dataset aicity
+  python -m src.scale.embed_all --workers 6 > outputs/logs/aicity_embed_all.log 2>&1 &
+  python -m src.scale.embed_windows --workers 4 > outputs/logs/aicity_embed_windows.log 2>&1 &
+  wait; tail -qn 1 outputs/logs/aicity_embed_all.log outputs/logs/aicity_embed_windows.log
+  python -m src.vehicle.embed_ft --kind vehicle --collection vehicle_ft --dataset aicity 2>&1 | tail -n 1
+  save embeddings
+  echo "== v1 scene captions (v2 is combined with these, as for MEVA)"
+  timeout 240m python -m src.captions.caption_windows > outputs/logs/aicity_cap_windows.log 2>&1; echo "exit $?"
+  save "v1 scene captions"
+  tally
+else
+  echo "== import v2 captions"
+  python -m src.captions.v2_import --no-text-index
+  echo "== v1 captions for tracks the v2 model failed on"
+  timeout 180m python -m src.captions.caption_tracks --kind all > outputs/logs/aicity_cap_tracks.log 2>&1; echo "exit $?"
+  timeout 60m python -m src.captions.caption_windows >> outputs/logs/aicity_cap_windows.log 2>&1
+  python - <<'PY'
+from src.index.sql_db import connect
+d = connect(); d.execute("UPDATE tracks SET caption=REPLACE(caption,' none.','.') WHERE caption LIKE '% none.'"); d.commit()
+PY
+  save captions
+  echo "== caption text index"
+  python -m src.captions.text_index build
+  tally
+fi
+rm -f $CCTV_DB
+echo "== done $(date)"

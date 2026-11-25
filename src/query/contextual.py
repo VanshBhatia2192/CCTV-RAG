@@ -61,6 +61,23 @@ def clock_index():
     return _CLOCK
 
 
+_DS = {}
+
+
+def dataset_ids(kind, dataset):
+    """Ids of `kind` from one dataset. Used as a restrict set so every channel (visual, caption text, BM25, rare
+    terms) searches only that dataset; a payload filter alone left the text channels filling the pool with other
+    datasets' hits that were dropped afterwards, and older points carry no dataset tag."""
+    key = (kind, dataset)
+    if key not in _DS:
+        from src.index.sql_db import connect
+        db = connect()
+        q = ("SELECT w.id FROM windows w JOIN chunks c ON c.id=w.chunk_id WHERE coalesce(c.dataset, 'meva')=?" if kind == "incident"
+             else "SELECT t.id FROM tracks t JOIN chunks c ON c.id=t.chunk_id WHERE t.kind=? AND coalesce(c.dataset, 'meva')=?")
+        _DS[key] = {r[0] for r in db.execute(q, (dataset,) if kind == "incident" else (kind, dataset))}
+    return _DS[key]
+
+
 def time_filter(kind, t):
     """Ids of `kind` recorded inside the plan's time window (None = no time constraint)."""
     if not t:
@@ -105,7 +122,8 @@ def search(q, n=24, use_llm=False, verify=False, camera=None, dataset=None, pool
     unsup = C.unsupported(plan, cp)
 
     t = time.time()
-    where = {k: v for k, v in (("camera", plan["camera"]), ("dataset", dataset and dataset.lower())) if v}
+    dataset = dataset and dataset.lower()
+    where = {"camera": plan["camera"]} if plan["camera"] else {}
     kinds = ["person", "vehicle"] if plan["kind"] == "any" else [plan["kind"]]
     plan["search_text"] = P.rewrite(plan) if rewrite else plan["text"]   # caption-style wording for the search
     terms = [c["value"] for c in plan["constraints"] if c["type"] in ("text", "term") and c not in unsup]
@@ -117,6 +135,9 @@ def search(q, n=24, use_llm=False, verify=False, camera=None, dataset=None, pool
             if 0 < len(ids) <= pool:
                 extra.append(ids)
         allowed = time_filter(kind, plan.get("time"))
+        if dataset:
+            ds = dataset_ids(kind, dataset)
+            allowed = ds if allowed is None else allowed & ds
         if allowed is not None:
             extra = [[i for i in e if i in allowed] for e in extra]
         sat = cp.satisfying(kind, plan)          # captions that already satisfy every requirement
@@ -129,10 +150,6 @@ def search(q, n=24, use_llm=False, verify=False, camera=None, dataset=None, pool
         k = min(max(n * 4, 48), pool)
         got = hybrid.retrieve(kind, plan["search_text"], k=k, mode=mode_for(kind), where=where or None,
                               w=fusion_weights(kind), extra=extra, restrict=allowed)
-        if not got and dataset:                  # dataset tag missing on some chunks: retry without it
-            got = hybrid.retrieve(kind, plan["search_text"], k=k, mode=mode_for(kind),
-                                  where={"camera": plan["camera"]} if plan["camera"] else None,
-                                  w=fusion_weights(kind), extra=extra, restrict=allowed)
         for h in got:
             h["kind"] = kind
         hits += got

@@ -31,6 +31,16 @@ ACT_SYN = {"walking": {"walk", "walks", "walking"}, "running": {"run", "runs", "
            "talking": {"talking", "talks", "conversation"}, "using phone": {"phone", "texting"},
            "riding": {"riding", "rides"}, "entering": {"entering", "enters"}, "exiting": {"exiting", "exits",
            "leaving"}, "loading": {"loading", "unloading"}, "crossing": {"crossing", "crosses"}}
+# event words in scene captions ("people fighting" -> "two men punch each other", "a scuffle"). Stems; "push" is left
+# out on purpose (pushing a cart or stroller, kicking a ball are far more common than a fight).
+INCIDENT_STEMS = {"fight": ("fight", "punch", "hitting", "slap", "scuffl", "brawl", "wrestl", "altercat", "assault", "attack"),
+                  "fall": ("fall", "fell", "trip", "slip", "collaps"),
+                  "crash": ("crash", "collid", "collision", "accident"),
+                  "steal": ("steal", "stole", "theft", "thief", "rob", "snatch", "shoplift"),
+                  "chase": ("chas", "pursu"), "argue": ("argu", "yell", "shout")}
+INCIDENT_GROUP = {"fighting": "fight", "assault": "fight", "falling": "fall", "fell": "fall", "accident": "crash",
+                  "collision": "crash", "collide": "crash", "robbery": "steal", "theft": "steal", "stealing": "steal",
+                  "chasing": "chase", "argument": "argue"}
 MOTION_ATTR = {"walking": {"walking"}, "running": {"running"}, "standing": {"standing", "stopped"},
                "parked": {"stopped", "standing"}, "driving": {"moving"}, "moving": {"moving", "walking", "running"}}
 COLOR_SYN = {c: {k for k, v in P.COLORS.items() if v == c} for c in set(P.COLORS.values())}
@@ -171,8 +181,8 @@ def evidence(c, kind, caption, attrs):
         parts = v.split()
         base, dirn = parts[0], (parts[1] if len(parts) > 1 else None)
         if P.INCIDENT.fullmatch(base):
-            stem = base[:5]
-            return 1.0 if any(w.startswith(stem) for w in words) else 0.0
+            stems = INCIDENT_STEMS.get(INCIDENT_GROUP.get(base, base), (base[:5],))
+            return 1.0 if any(w.startswith(st) for w in words for st in stems) else 0.0
         syn = ACT_SYN.get(base, {base})
         ok = any(w in syn for w in words) or attrs.get("motion") in MOTION_ATTR.get(base, set())
         if base == "turning" and dirn:
@@ -207,7 +217,9 @@ def score(plan, hits, cp):
         ev = {id(c): evidence(c, kind, cap, h) for c in plan["constraints"]}
         h["matched"] = [label(c) for c in plan["constraints"] if ev[id(c)] >= SAT]
         h["missing"] = [label(c) for c in req if ev[id(c)] < SAT]
-        h["violates"] = [label(c) for c in plan["negations"] if evidence(c, kind, cap, h) >= SAT]
+        # negations trust the caption when there is one: the zero-shot attributes say "bag" for most people, so
+        # "without a bag" used to exclude every result, including captions that list the outfit and no bag
+        h["violates"] = [label(c) for c in plan["negations"] if evidence(c, kind, cap, {} if cap else h) >= SAT]
         h["coverage"] = round(sum(min(ev[id(c)], 1.0) for c in req) / len(req), 3) if req else 1.0
         h["soft"] = sum(ev[id(c)] for c in soft) / len(soft) if soft else 0.0
         h["match"] = "excluded" if h["violates"] else ("full" if not h["missing"] else "partial")

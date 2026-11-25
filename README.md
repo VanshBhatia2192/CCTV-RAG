@@ -304,6 +304,21 @@ Split raw CCTV footage into 10-second chunks and filter out static/idle footage:
 python -m src.ingest.chunk /path/to/surveillance_video.mp4
 ```
 
+**Adding a whole dataset on the cluster.** The AI City (CityFlow) footage was added this way (65 videos, about
+3.6 h: 11,629 vehicles, 303 people, 2,245 scenes, tagged `dataset=aicity`, cameras named by CityFlow id such as
+`c041`). The chain backs up `meta.db` and snapshots the Qdrant collections first, then ingests, captions with v2 and
+rebuilds the text index; every step only picks up unfinished work, so a failed stage can be resubmitted:
+```bash
+bash scripts/hpc/ingest_aicity.sh      # ingest -> 4 v2 caption jobs -> import, chained with PBS dependencies
+```
+The dataset filter in the UI scopes every retrieval channel (visual, caption text, BM25) to that dataset's ids.
+
+**Vector store.** Qdrant stays. ResonanceDB was evaluated as a replacement (`src/index/resonance.py`,
+`scripts/resonance_sync.py`, `eval/search/compare_backends.py`; enable with `VECTOR_BACKEND=resonance`). On our
+real-valued embeddings it ranks exactly like cosine: identical MEVID re-ID scores (app_ft R1 44.7 / mAP 15.8 on both)
+and the same top 10 as Qdrant on 200 live `person_ft` queries. It was 38× slower (147 ms vs 3.9 ms per query), has
+no payload filters, stores fixed 1536-value patterns, and its licence allows non-commercial use only.
+
 ### 2. Multi-Target Tracking
 Detect and track persons and vehicles with YOLOv8 + ByteTrack:
 ```bash

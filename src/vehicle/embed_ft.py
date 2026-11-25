@@ -15,10 +15,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--kind", default="vehicle"); ap.add_argument("--ckpt", default="models/finetuned/vehicle/clip_vehicle.pt")
     ap.add_argument("--collection", default="vehicle_ft"); ap.add_argument("--limit", type=int, default=0); ap.add_argument("--block", type=int, default=256)
+    ap.add_argument("--dataset", default=None, help="only tracks of this dataset")
     a = ap.parse_args()
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     m, _ = t2p.load(a.ckpt, dev); m.eval(); db = connect()
-    rows = db.execute("SELECT t.*, c.camera, coalesce(c.dataset, 'meva') as dataset FROM tracks t JOIN chunks c ON c.id=t.chunk_id WHERE t.kind=?", (a.kind,)).fetchall()
+    rows = db.execute("SELECT t.*, c.camera, coalesce(c.dataset, 'meva') as dataset FROM tracks t JOIN chunks c ON c.id=t.chunk_id WHERE t.kind=?" + (" AND coalesce(c.dataset, 'meva')=?" if a.dataset else ""),
+                      (a.kind, a.dataset) if a.dataset else (a.kind,)).fetchall()
     if a.limit:
         rows = rows[:a.limit]
     print(f"{len(rows)} {a.kind} tracks -> {a.collection} | device {dev}", flush=True)
