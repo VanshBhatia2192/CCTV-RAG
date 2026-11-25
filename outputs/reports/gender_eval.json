@@ -1,0 +1,22 @@
+{
+ "images": 600,
+ "height_px": 100,
+ "caption": {
+  "n": 600,
+  "answered": 360,
+  "unknown": 240,
+  "wrong": 16,
+  "error_rate_of_answered": 4.4,
+  "accuracy_overall": 57.3
+ },
+ "focused": {
+  "n": 600,
+  "answered": 229,
+  "unknown": 371,
+  "wrong": 5,
+  "error_rate_of_answered": 2.2,
+  "accuracy_overall": 37.3
+ },
+ "disagree_caption_vs_focused": 0,
+ "gt_children": 52
+}

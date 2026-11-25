@@ -313,10 +313,12 @@ def rules_plan(q, cameras=(), vocab=None):
                     w[i] = noun; continue          # re-run this word through the action branch
         if noun in PEOPLE:
             kind_votes["person"] += 2
+            # gender / age words the user typed are requirements ("male child", "woman"), not preferences: a result
+            # of the other gender or age group is excluded (constraints.conflicts)
             if noun in GENDER:
-                target.append(_c("attribute", GENDER[noun], required=False))
+                target.append(_c("attribute", GENDER[noun]))
             if noun in AGE:
-                target.append(_c("attribute", AGE[noun], required=False))
+                target.append(_c("attribute", AGE[noun]))
             for col in pending_color: target.append(_c("color", col, "any"))
             pending_color = []; i += 1; continue
         if _is_noun(noun):
@@ -352,7 +354,7 @@ def rules_plan(q, cameras=(), vocab=None):
 
     if cons and not any(c["required"] for c in cons):
         # nothing hard in the query ("cop", "delivery guy"): what it implies is the requirement, else every person
-        # would count as an exact match. Gender/age stay preferences.
+        # would count as an exact match.
         for c in cons:
             if c["type"] != "attribute":
                 c["required"] = True
@@ -381,6 +383,12 @@ def _visual_text(raw, camera, negs=()):
     return re.sub(r"\s+", " ", t).strip() or raw
 
 
+ATTR_NORM = {"male": ["man"], "men": ["man"], "guy": ["man"], "female": ["woman"], "women": ["woman"], "lady": ["woman"],
+             "boy": ["man", "child"], "girl": ["woman", "child"], "kid": ["child"], "kids": ["child"], "children": ["child"],
+             "teenager": ["teen"], "old": ["elderly"], "senior": ["elderly"]}
+STRICT_ATTRS = {"man", "woman", "child", "teen"}     # gender / age group: always a requirement when asked for
+
+
 def finalize(p):
     """Validate/normalise any plan (rules or LLM) into the schema; drop duplicates and junk."""
     out = {"kind": p.get("kind") if p.get("kind") in KINDS else "any",
@@ -389,11 +397,19 @@ def finalize(p):
            "time": p.get("time") if isinstance(p.get("time"), dict) else None}
     for key in ("constraints", "negations"):
         seen, lst = set(), []
+        raw = []
         for c in p.get(key) or []:
+            if isinstance(c, dict) and c.get("type") == "attribute" and str(c.get("value") or "").strip().lower() in ATTR_NORM:
+                raw += [dict(c, value=v) for v in ATTR_NORM[str(c["value"]).strip().lower()]]   # "boy" -> man + child
+            else:
+                raw.append(c)
+        for c in raw:
             if not isinstance(c, dict) or c.get("type") not in TYPES or not str(c.get("value") or "").strip():
                 continue
             c = _c(c["type"], str(c["value"]).strip().lower(), c.get("applies_to") and str(c["applies_to"]).lower(),
                    bool(c.get("required", True)), c.get("note"))
+            if c["type"] == "attribute" and c["value"] in STRICT_ATTRS and key == "constraints":
+                c["required"] = True
             if c["type"] == "color":
                 c["value"] = COLORS.get(c["value"], c["value"])
             sig = (c["type"], c["value"], c["applies_to"])

@@ -5,7 +5,7 @@ contributes nothing. Here every required constraint has to be satisfied for a "f
 are kept only as labelled partial matches, and a required term that no caption in the index mentions at all is
 reported as unsupported so the API can say so instead of pretending.
 """
-import re
+import json, re
 from src.query import plan as P
 
 OBJ_SYN = {"bag": {"bag", "backpack", "handbag", "purse", "tote", "satchel", "briefcase"},
@@ -63,10 +63,36 @@ def has(ncap, phrase, squashed=None):
     return len(flat) >= 5 and flat in (squashed if squashed is not None else ncap.replace(" ", ""))
 
 
+GENDERS = {"man", "woman"}
+AGES = {"child", "teen", "adult", "elderly"}
+
+
+def who_of(desc):
+    """Gender and age group of a person track from its structured description (tracks.desc_json):
+    the focused second opinion (gender_check / age_check, src/captions/person_attrs.py) when it gave a clear answer,
+    else the caption's own fields. None = not known."""
+    d = desc or {}
+    g = d.get("gender_check") if d.get("gender_check") in GENDERS else d.get("gender")
+    a = d.get("age_check") if d.get("age_check") in AGES else d.get("age")
+    g = str(g or "").lower(); a = str(a or "").lower()
+    return {"gender": g if g in GENDERS else None, "age": a if a in AGES else None}
+
+
+def _who_from_words(words):
+    """Fallback when there is no structured description: gender / age from the caption wording."""
+    has = lambda key: any(w in ATTR_SYN[key] for w in words)
+    m, w_ = has("man"), has("woman")
+    age = "child" if has("child") else "teen" if has("teen") else "elderly" if has("elderly") else None
+    if age is None and (m or w_) and not any(x in words for x in ("person", "people")):
+        age = "adult"                         # v2 sentences say "A man" / "A woman" only for adults
+    return {"gender": "man" if m and not w_ else "woman" if w_ and not m else None, "age": age}
+
+
 class Corpus:
     """All captions, normalised once; answers "how many captions mention X" and "which ids mention X"."""
-    def __init__(self, docs):                       # docs: {kind: {id: caption}}
+    def __init__(self, docs, who=None):              # docs: {kind: {id: caption}}, who: {person id: who_of(...)}
         self.docs = docs
+        self.who = who or {}
         self.n = {k: {i: norm(c) for i, c in d.items()} for k, d in docs.items()}
         self.flat = {k: {i: c.replace(" ", "") for i, c in d.items()} for k, d in self.n.items()}
         self.vocab = {}                              # word -> number of captions using it
@@ -91,8 +117,10 @@ class Corpus:
             return []
         out = []
         for i, cap in self.docs.get(kind, {}).items():
-            if all(evidence(c, kind, cap, None) >= SAT for c in req) and \
-                    not any(evidence(c, kind, cap, None) >= SAT for c in plan["negations"]):
+            at = {"who": self.who.get(i)} if kind == "person" else None
+            if all(evidence(c, kind, cap, at) >= SAT for c in req) and \
+                    not any(evidence(c, kind, cap, None) >= SAT for c in plan["negations"]) and \
+                    not conflicts(req, kind, cap, at):
                 out.append(i)
                 if limit and len(out) >= limit:
                     break
@@ -113,12 +141,25 @@ def corpus(reload=False):
         docs = {"person": {}, "vehicle": {}, "incident": {}}
         for i, k, c in db.execute("SELECT id, kind, caption FROM tracks WHERE caption IS NOT NULL"):
             docs.setdefault(k, {})[i] = c
+        who = {}
+        try:
+            for i, dj in db.execute("SELECT id, desc_json FROM tracks WHERE kind='person' AND desc_json IS NOT NULL"):
+                w = who_of(json.loads(dj))
+                if w["gender"] or w["age"]:
+                    who[i] = w
+        except Exception:                              # index without desc_json (v1 captions only)
+            pass
+        try:                                           # vote gender / age over each person's chain of tracks
+            from src.query import identity
+            who = identity.load(db, who)
+        except Exception as e:
+            print("identity vote skipped:", e)
         try:
             docs["incident"] = {i: c for i, c in db.execute("SELECT id, caption FROM windows WHERE caption IS NOT NULL")}
         except Exception:
             pass
         db.close()
-        _CORPUS = Corpus(docs)
+        _CORPUS = Corpus(docs, who)
     return _CORPUS
 
 
@@ -148,6 +189,14 @@ def evidence(c, kind, caption, attrs):
     if t in ("text", "term"):
         return 1.0 if has(ncap, v) else 0.0
     if t == "attribute":
+        who = attrs.get("who")
+        if v in GENDERS or v in AGES:
+            key = "gender" if v in GENDERS else "age"
+            if who is not None:            # structured / voted answer: unknown stays unknown (do not fall back to the
+                return 1.0 if who.get(key) == v else 0.0     # caption wording a vote just overruled)
+            wh = _who_from_words(words)
+            if wh.get(key):
+                return 1.0 if wh[key] == v else 0.0
         return 1.0 if any(w in ATTR_SYN.get(v, {v}) for w in words) else 0.0
     if t == "object":
         syn = OBJ_SYN.get(v, {v})
@@ -206,6 +255,33 @@ def unsupported(plan, cp):
             and sum(cp.support(c["value"]).values()) == 0]
 
 
+def _missing_label(c, who):
+    """'man (gender not visible)' when the gender / age is simply unknown, so a partial result reads as 'could not
+    tell', not as 'wrong'."""
+    if c["type"] == "attribute" and (c["value"] in GENDERS or c["value"] in AGES):
+        key = "gender" if c["value"] in GENDERS else "age"
+        if not (who or {}).get(key):
+            return f"{label(c)} ({key} not visible)"
+    return label(c)
+
+
+def conflicts(req, kind, caption, attrs):
+    """Required gender / age the result clearly contradicts ("man" asked, a woman shown; "child" asked, an adult shown).
+    These results are excluded, not shown as partial: a person whose gender / age is unknown stays partial."""
+    if kind != "person":
+        return []
+    want = [c for c in req if c["type"] == "attribute" and (c["value"] in GENDERS or c["value"] in AGES)]
+    if not want:
+        return []
+    wh = (attrs or {}).get("who") or _who_from_words(norm(caption).split())
+    out = []
+    for c in want:
+        key = "gender" if c["value"] in GENDERS else "age"
+        if wh.get(key) and wh[key] != c["value"]:
+            out.append(f'{label(c)} (is {wh[key]})')
+    return out
+
+
 def score(plan, hits, cp):
     """Annotate hits with per-constraint evidence and reorder: full matches first, then partial, negations last."""
     req = [c for c in plan["constraints"] if c["required"]]
@@ -214,12 +290,15 @@ def score(plan, hits, cp):
         kind = h.get("kind", plan["kind"])
         cap = h.get("caption") or cp.caption(kind, h["id"]) or ""
         h["caption"] = cap
+        if kind == "person" and "who" not in h:
+            h["who"] = cp.who.get(h["id"])
         ev = {id(c): evidence(c, kind, cap, h) for c in plan["constraints"]}
         h["matched"] = [label(c) for c in plan["constraints"] if ev[id(c)] >= SAT]
-        h["missing"] = [label(c) for c in req if ev[id(c)] < SAT]
+        h["missing"] = [_missing_label(c, h.get("who")) for c in req if ev[id(c)] < SAT]
         # negations trust the caption when there is one: the zero-shot attributes say "bag" for most people, so
         # "without a bag" used to exclude every result, including captions that list the outfit and no bag
-        h["violates"] = [label(c) for c in plan["negations"] if evidence(c, kind, cap, {} if cap else h) >= SAT]
+        h["violates"] = [label(c) for c in plan["negations"] if evidence(c, kind, cap, {} if cap else h) >= SAT] + \
+            conflicts(req, kind, cap, h)
         h["coverage"] = round(sum(min(ev[id(c)], 1.0) for c in req) / len(req), 3) if req else 1.0
         h["soft"] = sum(ev[id(c)] for c in soft) / len(soft) if soft else 0.0
         h["match"] = "excluded" if h["violates"] else ("full" if not h["missing"] else "partial")

@@ -4,6 +4,7 @@
 #   MODE=caption caption one shard: KIND=person|vehicle|window SHARD=i NSHARDS=n [LIMIT=200]
 #   BACKEND=vllm use the vLLM engine (~/envs/vllm, several times faster); default: HuggingFace generate
 #   MODE=crops   save sample re-crops to outputs/captions_v2/debug for a visual check
+#   MODE=run     run any module on the GPU with the index copy: MODULE=eval.captions.gender_eval ARGS="--n 600"
 #   qsub -v MODE=bench,ARGS="--n 40 --max-windows 60" scripts/hpc/captions_v2.pbs
 #   for s in 0 1 2; do qsub -v MODE=caption,KIND=person,SHARD=$s,NSHARDS=3 scripts/hpc/captions_v2.pbs; done
 #PBS -N captions_v2
@@ -47,6 +48,7 @@ RUN="import os; from src.common.config import PATHS; PATHS['sqlite'] = os.enviro
 case ${MODE:-bench} in
   bench)   python -c "$RUN; import sys, runpy; sys.argv = ['bench'] + '''$ARGS'''.split(); runpy.run_module('eval.captions.bench', run_name='__main__')" ;;
   caption) python -c "$RUN; import sys, runpy; sys.argv = ['v2', '--kind'] + '$KIND'.split() + [ '--shard', '${SHARD:-0}', '--nshards', '${NSHARDS:-1}', '--limit', '${LIMIT:-0}'] + (['--retry-failed'] if '${RETRY:-0}' == '1' else []); runpy.run_module('src.captions.v2', run_name='__main__')" ;;
+  run)     python -c "$RUN; import sys, runpy; sys.argv = ['$MODULE'] + '''$ARGS'''.split(); runpy.run_module('$MODULE', run_name='__main__')" ;;
   crops)   python -c "$RUN
 from pathlib import Path
 from src.captions import v2
