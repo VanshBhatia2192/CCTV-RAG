@@ -209,6 +209,7 @@ def ask(q: str, n: int = 24, use_llm: bool = False, rerank: bool = False, camera
     if not q.strip():
         raise HTTPException(400, "empty query")
     t0 = time.time()
+    dataset = dataset.lower() if dataset else None
     from src.query import contextual
     r = contextual.search(q.strip(), n=n, use_llm=use_llm, verify=rerank, camera=camera, dataset=dataset, strict=strict)
     plan, hits = r["plan"], r["hits"]
@@ -352,18 +353,14 @@ def search(kind: str, q: str, k: int = 24, mode: str | None = None, camera: str 
         raise HTTPException(400, "empty query")
     from src.captions import hybrid
     t0 = time.time(); mode = mode or MODES[kind]
-    where = {}
-    if camera:
-        where["camera"] = camera
-    if dataset:
-        where["dataset"] = dataset.lower()
-    where_arg = where if where else None
-    hits = hybrid.retrieve(kind, q.strip(), k=min(max(k * 4, 48), 150), mode=mode, where=where_arg, w=_fusion_weights(kind))
+    where_arg = {"camera": camera} if camera else None
+    dataset = dataset.lower() if dataset else None
+    # a selected dataset restricts every retrieval channel to its own ids; no fallback to other datasets
+    from src.index import datasets
+    restrict = set(datasets.ids(kind, dataset)) if dataset else None
+    hits = hybrid.retrieve(kind, q.strip(), k=min(max(k * 4, 48), 150), mode=mode, where=where_arg, w=_fusion_weights(kind),
+                           restrict=restrict)
     fallback_dataset = False
-    if not hits and dataset:
-        fallback_where = {"camera": camera} if camera else None
-        hits = hybrid.retrieve(kind, q.strip(), k=min(max(k * 4, 48), 150), mode=mode, where=fallback_where, w=_fusion_weights(kind))
-        fallback_dataset = True
 
     db = _db(); out = []; seen_clips = set()
     cam_counts = {}
@@ -593,6 +590,13 @@ def clip(chunk_id: int, request: Request, full: bool = True):
     return _range_response(video_path, request)
 
 
+def _same_dataset(query, cards):
+    """Re-identification never crosses datasets (separate footage collections); the rankers already restrict their
+    candidates, this is the last guard before anything reaches the UI."""
+    ds = (query or {}).get("dataset")
+    return [c for c in cards if c.get("dataset") == ds] if ds else cards
+
+
 @app.get("/api/reid/vehicle/{tid}")
 def reid_vehicle_api(tid: int, k: int = 12, use_st: bool = True, use_color: bool = True):
     """Multi-camera vehicle tracking endpoint using visual Re-ID, strict color gating, and spatio-temporal physics."""
@@ -624,6 +628,7 @@ def reid_vehicle_api(tid: int, k: int = 12, use_st: bool = True, use_color: bool
         query = _card_track(q) if q else res.get("query")
     finally:
         db.close()
+    cards = _same_dataset(query, cards)
     return dict(
         query=query,
         kind="vehicle",
@@ -665,6 +670,7 @@ def reid_api(tid: int, mode: str = "any", k: int = 12, full_body: bool = True, u
         query = _card_track(q) if q else None
     finally:
         db.close()
+    cards = _same_dataset(query, cards)
     return dict(query=query, mode=mode, w_appearance=res["w_appearance"], note=res["note"], full_body_filter=full_body, results=cards)
 
 

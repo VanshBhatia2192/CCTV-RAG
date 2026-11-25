@@ -61,21 +61,11 @@ def clock_index():
     return _CLOCK
 
 
-_DS = {}
-
-
 def dataset_ids(kind, dataset):
-    """Ids of `kind` from one dataset. Used as a restrict set so every channel (visual, caption text, BM25, rare
-    terms) searches only that dataset; a payload filter alone left the text channels filling the pool with other
-    datasets' hits that were dropped afterwards, and older points carry no dataset tag."""
-    key = (kind, dataset)
-    if key not in _DS:
-        from src.index.sql_db import connect
-        db = connect()
-        q = ("SELECT w.id FROM windows w JOIN chunks c ON c.id=w.chunk_id WHERE coalesce(c.dataset, 'meva')=?" if kind == "incident"
-             else "SELECT t.id FROM tracks t JOIN chunks c ON c.id=t.chunk_id WHERE t.kind=? AND coalesce(c.dataset, 'meva')=?")
-        _DS[key] = {r[0] for r in db.execute(q, (dataset,) if kind == "incident" else (kind, dataset))}
-    return _DS[key]
+    """Ids of `kind` from one dataset (see src/index/datasets.py). Used as a restrict set so every channel (visual,
+    caption text, BM25, rare terms) searches only that dataset."""
+    from src.index import datasets
+    return set(datasets.ids(kind, dataset))
 
 
 def time_filter(kind, t):
