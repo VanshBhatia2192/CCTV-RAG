@@ -20,10 +20,11 @@ def _vec(coll, tid):
     return r[0].vector if r else None
 
 
-def _all_scores(coll, vec, limit=600):
+def _all_scores(coll, vec, limit=600, allowed=None):
     c = vector_db.client()
-    n = c.count(coll, exact=False).count
-    pts = c.query_points(coll, query=vec, limit=min(n, limit), with_payload=FIELDS).points
+    n = c.count(coll, exact=False).count if allowed is None else len(allowed)
+    flt = models.Filter(must=[models.HasIdCondition(has_id=list(allowed))]) if allowed is not None else None
+    pts = c.query_points(coll, query=vec, limit=max(1, min(n, limit)), query_filter=flt, with_payload=FIELDS).points
     return {p.id: (float(p.score), p.payload) for p in pts}
 
 
@@ -39,10 +40,14 @@ def rank(track_row, k=20, mode="any", w_app=None, same_camera=False):
     if qa is None:
         raise KeyError(f"track {track_row} has no appearance vector")
     qg, note = _vec("person_gait", track_row), None
-    A = _all_scores("person_ft", qa)
+    # never match across datasets: the gallery is the query track's own dataset (z-scores are taken over it too)
+    from src.index import datasets
+    ds = datasets.of_track(track_row)
+    allowed = datasets.ids("person", ds) if ds else None
+    A = _all_scores("person_ft", qa, allowed=allowed)
     cam_q = A[track_row][1]["camera"]
     q_moving = A[track_row][1].get("motion") in WALK
-    G = _all_scores("person_gait", qg) if qg is not None else {}
+    G = _all_scores("person_gait", qg, allowed=allowed) if qg is not None else {}
     G = {i: v for i, v in G.items() if i == track_row or v[1].get("motion") in WALK or not q_moving}
     if qg is None:
         w, note = 1.0, "query track has no gait vector (fewer than 12 clean frames): appearance only"
@@ -75,7 +80,7 @@ def rank(track_row, k=20, mode="any", w_app=None, same_camera=False):
                          end_s=pay["end_s"], score=round(float(score), 3), appearance_z=None if a is None else round(float(a), 2),
                          gait_z=None if i not in zg else round(float(zg[i]), 2)))
     rows.sort(key=lambda r: -r["score"])
-    return dict(query=dict(track_row=track_row, camera=cam_q, has_gait=qg is not None), mode=mode, w_appearance=w, note=note, results=rows[:k])
+    return dict(query=dict(track_row=track_row, camera=cam_q, dataset=ds, has_gait=qg is not None), mode=mode, w_appearance=w, note=note, results=rows[:k])
 
 
 def enrich(res):

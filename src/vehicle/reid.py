@@ -205,7 +205,8 @@ def rank(
         # 1. Fetch query track
         q_row = db.execute(
             """
-            SELECT t.*, ch.camera, ch.source as video_source, ch.path as chunk_path, ch.start_s as chunk_start
+            SELECT t.*, ch.camera, ch.source as video_source, ch.path as chunk_path, ch.start_s as chunk_start,
+                   coalesce(ch.dataset, 'meva') as dataset
             FROM tracks t
             JOIN chunks ch ON ch.id = t.chunk_id
             WHERE t.id = ?
@@ -256,14 +257,31 @@ def rank(
             SELECT t.*, ch.camera, ch.path as chunk_path, ch.start_s as chunk_start
             FROM tracks t
             JOIN chunks ch ON ch.id = t.chunk_id
-            WHERE t.kind = 'vehicle' AND t.id != ?
+            WHERE t.kind = 'vehicle' AND t.id != ? AND coalesce(ch.dataset, 'meva') = ?
         """
-        params = [track_row]
+        params = [track_row, q_row["dataset"]]   # never match across datasets (separate footage collections)
         if not same_camera:
             sql += " AND ch.camera != ?"
             params.append(q_cam)
 
         candidates = db.execute(sql, params).fetchall()
+
+        # candidate vectors in a few batched calls (was one Qdrant request per candidate)
+        cand_vecs = {}
+        try:
+            from src.index import vector_db
+            want = [c["id"] for c in candidates]
+            for coll in ("vehicle_ft", "vehicle"):
+                for s in range(0, len(want), 1000):
+                    for pt in vector_db.client().retrieve(coll, ids=want[s:s + 1000], with_vectors=True):
+                        if pt.vector and pt.id not in cand_vecs:
+                            v = np.array(pt.vector, dtype=np.float32)
+                            cand_vecs[pt.id] = v / (np.linalg.norm(v) + 1e-9)
+                want = [i for i in want if i not in cand_vecs]
+                if not want:
+                    break
+        except Exception:
+            pass
 
         # 4. Score candidates
         topology = load_topology()
@@ -337,17 +355,7 @@ def rank(
                 st_score = max(0.3, 1.0 - (time_diff / (max_t + 1e-6)))
 
             # C. Visual similarity
-            c_vec = None
-            try:
-                from src.index import vector_db
-                rc = vector_db.client().retrieve("vehicle_ft", ids=[cid], with_vectors=True)
-                if not rc:
-                    rc = vector_db.client().retrieve("vehicle", ids=[cid], with_vectors=True)
-                if rc and rc[0].vector:
-                    c_vec = np.array(rc[0].vector, dtype=np.float32)
-                    c_vec = c_vec / (np.linalg.norm(c_vec) + 1e-9)
-            except Exception:
-                pass
+            c_vec = cand_vecs.get(cid)
 
             if c_vec is None and c["crops_dir"]:
                 c_vec = get_track_crop_embedding(c["crops_dir"])
