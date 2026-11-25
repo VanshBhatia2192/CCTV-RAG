@@ -181,7 +181,7 @@ def test_concepts_and_attributes():
     assert P._c("object", "uniform") in p["constraints"] and p["kind"] == "person"   # only implied -> required
     p = plan("old woman with a suitcase")
     assert P._c("attribute", "elderly", required=False) in p["constraints"]
-    assert P._c("attribute", "woman", required=False) in p["constraints"]
+    assert P._c("attribute", "woman") in p["constraints"]                    # gender asked for -> required
     p = plan("cyclist in a yellow vest")
     assert P._c("object", "bicycle") in p["constraints"] and P._c("color", "yellow", "vest") in p["constraints"]
     assert C.evidence(P._c("attribute", "woman"), "person", "A woman wearing a black coat.", {}) == 1.0
@@ -216,3 +216,43 @@ def test_school_bus_is_a_bus_not_a_school_logo():
     assert p["kind"] == "vehicle"
     assert not [c for c in p["constraints"] if c["type"] in ("text", "term") and "school" in c["value"]]
     assert [c for c in p["constraints"] if c["type"] == "object" and c["value"] == "bus"]
+
+
+def test_gender_and_age_are_requirements_and_the_other_gender_is_excluded():
+    p = plan("male child wearing a blue hat")
+    req = {c["value"] for c in p["constraints"] if c["type"] == "attribute" and c["required"]}
+    assert req == {"man", "child"}
+    hits = [{"id": 1, "kind": "person", "caption": "A child wearing a blue cap.", "who": {"gender": "man", "age": "child"}},
+            {"id": 2, "kind": "person", "caption": "A man wearing a blue cap.", "who": {"gender": "man", "age": "adult"}},
+            {"id": 3, "kind": "person", "caption": "A woman wearing a blue cap.", "who": {"gender": "woman", "age": "adult"}},
+            {"id": 4, "kind": "person", "caption": "A child wearing a blue cap.", "who": {"gender": None, "age": "child"}}]
+    by = {h["id"]: h for h in C.score(p, hits, CP)}
+    assert by[1]["match"] == "full"
+    assert by[2]["match"] == "excluded" and by[3]["match"] == "excluded"    # adult / woman contradict the query
+    assert by[4]["match"] == "partial"                                       # gender unknown: kept, below full
+
+
+def test_gender_comes_from_structured_fields_and_the_focused_check_wins():
+    w = C.who_of({"gender": "woman", "age": "adult", "gender_check": "man", "age_check": "unclear"})
+    assert w == {"gender": "man", "age": "adult"}                            # clear second opinion overrides
+    assert C.who_of({"gender": "unknown"}) == {"gender": None, "age": None}
+    man = P._c("attribute", "man")
+    # caption says "child" only, the structured field knows it is a boy
+    assert C.evidence(man, "person", "A child wearing a pink shirt.", {"who": {"gender": "man", "age": "child"}}) == 1.0
+    assert C.conflicts([man], "person", "A woman wearing a coat.", {}) == ["man (is woman)"]
+
+
+def test_llm_gender_words_are_normalised_and_required():
+    p = P.finalize({"kind": "person", "constraints": [{"type": "attribute", "value": "boy", "required": False},
+                                                      {"type": "attribute", "value": "female", "required": False}]})
+    vals = {(c["value"], c["required"]) for c in p["constraints"]}
+    assert ("man", True) in vals and ("child", True) in vals and ("woman", True) in vals
+
+
+def test_unknown_after_a_vote_does_not_fall_back_to_the_caption_wording():
+    woman = P._c("attribute", "woman")
+    # the chain vote left gender unknown: the caption's "woman" must not make it an exact match
+    assert C.evidence(woman, "person", "A woman wearing a coat.", {"who": {"gender": None, "age": "adult"}}) == 0.0
+    assert C.conflicts([P._c("attribute", "man")], "person", "A woman wearing a coat.", {"who": {"gender": None, "age": "adult"}}) == []
+    # no structured description at all: the wording is all there is
+    assert C.evidence(woman, "person", "A woman wearing a coat.", {}) == 1.0

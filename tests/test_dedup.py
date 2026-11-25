@@ -62,3 +62,15 @@ def test_untimestamped_footage_uses_position_in_the_same_video(monkeypatch):
     monkeypatch.setattr(dedup, "_vectors", lambda kind, ids: {i: A for i in ids})
     out = dedup.group([a, b, c], meta={1: {"source": "v1.avi"}, 2: {"source": "v1.avi"}, 3: {"source": "v2.avi"}})
     assert [x["id"] for x in out] == [1, 3]           # 1 and 2 share a video and are 30 s apart; 3 is another video
+
+
+def test_identity_vote_fills_unknowns_outvotes_mistakes_and_leaves_conflicts_unknown():
+    from src.query import identity as I
+    who = {1: {"gender": "man", "age": "adult"}, 2: {"gender": "man", "age": "adult"}, 3: {"gender": "woman", "age": "adult"},
+           4: {"gender": None, "age": "adult"},                       # chain A: 1-2-3-4 -> man (3 of 3 clear: 2 man, 1 woman = 67%)
+           5: {"gender": "man", "age": "child"}, 6: {"gender": "woman", "age": "child"}}   # chain B: 5-6 conflict
+    root = I.chains([1, 2, 3, 4, 5, 6], [(1, 2), (2, 3), (3, 4), (5, 6)])
+    out = I.consensus(who, root)
+    assert out[3]["gender"] == "man" and out[4]["gender"] == "man"   # outvoted / filled in
+    assert out[5]["gender"] is None and out[6]["gender"] is None     # split chain: unknown, not a guess
+    assert out[5]["age"] == "child"
