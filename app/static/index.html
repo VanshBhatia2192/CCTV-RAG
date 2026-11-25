@@ -834,6 +834,8 @@ function card(r, idx, opts = {}) {
     if (r.appearance_z != null) chips.push(h("span", { class: "chip" }, `app z ${r.appearance_z}`));
     if (r.gait_z != null) chips.push(h("span", { class: "chip" + (r.gait_z > .5 ? " ok" : "") }, `gait z ${r.gait_z}`));
   }
+  if (r.n_sightings > 1) chips.unshift(h("span", { class: "chip", title: "The same person / vehicle seen again nearby in time (folded into this card): " +
+    (r.sightings || []).map(x => `${x.camera} ${x.recorded_at ? fmtWhen(x, false) : fmtDur(x.start_s)}`).join(", ") }, icon("clock"), `+${r.n_sightings - 1} sighting${r.n_sightings > 2 ? "s" : ""}`));
   if (opts.vreid) {
     if (r.appearance_sim != null) chips.push(h("span", { class: "chip" }, `visual ${Number(r.appearance_sim).toFixed(2)}`));
     if (r.st_valid) chips.push(h("span", { class: "chip ok" }, icon("route"), "route ok"));
@@ -952,7 +954,7 @@ function openInspector(i, item) {
 function openNested(list, i, label) {
   const top = S.nav[S.nav.length - 1];
   if (top && top.list === list) { top.i = i; top.tab = "details"; }
-  else { if (top) top.tab = label === "matches" ? "reid" : "vreid"; S.nav.push({ list, i, label, tab: "details" }); }
+  else { if (top) top.tab = { matches: "reid", "vehicle matches": "vreid" }[label] || "details"; S.nav.push({ list, i, label, tab: "details" }); }
   showNav();
 }
 function showNav() {
@@ -1080,6 +1082,13 @@ function details(r) {
     out.push(list);
     if (r.verified != null) out.push(h("div", { class: "note", style: "margin-top:8px" },
       r.verified ? "The vision model confirmed every required part on the video frames." : "The vision model was not sure about every part."));
+  }
+  if (r.sightings && r.sightings.length) {
+    const list = r._sightList || (r._sightList = [r, ...r.sightings]);
+    out.push(h("div", { class: "block-title" }, `Also seen (${r.sightings.length})`),
+      h("div", { class: "note", style: "margin:0 0 8px" }, "Other tracks of the same person / vehicle close in time, folded into this result."),
+      h("div", { class: "chips" }, ...r.sightings.map((x, i) => h("button", { class: "chip-btn", type: "button", onclick: () => openNested(list, i + 1, "sightings") },
+        icon("clock"), `${x.camera} · ${x.recorded_at ? fmtWhen(x, false) : fmtDur(x.start_s)}`))));
   }
   const at = attrChips(r.attrs);
   if (at.length) out.push(h("div", { class: "block-title" }, "Tracker attributes"), h("div", { class: "chips" }, ...at));

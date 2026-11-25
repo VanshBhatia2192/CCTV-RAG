@@ -216,7 +216,9 @@ def ask(q: str, n: int = 24, use_llm: bool = False, rerank: bool = False, camera
     kind, search_text, cam, mode = plan["kind"], plan["text"], plan["camera"], "contextual"
     fallback_dataset = False
 
-    # 3. Deduplicate across cameras, throttle stationary hits, and build full-stream cards
+    # 3. Deduplicate across cameras, throttle stationary hits, and build full-stream cards. A wider pool is built
+    # first because folding repeated sightings of one person / vehicle (src/query/dedup.py) shrinks it.
+    pool = n * 4
     db = _db(); out = []; seen_clips = set()
     cam_counts = {}
     seen_stationary = set()
@@ -266,11 +268,11 @@ def ask(q: str, n: int = 24, use_llm: bool = False, rerank: bool = False, camera
             seen_events.add((c_cam, event_bin))
             cam_counts[c_cam] = cam_counts.get(c_cam, 0) + 1
             out.append(card)
-            if len(out) >= n:
+            if len(out) >= pool:
                 break
 
-        # Backfill if diversity constraint left us under n results
-        if len(out) < n and deferred_overflow:
+        # Backfill if diversity constraint left us under the pool size
+        if len(out) < pool and deferred_overflow:
             for card in deferred_overflow:
                 clip_key = card.get("clip")
                 if clip_key and clip_key in seen_clips:
@@ -278,8 +280,12 @@ def ask(q: str, n: int = 24, use_llm: bool = False, rerank: bool = False, camera
                 if clip_key:
                     seen_clips.add(clip_key)
                 out.append(card)
-                if len(out) >= n:
+                if len(out) >= pool:
                     break
+
+        # one card per person / vehicle: repeated sightings (chunk splits, lingering, overlapping cameras) fold in
+        from src.query import dedup
+        out = dedup.group(out, dedup.meta_of(db, out))[:n]
 
         # Displayed confidence: how much of the query the result satisfies, nudged by retrieval rank.
         # Partial matches can no longer show 90%+ just because the fused score of a single word was high.
@@ -597,13 +603,24 @@ def _same_dataset(query, cards):
     return [c for c in cards if c.get("dataset") == ds] if ds else cards
 
 
+def _fold(cards, k):
+    """One card per camera visit: the same person / vehicle seen again moments later on the same camera (or at the same
+    moment on an overlapping camera) folds into the best-scoring card as extra sightings."""
+    from src.query import dedup
+    db = _db()
+    try:
+        return dedup.group(cards, dedup.meta_of(db, cards))[:k]
+    finally:
+        db.close()
+
+
 @app.get("/api/reid/vehicle/{tid}")
 def reid_vehicle_api(tid: int, k: int = 12, use_st: bool = True, use_color: bool = True):
     """Multi-camera vehicle tracking endpoint using visual Re-ID, strict color gating, and spatio-temporal physics."""
     from src.vehicle import reid as vreid
     k = min(max(k, 1), 40)
     try:
-        res = vreid.rank(tid, k=k, use_st_filter=use_st, use_color_gate=use_color)
+        res = vreid.rank(tid, k=k * 4, use_st_filter=use_st, use_color_gate=use_color)
     except KeyError as e:
         raise HTTPException(404, str(e))
     except Exception as e:
@@ -629,6 +646,7 @@ def reid_vehicle_api(tid: int, k: int = 12, use_st: bool = True, use_color: bool
     finally:
         db.close()
     cards = _same_dataset(query, cards)
+    cards = _fold(cards, k)
     return dict(
         query=query,
         kind="vehicle",
@@ -655,14 +673,14 @@ def reid_api(tid: int, mode: str = "any", k: int = 12, full_body: bool = True, u
         raise HTTPException(400, f"mode must be one of {list(reid.MODES)}")
     k = min(max(k, 1), 40)
     try:
-        res = reid.rank(tid, k=k * 4 if full_body else k, mode=mode)
+        res = reid.rank(tid, k=k * 8 if full_body else k * 4, mode=mode)
     except KeyError as e:
         raise HTTPException(404, str(e))
     db = _db()
     try:
         rows = drop_closeups(db, res["results"]) if full_body else res["results"]
         cards = []
-        for r in rows[:k]:
+        for r in rows:
             t = _track(db, r["track_row"])
             if t:
                 c = _card_track(t, r["score"]); c.update(appearance_z=r["appearance_z"], gait_z=r["gait_z"]); cards.append(c)
@@ -670,7 +688,7 @@ def reid_api(tid: int, mode: str = "any", k: int = 12, full_body: bool = True, u
         query = _card_track(q) if q else None
     finally:
         db.close()
-    cards = _same_dataset(query, cards)
+    cards = _fold(_same_dataset(query, cards), k)
     return dict(query=query, mode=mode, w_appearance=res["w_appearance"], note=res["note"], full_body_filter=full_body, results=cards)
 
 
