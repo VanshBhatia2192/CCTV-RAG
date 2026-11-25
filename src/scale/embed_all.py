@@ -32,7 +32,8 @@ def main(limit, workers):
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     db = connect()
     rows = [dict(r) for r in db.execute(
-        "SELECT t.id, t.kind, t.chunk_id, t.start_s, t.end_s, t.fps, t.crops_dir, t.path_json, c.camera FROM tracks t "
+        "SELECT t.id, t.kind, t.chunk_id, t.start_s, t.end_s, t.fps, t.crops_dir, t.path_json, c.camera, "
+        "coalesce(c.dataset, 'meva') AS dataset FROM tracks t "
         "JOIN chunks c ON c.id=t.chunk_id WHERE t.attrs_json IS NULL LIMIT ?", (limit,)).fetchall()]
     print(len(rows), "tracks to embed on", dev, flush=True)
     if not rows:
@@ -69,7 +70,7 @@ def main(limit, workers):
         kind = r["kind"]
         a = attributes.zero_shot(kind, v)
         a.update((motion.person_motion if kind == "person" else motion.vehicle_motion)(json.loads(r["path_json"]), r["fps"]))
-        pay = {"track_row": tid, "chunk_id": r["chunk_id"], "camera": r["camera"], "start_s": r["start_s"], "end_s": r["end_s"], **a}
+        pay = {"track_row": tid, "chunk_id": r["chunk_id"], "camera": r["camera"], "dataset": r["dataset"], "start_s": r["start_s"], "end_s": r["end_s"], **a}
         ids, vs, ps = buf[kind]; ids.append(tid); vs.append(v.tolist()); ps.append(pay)
         if vf is not None:
             ids, vs, ps = buf["person_ft"]; ids.append(tid); vs.append(vf.tolist()); ps.append(pay)

@@ -1,0 +1,10 @@
+{
+ "agreement": {
+  "person_ft": {
+   "top10_overlap": 1.0,
+   "qdrant_ms": 3.9,
+   "resonance_ms": 147.4,
+   "n": 200
+  }
+ }
+}

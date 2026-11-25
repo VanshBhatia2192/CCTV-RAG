@@ -74,6 +74,7 @@ CONCEPTS = [
     (r"\bdelivery (?:guy|man|men|person|people|driver|worker)s?\b", [("object", "package", None, False)], "person"),
     (r"\b(?:old|elderly|senior) (?:man|men|woman|women|lady|ladies|person|people)\b",
      [("attribute", "elderly", None, False)], None),
+    (r"\bschool ?bus(?:es)?\b", [("object", "bus", None, True)], "vehicle"),   # not a "school" text/logo requirement
     (r"\b(?:cyclists?|bikers?|bicyclists?)\b", [("object", "bicycle", None, True), ("action", "riding", None, False)], "person"),
     (r"\b(?:travell?ers?|tourists?)\b", [("object", "suitcase", None, False)], "person"),
     (r"\bjoggers?\b", [("action", "running", None, True)], "person"),

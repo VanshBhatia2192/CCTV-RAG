@@ -25,7 +25,7 @@ def collate(b):
 
 def main(limit, workers):
     db = connect()
-    rows = [dict(r) for r in db.execute("SELECT w.*, c.path, c.camera FROM windows w JOIN chunks c ON c.id=w.chunk_id "
+    rows = [dict(r) for r in db.execute("SELECT w.*, c.path, c.camera, coalesce(c.dataset, 'meva') AS dataset FROM windows w JOIN chunks c ON c.id=w.chunk_id "
                                         "WHERE w.embedded=0 LIMIT ?", (limit,)).fetchall()]
     print(len(rows), "windows to embed", flush=True)
     if not rows:
@@ -40,7 +40,7 @@ def main(limit, workers):
         pv = torch.stack([b[1] for b in batch]).to(iembed.DEV)
         with torch.no_grad():
             v = iembed._t(m.get_video_features(pixel_values=pv)).cpu().numpy()
-        pays = [{"window_id": i, "chunk_id": by[i]["chunk_id"], "camera": by[i]["camera"], "path": by[i]["path"],
+        pays = [{"window_id": i, "chunk_id": by[i]["chunk_id"], "camera": by[i]["camera"], "dataset": by[i]["dataset"], "path": by[i]["path"],
                  "rel_start": by[i]["rel_start"], "rel_end": by[i]["rel_end"], "start_s": by[i]["start_s"],
                  "end_s": by[i]["end_s"]} for i in ids]
         vector_db.upsert("incident", ids, v.tolist(), pays)

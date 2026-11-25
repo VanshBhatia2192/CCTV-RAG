@@ -313,26 +313,13 @@ def health():
 def stats():
     db = _db()
     try:
-        datasets = [r[0] for r in db.execute("select distinct coalesce(dataset, 'meva') from chunks where dataset is not null order by dataset").fetchall()]
-        for ds in ("meva", "aicity"):
-            if ds not in datasets:
-                datasets.append(ds)
-        datasets = sorted(list(set(datasets)))
+        # only datasets that actually have footage in the index (AICITY used to be listed with no data behind it)
+        datasets = [r[0] for r in db.execute("select distinct coalesce(dataset, 'meva') from chunks order by 1").fetchall()]
         cameras = [r[0] for r in db.execute("select distinct camera from chunks where camera is not null order by camera").fetchall()]
         cam_dataset_rows = db.execute("select distinct camera, coalesce(dataset, 'meva') from chunks where camera is not null").fetchall()
         cameras_by_dataset = {}
         for cam, ds in cam_dataset_rows:
             cameras_by_dataset.setdefault(ds, []).append(cam)
-        cameras_by_dataset.setdefault("meva", cameras)
-        if "aicity" not in cameras_by_dataset or not cameras_by_dataset["aicity"]:
-            # Discover AI City / CityFlow cameras if available in data/raw/cityflow_nl, else standard AI City camera IDs
-            aicity_cams = set()
-            cf_dir = Path("data/raw/cityflow_nl/AICity22_Track1_MTMC_Tracking")
-            if cf_dir.exists():
-                for c in cf_dir.glob("**/c0*"):
-                    if c.is_dir():
-                        aicity_cams.add(c.name)
-            cameras_by_dataset["aicity"] = sorted(list(aicity_cams)) if aicity_cams else [f"c0{i:02d}" for i in range(1, 10)]
         n_chunks = db.execute("select count(*) from chunks").fetchone()[0]
         track_counts = dict(db.execute("select kind, count(*) from tracks group by kind").fetchall())
         n_windows = 0

@@ -30,7 +30,14 @@ def upsert(collection, ids, vectors, payloads):
     client().upsert(collection, points=[
         models.PointStruct(id=i, vector=v, payload=p) for i, v, p in zip(ids, vectors, payloads)])
 
+BACKEND = os.getenv("VECTOR_BACKEND", "qdrant")   # "resonance": cosine collections are searched in ResonanceDB
+
+
 def search(collection, vector, k=50, where=None, ids=None):
+    if BACKEND == "resonance":
+        from src.index import resonance
+        if collection in resonance.COLLECTIONS and resonance.count(collection):
+            return resonance.search(collection, vector, k, where, ids)
     must = []
     if where:
         must += [models.FieldCondition(key=k_, match=models.MatchValue(value=v)) for k_, v in where.items()]
