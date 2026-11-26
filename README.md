@@ -159,6 +159,24 @@ Run v1: 30k iterations, batch 8 x 15 frames x 64 px, lr 2e-5 (cosine), 220 train
 
 v2 beats v1 only slightly (+0.03 dB PSNR, +0.002 SSIM; on the bus camera v2 alone is level with v1), so the extra data and longer clips gave little; the flip ensemble adds a further ~+0.14 dB. Best overall: v2 + flip TTA, +2.35 dB over the pretrained model and +0.91 dB over bicubic. Reports in `outputs/reports/sr_eval_v2.json` / `sr_train_v2.json`, figures in `outputs/figures/sr_v2/`.
 
+### 7. Vehicle Re-Identification Across Cameras (CityFlow ground truth)
+The indexed AICITY vehicle tracks were matched to the official CityFlow MTMC ground truth (global vehicle IDs across
+cameras, IoU ≥ 0.5): 3,756 labelled tracks, 3,637 queries whose vehicle appears on another camera. S02 is the scene
+held out from the fine-tuned vehicle model's training, so it is the clean test (`eval/vehicle/eval_reid_cityflow.py`).
+
+| Re-tracking (`/api/reid/vehicle`) | S02 R@1 | S02 R@5 | S02 mAP | Other scenes R@1 | Latency |
+|---|---|---|---|---|---|
+| Before: road-topology + colour gates, per-camera collapsing | 0.0 | 0.0 | 0.4 | 1.5 | 3.0 s |
+| Appearance only (fine-tuned CLIP), whole gallery | 22.8 | 46.8 | 20.1 | 37.1 | – |
+| **Now: appearance among vehicles seen within ±60 s (synchronised clock)** | **52.5** | **83.7** | **58.0** | **49.3** | **0.5 s** |
+| Now + colour gate | 41.4 | 63.1 | 41.6 | 42.0 | 0.5 s |
+
+The topology gate compared unsynchronised times and knew 10 of 46 cameras; the colour gate (noisy colours) and a
+vehicle-type gate both lowered accuracy, and keeping one track per camera per 3 minutes dropped correct matches.
+`src/index/clock.py` puts footage on one clock (MEVA file timestamps; CityFlow scene + `cam_timestamp` offsets); the
+±60 s window was the best of 20–600 s. Footage without a shared clock is ranked by appearance only. Report:
+`outputs/reports/eval_vehicle_reid_cityflow.json`.
+
 ---
 
 ## 📁 Repository Structure

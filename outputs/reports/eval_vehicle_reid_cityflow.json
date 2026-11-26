@@ -1,0 +1,211 @@
+{
+ "source": "eval/vehicle/eval_reid_cityflow.py (api_no_time_window not run: every query scans all 11.6k vehicles; cos_ft is the same comparison without the window)",
+ "variants": {
+  "cos_ft": {
+   "S02_clean": {
+    "R1": 22.8,
+    "R5": 46.8,
+    "mAP": 20.1,
+    "n": 263
+   },
+   "other_scenes": {
+    "R1": 37.1,
+    "R5": 55.8,
+    "mAP": 20.0,
+    "n": 3374
+   }
+  },
+  "cos_ft_scene": {
+   "S02_clean": {
+    "R1": 44.5,
+    "R5": 76.0,
+    "mAP": 49.7,
+    "n": 263
+   },
+   "other_scenes": {
+    "R1": 45.7,
+    "R5": 66.6,
+    "mAP": 29.7,
+    "n": 3374
+   }
+  },
+  "cos_ft_win60": {
+   "S02_clean": {
+    "R1": 52.1,
+    "R5": 83.7,
+    "mAP": 57.7,
+    "n": 263
+   },
+   "other_scenes": {
+    "R1": 53.6,
+    "R5": 76.4,
+    "mAP": 36.3,
+    "n": 3374
+   }
+  },
+  "cos_base": {
+   "S02_clean": {
+    "R1": 11.4,
+    "R5": 18.6,
+    "mAP": 8.1,
+    "n": 263
+   },
+   "other_scenes": {
+    "R1": 13.1,
+    "R5": 22.2,
+    "mAP": 4.3,
+    "n": 3374
+   }
+  },
+  "cos_base_scene": {
+   "S02_clean": {
+    "R1": 16.7,
+    "R5": 31.9,
+    "mAP": 16.9,
+    "n": 263
+   },
+   "other_scenes": {
+    "R1": 17.2,
+    "R5": 30.3,
+    "mAP": 8.0,
+    "n": 3374
+   }
+  },
+  "win60+color_gate": {
+   "S02_clean": {
+    "R1": 41.4,
+    "R5": 63.5,
+    "mAP": 41.5,
+    "n": 263
+   },
+   "other_scenes": {
+    "R1": 45.8,
+    "R5": 66.4,
+    "mAP": 26.3,
+    "n": 3374
+   }
+  },
+  "win60+type_gate": {
+   "S02_clean": {
+    "R1": 49.8,
+    "R5": 76.4,
+    "mAP": 53.5,
+    "n": 263
+   },
+   "other_scenes": {
+    "R1": 49.0,
+    "R5": 70.2,
+    "mAP": 29.1,
+    "n": 3374
+   }
+  },
+  "win60+color_penalty": {
+   "S02_clean": {
+    "R1": 41.4,
+    "R5": 67.7,
+    "mAP": 46.2,
+    "n": 263
+   },
+   "other_scenes": {
+    "R1": 46.0,
+    "R5": 67.2,
+    "mAP": 29.1,
+    "n": 3374
+   }
+  },
+  "api": {
+   "S02_clean": {
+    "R1": 52.5,
+    "R5": 83.7,
+    "mAP": 58.0,
+    "n": 263
+   },
+   "other_scenes": {
+    "R1": 49.3,
+    "R5": 79.3,
+    "mAP": 36.2,
+    "n": 150
+   },
+   "median_latency_s": 0.5
+  },
+  "api_color_gate": {
+   "S02_clean": {
+    "R1": 41.4,
+    "R5": 63.1,
+    "mAP": 41.6,
+    "n": 263
+   },
+   "other_scenes": {
+    "R1": 42.0,
+    "R5": 66.7,
+    "mAP": 27.3,
+    "n": 150
+   },
+   "median_latency_s": 0.49
+  },
+  "before_api": {
+   "S02_clean": {
+    "R1": 0.0,
+    "R5": 0.0,
+    "mAP": 0.4,
+    "n": 14
+   },
+   "other_scenes": {
+    "R1": 1.5,
+    "R5": 3.7,
+    "mAP": 0.7,
+    "n": 136
+   },
+   "median_latency_s": 3.02
+  },
+  "before_api_nogates": {
+   "S02_clean": {
+    "R1": 14.3,
+    "R5": 21.4,
+    "mAP": 9.2,
+    "n": 14
+   },
+   "other_scenes": {
+    "R1": 31.6,
+    "R5": 46.3,
+    "mAP": 10.3,
+    "n": 136
+   },
+   "median_latency_s": 3.08
+  },
+  "before_api_nocolor": {
+   "S02_clean": {
+    "R1": 0.0,
+    "R5": 0.0,
+    "mAP": 0.4,
+    "n": 14
+   },
+   "other_scenes": {
+    "R1": 1.5,
+    "R5": 4.4,
+    "mAP": 0.8,
+    "n": 136
+   },
+   "median_latency_s": 3.11
+  },
+  "before_api_noroute": {
+   "S02_clean": {
+    "R1": 14.3,
+    "R5": 21.4,
+    "mAP": 9.2,
+    "n": 14
+   },
+   "other_scenes": {
+    "R1": 31.6,
+    "R5": 44.9,
+    "mAP": 10.2,
+    "n": 136
+   },
+   "median_latency_s": 3.03
+  }
+ },
+ "labelled_tracks": 3756,
+ "aicity_vehicle_tracks": 11629,
+ "queries": 3637,
+ "note_before": "before_*: the previous rank() (road-topology + colour gates, per-camera 3-minute collapsing), 150 sampled queries"
+}

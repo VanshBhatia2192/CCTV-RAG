@@ -564,7 +564,7 @@ const KIND_ICON = { person: "person", vehicle: "car", incident: "bolt", any: "sp
 const S = {
   mode: "ask", results: [], data: null, sort: store.get("sort", "score"), view: store.get("view", "grid"),
   sel: -1, nav: [], reidCache: new Map(), tick: 0, pinned: store.get("evidence", []), ctrl: null, lastQuery: "", gpu: false,
-  cams: [], camsByDs: {}, reid: { mode: "any", fullBody: true, st: true, color: true, ctrl: null },
+  cams: [], camsByDs: {}, reid: { mode: "any", fullBody: true, st: true, color: false, ctrl: null },
 };
 const EXAMPLES = {
   ask: [
@@ -838,7 +838,7 @@ function card(r, idx, opts = {}) {
     (r.sightings || []).map(x => `${x.camera} ${x.recorded_at ? fmtWhen(x, false) : fmtDur(x.start_s)}`).join(", ") }, icon("clock"), `+${r.n_sightings - 1} sighting${r.n_sightings > 2 ? "s" : ""}`));
   if (opts.vreid) {
     if (r.appearance_sim != null) chips.push(h("span", { class: "chip" }, `visual ${Number(r.appearance_sim).toFixed(2)}`));
-    if (r.st_valid) chips.push(h("span", { class: "chip ok" }, icon("route"), "route ok"));
+    if (r.time_gap_s != null) chips.push(h("span", { class: "chip" + (r.st_valid ? " ok" : "") }, icon("clock"), r.time_gap_s < 1 ? "same moment" : `${Math.round(r.time_gap_s)} s apart`));
   }
   const el = h("article", { class: `card ${r.match && r.match !== "full" && !opts.reid ? "partial" : ""}`, tabindex: 0, "data-key": keyOf(r),
     "aria-label": `${r.kind} on ${r.camera}`,
@@ -1149,7 +1149,7 @@ function vreidPanel(r) {
   const load = async () => {
     if (st.ctrl) st.ctrl.abort();
     const ctrl = st.ctrl = new AbortController();
-    status.textContent = "matching across cameras and road topology…";
+    status.textContent = "matching vehicles seen on other cameras within a minute…";
     grid.replaceChildren(...Array.from({ length: 8 }, () => h("div", { class: "skel" }, h("div", { class: "m shimmer" }), h("div", { class: "l shimmer" }))));
     try {
       const key = `v|${r.id}|${st.st}|${st.color}`;
@@ -1157,9 +1157,9 @@ function vreidPanel(r) {
       if (ctrl !== st.ctrl) return;
       S.reidCache.set(key, d);
       d.results.forEach(x => { x.kind = x.kind || "vehicle"; });
-      status.textContent = `${d.results.length} match${d.results.length === 1 ? "" : "es"}`;
+      status.textContent = `${d.results.length} match${d.results.length === 1 ? "" : "es"}` + (d.time_window_s ? ` · within ±${d.time_window_s} s` : d.synchronised_clock === false ? " · no shared clock for this footage, time not used" : "");
       grid.replaceChildren(...(d.results.length ? d.results.map((x, i) => card(x, -1, { vreid: true, compact: true, onOpen: () => openNested(d.results, i, "vehicle matches") }))
-        : [h("div", { class: "tl-note" }, "No matching vehicle on other cameras within the constraints.")]));
+        : [h("div", { class: "tl-note" }, "No matching vehicle on other cameras within a minute. Turn off the time window to search all footage of this dataset.")]));
     } catch (e) {
       if (e.name === "AbortError") return;
       status.textContent = ""; grid.replaceChildren(h("div", { class: "alert error" }, icon("alert"), h("div", {}, e.message)));
@@ -1167,7 +1167,7 @@ function vreidPanel(r) {
   };
   const sw = (label, key) => h("label", { class: "switch" }, h("input", { type: "checkbox", checked: st[key], onchange: e => { st[key] = e.target.checked; load(); } }), h("span", { class: "track" }), label);
   load();
-  return h("div", {}, h("div", { class: "reid-controls" }, sw("Road topology", "st"), sw("Same color", "color"), status), grid);
+  return h("div", {}, h("div", { class: "reid-controls" }, sw("Within ±1 min", "st"), sw("Same color", "color"), status), grid);
 }
 
 /* ============================================================ evidence */

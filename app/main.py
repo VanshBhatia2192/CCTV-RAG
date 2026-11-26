@@ -615,8 +615,9 @@ def _fold(cards, k):
 
 
 @app.get("/api/reid/vehicle/{tid}")
-def reid_vehicle_api(tid: int, k: int = 12, use_st: bool = True, use_color: bool = True):
-    """Multi-camera vehicle tracking endpoint using visual Re-ID, strict color gating, and spatio-temporal physics."""
+def reid_vehicle_api(tid: int, k: int = 12, use_st: bool = True, use_color: bool = False):
+    """Same vehicle on other cameras: fine-tuned appearance among vehicles seen within +-60 s on a synchronised clock
+    (use_st), optional colour gate (use_color, off by default: it lowers accuracy). See src/vehicle/reid.rank."""
     from src.vehicle import reid as vreid
     k = min(max(k, 1), 40)
     try:
@@ -636,6 +637,7 @@ def reid_vehicle_api(tid: int, k: int = 12, use_st: bool = True, use_color: bool
                 c.update(
                     appearance_sim=r.get("appearance_sim"),
                     st_valid=r.get("st_valid"),
+                    time_gap_s=r.get("time_gap_s"),
                     color_match=r.get("color_match"),
                 )
                 cards.append(c)
@@ -652,12 +654,14 @@ def reid_vehicle_api(tid: int, k: int = 12, use_st: bool = True, use_color: bool
         kind="vehicle",
         use_st=use_st,
         use_color=use_color,
+        time_window_s=res.get("time_window_s"),
+        synchronised_clock=(res.get("query") or {}).get("synchronised_clock"),
         results=cards,
     )
 
 
 @app.get("/api/reid/{tid}")
-def reid_api(tid: int, mode: str = "any", k: int = 12, full_body: bool = True, use_st: bool = True, use_color: bool = True):
+def reid_api(tid: int, mode: str = "any", k: int = 12, full_body: bool = True, use_st: bool = True, use_color: bool = False):
     db = _db()
     try:
         t = _track(db, tid)

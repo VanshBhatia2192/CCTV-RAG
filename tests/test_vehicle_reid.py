@@ -34,10 +34,14 @@ def mock_db(monkeypatch):
           path_json TEXT, attrs_json TEXT, caption TEXT);
     """)
 
-    # Chunks: c041, c042, c043
-    conn.execute("INSERT INTO chunks VALUES(1, 'c041', 'c041/vdo.avi', 'chunks/c041_1.mp4', 0.0, 30.0, 0.5, 1)")
-    conn.execute("INSERT INTO chunks VALUES(2, 'c042', 'c042/vdo.avi', 'chunks/c042_1.mp4', 0.0, 30.0, 0.5, 1)")
-    conn.execute("INSERT INTO chunks VALUES(3, 'c043', 'c043/vdo.avi', 'chunks/c043_1.mp4', 0.0, 30.0, 0.5, 1)")
+    # Chunks: c041, c042, c043 in a CityFlow layout (scene S06 + cam_timestamp), so they share a synchronised clock
+    aic = Path(db_path).with_suffix("") / "AICity22_Track1_MTMC_Tracking"
+    (aic / "cam_timestamp").mkdir(parents=True, exist_ok=True)
+    (aic / "cam_timestamp" / "S06.txt").write_text("c041 0\nc042 0\nc043 0\n")
+    src = {c: str(aic / "test" / "S06" / c / "vdo.avi") for c in ("c041", "c042", "c043")}
+    conn.execute("INSERT INTO chunks VALUES(1, 'c041', ?, 'chunks/c041_1.mp4', 0.0, 30.0, 0.5, 1)", (src["c041"],))
+    conn.execute("INSERT INTO chunks VALUES(2, 'c042', ?, 'chunks/c042_1.mp4', 0.0, 30.0, 0.5, 1)", (src["c042"],))
+    conn.execute("INSERT INTO chunks VALUES(3, 'c043', ?, 'chunks/c043_1.mp4', 0.0, 30.0, 0.5, 1)", (src["c043"],))
 
     # Track 101 on c041: Blue car taking left (10.0s to 15.0s) -> Query Seed
     conn.execute(
@@ -57,7 +61,7 @@ def mock_db(monkeypatch):
         (json.dumps({"color": "red", "type": "truck", "motion": "moving"}), "a red pickup truck"),
     )
 
-    # Track 104 on c042: Blue car (500.0s to 505.0s) -> Exceeds max travel window (rejected by spatio-temporal filter)
+    # Track 104 on c042: Blue car (500.0s to 505.0s) -> far outside the +-60 s window on the synchronised clock
     conn.execute(
         "INSERT INTO tracks VALUES(104, 2, 'vehicle', 4, 500.0, 505.0, 50, 10.0, '', '[]', ?, ?)",
         (json.dumps({"color": "blue", "type": "sedan", "motion": "moving"}), "a blue sedan"),
@@ -107,7 +111,7 @@ def test_topology_loading():
 
 
 def test_vehicle_reid_ranking(mock_db):
-    """Test vehicle Re-ID rank function with spatio-temporal and color gating."""
+    """Vehicle re-ID with the time window on the synchronised clock and the (optional) colour gate."""
     res = vreid.rank(101, k=10, use_st_filter=True, use_color_gate=True)
     assert res["query"]["camera"] == "c041"
     assert res["query"]["color"] == "blue"
@@ -117,8 +121,17 @@ def test_vehicle_reid_ranking(mock_db):
     assert 102 in matched_ids
     # Track 103 (red truck) must be rejected by color gate
     assert 103 not in matched_ids
-    # Track 104 (negative time) must be rejected by spatio-temporal filter
+    # Track 104 (485 s later) must be rejected by the time window
     assert 104 not in matched_ids
+    assert next(m for m in res["results"] if m["track_row"] == 102)["time_gap_s"] == 5.0
+
+
+def test_vehicle_reid_without_time_window_and_colour_gate_off_by_default(mock_db):
+    res = vreid.rank(101, k=10, use_st_filter=False)
+    ids = {m["track_row"] for m in res["results"]}
+    assert {102, 103, 104} <= ids                  # no time window (104 is back), colour gate off (red 103 stays),
+                                                   # and no per-camera collapsing (102 and 103 are both on c042)
+    assert res["time_window_s"] is None
 
 
 def test_fastapi_reid_vehicle_endpoint(mock_db):
@@ -132,4 +145,4 @@ def test_fastapi_reid_vehicle_endpoint(mock_db):
     assert len(data["results"]) == 1
     assert data["results"][0]["id"] == 102
     assert data["results"][0]["camera"] == "c042"
-    assert data["results"][0]["score"] > 0.5
+    assert data["time_window_s"] == 60.0
