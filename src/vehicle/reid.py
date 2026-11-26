@@ -181,28 +181,32 @@ def get_track_crop_embedding(crops_dir: str) -> Optional[np.ndarray]:
         return None
 
 
+WINDOW_S = 60.0     # +-seconds on the synchronised clock; tuned on CityFlow ground truth (see rank docstring)
+
+
 def rank(
     track_row: int,
     k: int = 12,
     same_camera: bool = False,
     use_st_filter: bool = True,
-    use_color_gate: bool = True,
+    use_color_gate: bool = False,
+    window_s: float = WINDOW_S,
 ) -> Dict:
-    """Find and rank the same vehicle across other cameras.
+    """Find the same vehicle on other cameras.
 
-    Args:
-        track_row: ID of the query vehicle track in SQLite tracks table.
-        k: Maximum number of matches to return.
-        same_camera: Whether to include matches from the same camera feed.
-        use_st_filter: Enforce spatio-temporal road topology constraints.
-        use_color_gate: Reject/penalize vehicles with conflicting paint colors.
+    Candidates are vehicle tracks of the same dataset on other cameras; with use_st_filter, only those seen within
+    window_s seconds of the query on a synchronised clock (src/index/clock.py: MEVA file timestamps, CityFlow scene +
+    cam_timestamp offsets). They are ranked by the fine-tuned vehicle appearance embedding (vehicle_ft, cosine).
 
-    Returns:
-        Structured dictionary with query vehicle details and cross-camera candidate matches.
+    Measured on CityFlow ground truth (eval/vehicle/eval_reid_cityflow.py; S02 = scene held out from vehicle_ft
+    training, 263 queries): appearance over the whole gallery R1 22.8 / mAP 20.1; within +-60 s R1 52.1 / mAP 57.7.
+    The old road-topology gate (10 of 46 cameras mapped, unsynchronised times) scored R1 0.0; the colour gate (noisy
+    colours) and a vehicle-type gate both lowered R1 (52 -> 41 / 50), so the colour gate is off by default and the
+    type gate is gone. Footage without a shared clock is not time-filtered.
     """
+    from src.index import clock as CK
     db = connect()
     try:
-        # 1. Fetch query track
         q_row = db.execute(
             """
             SELECT t.*, ch.camera, ch.source as video_source, ch.path as chunk_path, ch.start_s as chunk_start,
@@ -215,219 +219,106 @@ def rank(
         ).fetchone()
 
         if not q_row:
-            # Check if this ID is in our standalone MTMC cache format
             res_fallback = _rank_from_mtmc_fallback(track_row, k, same_camera, use_st_filter, use_color_gate)
             if res_fallback:
                 return res_fallback
             raise KeyError(f"Vehicle track #{track_row} not found in database.")
 
         q_cam = q_row["camera"]
-        q_start = float(q_row["start_s"])
-        q_end = float(q_row["end_s"])
+        q_start, q_end = float(q_row["start_s"]), float(q_row["end_s"])
         q_attrs = json.loads(q_row["attrs_json"] or "{}")
         q_color = extract_color(q_attrs, q_row["caption"])
         q_type = extract_type(q_attrs, q_row["caption"])
-        q_crop_dir = q_row["crops_dir"]
+        q_files = sorted(Path(q_row["crops_dir"]).glob("*.jpg")) if q_row["crops_dir"] else []
+        q_clock = CK.clock(q_row["video_source"], q_start)
+        q_iv = (q_clock[0], q_clock[1], q_clock[1] + (q_end - q_start)) if q_clock else None
+        timed = use_st_filter and q_iv is not None
 
-        # Thumbnail path for query
-        q_files = sorted(Path(q_crop_dir).glob("*.jpg")) if q_crop_dir else []
-        q_thumb = f"/api/thumb/{track_row}" if q_files else None
-
-        # 2. Extract query visual vector
-        q_vec = None
-        # Try Qdrant first if available
-        try:
-            from src.index import vector_db
-            r = vector_db.client().retrieve("vehicle_ft", ids=[track_row], with_vectors=True)
-            if not r:
-                r = vector_db.client().retrieve("vehicle", ids=[track_row], with_vectors=True)
-            if r and r[0].vector:
-                q_vec = np.array(r[0].vector, dtype=np.float32)
-                norm = np.linalg.norm(q_vec) + 1e-9
-                q_vec = q_vec / norm
-        except Exception:
-            pass
-
-        # If not in vector DB, extract on the fly from crop images
-        if q_vec is None and q_crop_dir:
-            q_vec = get_track_crop_embedding(q_crop_dir)
-
-        # 3. Retrieve all candidate vehicle tracks
+        # never match across datasets (separate footage collections)
         sql = """
-            SELECT t.*, ch.camera, ch.path as chunk_path, ch.start_s as chunk_start
+            SELECT t.*, ch.camera, ch.source as video_source, ch.path as chunk_path, ch.start_s as chunk_start
             FROM tracks t
             JOIN chunks ch ON ch.id = t.chunk_id
             WHERE t.kind = 'vehicle' AND t.id != ? AND coalesce(ch.dataset, 'meva') = ?
         """
-        params = [track_row, q_row["dataset"]]   # never match across datasets (separate footage collections)
+        params = [track_row, q_row["dataset"]]
         if not same_camera:
             sql += " AND ch.camera != ?"
             params.append(q_cam)
+        candidates = []
+        for c in db.execute(sql, params).fetchall():
+            gap = None
+            if q_iv is not None:
+                cc = CK.clock(c["video_source"], float(c["start_s"]))
+                if cc:
+                    gap = CK.gap(q_iv, (cc[0], cc[1], cc[1] + float(c["end_s"]) - float(c["start_s"])))
+            if timed and (gap is None or gap > window_s):
+                continue
+            candidates.append((c, gap))
 
-        candidates = db.execute(sql, params).fetchall()
+        # appearance vectors in a few batched calls
+        from src.index import vector_db
+        vecs = {}
+        want = [track_row] + [c["id"] for c, _ in candidates]
+        for coll in ("vehicle_ft", "vehicle"):
+            try:
+                for s0 in range(0, len(want), 1000):
+                    for pt in vector_db.client().retrieve(coll, ids=want[s0:s0 + 1000], with_vectors=True):
+                        if pt.vector and pt.id not in vecs:
+                            v = np.asarray(pt.vector, dtype=np.float32)
+                            vecs[pt.id] = v / (np.linalg.norm(v) + 1e-9)
+            except Exception:
+                pass
+            want = [i for i in want if i not in vecs]
+            if not want:
+                break
+        q_vec = vecs.get(track_row)
+        if q_vec is None and q_row["crops_dir"]:
+            q_vec = get_track_crop_embedding(q_row["crops_dir"])
 
-        # candidate vectors in a few batched calls (was one Qdrant request per candidate)
-        cand_vecs = {}
-        try:
-            from src.index import vector_db
-            want = [c["id"] for c in candidates]
-            for coll in ("vehicle_ft", "vehicle"):
-                for s in range(0, len(want), 1000):
-                    for pt in vector_db.client().retrieve(coll, ids=want[s:s + 1000], with_vectors=True):
-                        if pt.vector and pt.id not in cand_vecs:
-                            v = np.array(pt.vector, dtype=np.float32)
-                            cand_vecs[pt.id] = v / (np.linalg.norm(v) + 1e-9)
-                want = [i for i in want if i not in cand_vecs]
-                if not want:
-                    break
-        except Exception:
-            pass
-
-        # 4. Score candidates
-        topology = load_topology()
         matches = []
-
-        for c in candidates:
+        for c, gap in candidates:
             cid = c["id"]
-            cam = c["camera"]
-            c_start = float(c["start_s"])
-            c_end = float(c["end_s"])
             c_attrs = json.loads(c["attrs_json"] or "{}")
             c_color = extract_color(c_attrs, c["caption"])
-            c_type = extract_type(c_attrs, c["caption"])
-
-            # A. Color consistency gating
-            color_match = True
-            color_penalty = 0.0
-            if q_color and c_color:
-                if q_color != c_color:
-                    color_match = False
-                    if use_color_gate:
-                        # Skip candidate outright if strictly conflicting color
-                        continue
-                    else:
-                        color_penalty = 0.4
-
-            # B. Body type consistency gating
-            type_match = True
-            type_penalty = 0.0
-            if q_type and c_type and q_type != c_type:
-                type_match = False
-                # Distinct classes: truck vs SUV/car/bus
-                is_distinct = (q_type in ("truck", "bus", "motorcycle") or c_type in ("truck", "bus", "motorcycle"))
-                if use_color_gate and is_distinct:
-                    # Skip candidate outright if conflicting body type
-                    continue
-                type_penalty = 0.40 if is_distinct else 0.20
-
-            # B. Spatio-temporal feasibility (Bidirectional transition check)
-            st_valid = True
-            st_score = 1.0
-
-            if use_st_filter:
-                # Determine direction: forward (q_cam -> cam) or backward (cam -> q_cam)
-                if c_start >= (q_end - 5.0):
-                    # Forward transition
-                    dt = c_start - q_end
-                    connected, min_t, max_t = get_travel_window(topology, q_cam, cam)
-                elif q_start >= (c_end - 5.0):
-                    # Backward transition (vehicle was seen on cam before reaching q_cam)
-                    dt = q_start - c_end
-                    connected, min_t, max_t = get_travel_window(topology, cam, q_cam)
-                else:
-                    # Overlapping observation in adjacent cameras
-                    dt = abs(c_start - q_start)
-                    connected_fwd, _, max_fwd = get_travel_window(topology, q_cam, cam)
-                    connected_bwd, _, max_bwd = get_travel_window(topology, cam, q_cam)
-                    connected = connected_fwd or connected_bwd
-                    min_t, max_t = 0.0, max(max_fwd, max_bwd, 30.0)
-
-                if not connected:
-                    continue
-
-                # Check travel time window
-                if dt < (min_t - 5.0) or dt > (max_t + 35.0):
-                    continue
-
-                # Score transition timing
-                expected_t = (min_t + max_t) / 2.0
-                time_diff = abs(dt - expected_t)
-                st_score = max(0.3, 1.0 - (time_diff / (max_t + 1e-6)))
-
-            # C. Visual similarity
-            c_vec = cand_vecs.get(cid)
-
+            color_match = not (q_color and c_color and q_color != c_color)
+            if use_color_gate and not color_match:
+                continue
+            c_vec = vecs.get(cid)
             if c_vec is None and c["crops_dir"]:
                 c_vec = get_track_crop_embedding(c["crops_dir"])
-
-            if q_vec is not None and c_vec is not None:
-                vis_sim = float(np.dot(q_vec, c_vec))
-            else:
-                # If embeddings not available, fall back to attribute and motion overlap
-                vis_sim = 0.5
-
-            # Combined score: visual + spatio-temporal - color penalty - type penalty
-            final_score = (0.75 * max(0.0, vis_sim) + 0.25 * st_score) - color_penalty - type_penalty
-            final_score = max(0.0, min(1.0, final_score))
-
-            # Clip-relative times for video playback
+            vis_sim = float(np.dot(q_vec, c_vec)) if q_vec is not None and c_vec is not None else 0.0
+            c_start, c_end = float(c["start_s"]), float(c["end_s"])
             chunk_start = float(c["chunk_start"])
             t0 = max(0.0, round(c_start - chunk_start, 1))
             t1 = max(t0 + 1.0, round(min(c_end - chunk_start, 10.0), 1))
-
             matches.append({
-                "track_row": cid,
-                "camera": cam,
-                "chunk_id": c["chunk_id"],
-                "start_s": round(c_start, 1),
-                "end_s": round(c_end, 1),
-                "score": round(final_score, 3),
-                "appearance_sim": round(max(0.0, vis_sim), 3),
-                "st_valid": st_valid,
-                "color_match": color_match,
-                "type_match": type_match,
-                "attrs": c_attrs,
-                "caption": c["caption"],
-                "thumb": f"/api/thumb/{cid}",
-                "clip": f"/api/clip/{c['chunk_id']}",
-                "clip_t0": t0,
-                "clip_t1": t1,
+                "track_row": cid, "camera": c["camera"], "chunk_id": c["chunk_id"],
+                "start_s": round(c_start, 1), "end_s": round(c_end, 1),
+                "score": round(max(0.0, min(1.0, vis_sim)), 3), "appearance_sim": round(max(0.0, vis_sim), 3),
+                "st_valid": gap is not None and gap <= window_s, "time_gap_s": None if gap is None else round(gap, 1),
+                "color_match": color_match, "type_match": not (q_type and extract_type(c_attrs, c["caption"]) and
+                                                                 q_type != extract_type(c_attrs, c["caption"])),
+                "attrs": c_attrs, "caption": c["caption"], "thumb": f"/api/thumb/{cid}",
+                "clip": f"/api/clip/{c['chunk_id']}", "clip_t0": t0, "clip_t1": t1,
             })
-
-        # Sort matches by score descending
         matches.sort(key=lambda m: -m["score"])
-
-        # Deduplicate candidate tracks from the same destination camera (keep best match per camera event)
-        deduped_matches = []
-        seen_cam_times = {}
-        for m in matches:
-            cam = m["camera"]
-            st = m["start_s"]
-            # If candidate is from same camera within 180s, it's the same vehicle track in adjacent chunks
-            existing = seen_cam_times.get(cam, [])
-            if any(abs(st - prev) < 180.0 for prev in existing):
-                continue
-            seen_cam_times.setdefault(cam, []).append(st)
-            deduped_matches.append(m)
+        # No camera/time collapsing here: keeping only the best track per camera per 3 minutes threw away the right
+        # vehicle whenever another car on that camera scored higher (CityFlow S02: mAP 57.7 -> 35.0). Repeated tracks
+        # of one vehicle are folded by the API with an appearance + position + time check (src/query/dedup.py).
+        deduped = matches
 
         return {
             "query": {
-                "track_row": track_row,
-                "camera": q_cam,
-                "start_s": round(q_start, 1),
-                "end_s": round(q_end, 1),
-                "attrs": q_attrs,
-                "color": q_color,
-                "type": q_type,
-                "caption": q_row["caption"],
-                "thumb": q_thumb,
+                "track_row": track_row, "camera": q_cam, "start_s": round(q_start, 1), "end_s": round(q_end, 1),
+                "attrs": q_attrs, "color": q_color, "type": q_type, "caption": q_row["caption"],
+                "thumb": f"/api/thumb/{track_row}" if q_files else None,
+                "synchronised_clock": q_iv is not None,
             },
-            "k": k,
-            "use_st_filter": use_st_filter,
+            "k": k, "use_st_filter": use_st_filter, "time_window_s": window_s if timed else None,
             "use_color_gate": use_color_gate,
-            "results": deduped_matches[:k],
+            "results": deduped[:k],
         }
-
     finally:
         db.close()
 
